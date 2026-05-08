@@ -13,10 +13,10 @@ class DobotSimController(Node):
     def __init__(self):
         super().__init__('dobot_sim_controller')
         
-        # 1. IK (역기구학) 서비스 클라이언트 (가제보/RViz에 켜진 MoveIt 뇌에 "관절 각도 계산해줘" 요청)
+        # 1. IK (Inverse Kinematics) service client (requests joint angle calculation from MoveIt running in Gazebo/RViz)
         self.ik_client = self.create_client(GetPositionIK, '/compute_ik')
-        
-        # 2. 액션 클라이언트 (가제보에 켜진 로봇 근육에 "이 각도로 움직여!" 명령)
+
+        # 2. Action client (sends "move to this angle!" commands to the robot controller running in Gazebo)
         robot_type = os.getenv("DOBOT_TYPE", "cr7")
         action_name = f'/{robot_type}_group_controller/follow_joint_trajectory'
         self.traj_client = ActionClient(self, FollowJointTrajectory, action_name)
@@ -25,10 +25,10 @@ class DobotSimController(Node):
         self.get_logger().info("Waiting for MoveIt IK service (/compute_ik)...")
         self.ik_client.wait_for_service()
 
-        # 목표 좌표 설정 (X, Y, Z 미터 단위)
+        # Set target coordinates (X, Y, Z in meters)
         req = GetPositionIK.Request()
         robot_type = os.getenv("DOBOT_TYPE", "cr7")
-        req.ik_request.group_name = f"{robot_type}_group"  # CR7의 경우 'cr7_group'
+        req.ik_request.group_name = f"{robot_type}_group"  # e.g. 'cr7_group' for CR7
         
         pose = PoseStamped()
         pose.header.frame_id = "base_link"
@@ -36,7 +36,7 @@ class DobotSimController(Node):
         pose.pose.position.y = float(y)
         pose.pose.position.z = float(z)
         
-        # 손끝(End-effector)이 바닥을 향하도록 임의의 쿼터니언 방향 설정
+        # Set quaternion orientation so the end-effector points downward
         pose.pose.orientation.x = 0.0
         pose.pose.orientation.y = 1.0
         pose.pose.orientation.z = 0.0
@@ -45,17 +45,17 @@ class DobotSimController(Node):
         req.ik_request.pose_stamped = pose
         req.ik_request.timeout.sec = 2
 
-        # 1단계: MoveIt에 관절 각도 계산 요청
+        # Step 1: Request joint angle calculation from MoveIt
         self.get_logger().info(f"Target [X:{x}, Y:{y}, Z:{z}] - Calculating IK...")
         future = self.ik_client.call_async(req)
         rclpy.spin_until_future_complete(self, future)
         
         response = future.result()
-        if response.error_code.val != 1:  # 1은 SUCCESS를 의미
+        if response.error_code.val != 1:  # 1 means SUCCESS
             self.get_logger().error(f"Cannot reach target! (MoveIt Error Code: {response.error_code.val})")
             return
 
-        # MoveIt이 계산해준 6개의 관절 각도 빼오기
+        # Extract the 6 joint angles computed by MoveIt
         joint_names = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
         target_positions = []
         
@@ -63,7 +63,7 @@ class DobotSimController(Node):
             idx = response.solution.joint_state.name.index(name)
             target_positions.append(response.solution.joint_state.position[idx])
 
-        # 2단계: 가제보 로봇에게 이동 명령(Trajectory) 발송
+        # Step 2: Send trajectory command to the Gazebo robot
         self.get_logger().info("Path found! Sending command to Gazebo...")
         self.traj_client.wait_for_server()
         
@@ -72,7 +72,7 @@ class DobotSimController(Node):
         
         point = JointTrajectoryPoint()
         point.positions = target_positions
-        point.time_from_start.sec = 3  # 3초에 걸쳐서 스르륵 부드럽게 이동
+        point.time_from_start.sec = 3  # Smoothly reach the target over 3 seconds
         goal_msg.trajectory.points.append(point)
         
         send_goal_future = self.traj_client.send_goal_async(goal_msg)
@@ -92,7 +92,7 @@ def main(args=None):
     rclpy.init(args=args)
     node = DobotSimController()
     
-    # 🌟 로봇이 이동할 목표 X, Y, Z 좌표 (단위: m)
+    # Target X, Y, Z coordinates for the robot to move to (unit: m)
     node.move_to_coordinate(0.3, 0.1, 0.3)
     
     node.destroy_node()
