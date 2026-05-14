@@ -1,0 +1,1 @@
+/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_generator_c/dobot_msgs_v4/msg/detail/robot_status__type_support.h

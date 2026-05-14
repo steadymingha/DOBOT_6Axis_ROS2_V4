@@ -1,0 +1,1 @@
+/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_typesupport_fastrtps_c/dobot_msgs_v4/srv/detail/get_input_float__rosidl_typesupport_fastrtps_c.h

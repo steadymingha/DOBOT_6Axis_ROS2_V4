@@ -1,0 +1,1 @@
+/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_generator_rs/dobot_msgs_v4/rust/src/msg.rs

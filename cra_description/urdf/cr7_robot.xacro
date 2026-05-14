@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <robot name="cr7_robot"  xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:include filename="$(find cra_description)/urdf/gripper.xacro"/>
     <link name="dummy_link" />
   <link name="base_link">
     <inertial>
@@ -428,7 +429,10 @@
         <gravity>false</gravity>
         <selfCollide>true</selfCollide>
     </gazebo> 
-    <!-- 在运行demo.launch.py时，需要注释这个ros2_control节点，因为它使用了xxx.ros2_control.xacro来生成了ros2_control节点-->
+    <xacro:simple_gripper parent="Link6" prefix="">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </xacro:simple_gripper>
+
     <ros2_control name="GazeboSystem" type="system">
         <hardware>
             <plugin>gazebo_ros2_control/GazeboSystem</plugin>
@@ -492,6 +496,24 @@
                 <param name="initial_value">0.0</param>
             </state_interface>
             <state_interface name="velocity"/>
+        </joint>
+        <joint name="left_finger_joint">
+            <command_interface name="position">
+                <param name="min">0.0</param>
+                <param name="max">0.080</param>
+            </command_interface>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </joint>
+        <joint name="right_finger_joint">
+            <command_interface name="position">
+                <param name="min">0.0</param>
+                <param name="max">0.080</param>
+            </command_interface>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
         </joint>
     </ros2_control>
 

@@ -1,0 +1,1 @@
+/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/cr7_moveit/ament_cmake_environment_hooks/local_setup.bash

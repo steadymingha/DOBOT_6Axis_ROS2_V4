@@ -1,0 +1,1 @@
+/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_generator_cpp/dobot_msgs_v4/srv/detail/check_odd_mov_c__type_support.hpp

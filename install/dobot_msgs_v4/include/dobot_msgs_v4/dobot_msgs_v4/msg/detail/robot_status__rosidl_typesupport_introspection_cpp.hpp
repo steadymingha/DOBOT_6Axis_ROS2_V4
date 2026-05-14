@@ -1,0 +1,1 @@
+/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_typesupport_introspection_cpp/dobot_msgs_v4/msg/detail/robot_status__rosidl_typesupport_introspection_cpp.hpp

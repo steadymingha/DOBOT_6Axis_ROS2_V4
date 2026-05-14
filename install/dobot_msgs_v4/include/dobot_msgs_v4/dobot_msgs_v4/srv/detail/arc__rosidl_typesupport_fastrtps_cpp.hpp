@@ -1,0 +1,1 @@
+/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_typesupport_fastrtps_cpp/dobot_msgs_v4/srv/detail/arc__rosidl_typesupport_fastrtps_cpp.hpp

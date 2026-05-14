@@ -17,6 +17,33 @@ class DobotSimController(Node):
         robot_type = os.getenv("DOBOT_TYPE", "cr7")
         action_name = f'/{robot_type}_group_controller/follow_joint_trajectory'
         self.traj_client = ActionClient(self, FollowJointTrajectory, action_name)
+        self.gripper_client = ActionClient(self, FollowJointTrajectory, '/gripper_controller/follow_joint_trajectory')
+
+    def control_gripper(self, positions):
+        if not self.gripper_client.wait_for_server(timeout_sec=5.0):
+            self.get_logger().error("Gripper action server not available")
+            return False
+
+        goal_msg = FollowJointTrajectory.Goal()
+        goal_msg.trajectory.joint_names = ['left_finger_joint', 'right_finger_joint']
+        point = JointTrajectoryPoint()
+        point.positions = [float(p) for p in positions]
+        point.velocities = [0.0, 0.0]
+        point.time_from_start.sec = 2
+        goal_msg.trajectory.points.append(point)
+
+        send_goal_future = self.gripper_client.send_goal_async(goal_msg)
+        rclpy.spin_until_future_complete(self, send_goal_future)
+
+        goal_handle = send_goal_future.result()
+        if not goal_handle.accepted:
+            self.get_logger().error("Gripper goal rejected")
+            return False
+
+        get_result_future = goal_handle.get_result_async()
+        rclpy.spin_until_future_complete(self, get_result_future)
+        self.get_logger().info(f"Gripper moved to positions: {positions}")
+        return True
 
     def move_to_coordinate(self, x, y, z):
         if not self.ik_client.wait_for_service(timeout_sec=5.0):
@@ -69,23 +96,63 @@ class DobotSimController(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = DobotSimController()
-    
-    # --- Step 1: Move to picking point ---
-    print("\n[STEP 1] Moving to Target...")
-    # 40cm forward, 30cm high
-    node.move_to_coordinate(0.4, 0.0, 0.3)
-    
-    # --- Step 2: Wait ---
-    print("[WAIT] Picking up object (2 seconds)...")
-    time.sleep(2.0)
-    
-    # --- Step 3: Return to safe standby position (Home) ---
-    print("[STEP 2] Returning to Home...")
-    # Recommended Home Position: 20cm forward, 50cm high
-    # DO NOT use (0,0,0) - it causes self-collision
+
+    # Box pick position:  (0.4, 0.0)  — red box in cr.world
+    # Box place position: (0.2, 0.35) — yellow marker in cr.world
+    PICK_X,  PICK_Y  = 0.4, 0.0
+    PLACE_X, PLACE_Y = 0.2, 0.35
+    APPROACH_Z = 0.25   # safe height for horizontal travel
+    PICK_Z     = 0.07   # gripper descend height to grip the box
+    CARRY_Z    = 0.35   # lift height while carrying
+    GRIPPER_OPEN  = [0.06, 0.06]   # fingers wide open
+    GRIPPER_CLOSE = [0.01, 0.01]   # fingers pressed against box
+
+    print("\n========== Pick-and-Place Sequence Start ==========")
+
+    # 1. Move to safe home position
+    print("[1/9] Moving to home position...")
     node.move_to_coordinate(0.2, 0.0, 0.5)
-    
-    print("\nAll tasks completed successfully!")
+
+    # 2. Open gripper before approaching
+    print("[2/9] Opening gripper...")
+    node.control_gripper(GRIPPER_OPEN)
+
+    # 3. Move above pick position
+    print("[3/9] Moving above pick position (0.4, 0.0)...")
+    node.move_to_coordinate(PICK_X, PICK_Y, APPROACH_Z)
+
+    # 4. Descend onto box
+    print("[4/9] Descending to grasp box...")
+    node.move_to_coordinate(PICK_X, PICK_Y, PICK_Z)
+
+    # 5. Close gripper to grasp box
+    print("[5/9] Closing gripper to grasp box...")
+    node.control_gripper(GRIPPER_CLOSE)
+    time.sleep(0.5)
+
+    # 6. Lift box
+    print("[6/9] Lifting box...")
+    node.move_to_coordinate(PICK_X, PICK_Y, CARRY_Z)
+
+    # 7. Move horizontally to place position
+    print("[7/9] Moving to place position (0.2, 0.35)...")
+    node.move_to_coordinate(PLACE_X, PLACE_Y, CARRY_Z)
+
+    # 8. Descend to place height
+    print("[8/9] Lowering box onto place marker...")
+    node.move_to_coordinate(PLACE_X, PLACE_Y, PICK_Z)
+
+    # 9. Open gripper to release box
+    print("[9/9] Releasing box...")
+    node.control_gripper(GRIPPER_OPEN)
+    time.sleep(0.5)
+
+    # Return to safe home
+    print("[Done] Returning to home position...")
+    node.move_to_coordinate(PLACE_X, PLACE_Y, APPROACH_Z)
+    node.move_to_coordinate(0.2, 0.0, 0.5)
+
+    print("========== Pick-and-Place Sequence Complete ==========\n")
     node.destroy_node()
     rclpy.shutdown()
 

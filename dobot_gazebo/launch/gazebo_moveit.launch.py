@@ -34,10 +34,15 @@ def generate_launch_description():
     robot_name_in_model = f'{name}_robot'
     package_name = 'cra_description'
     urdf_name = f"{name}_robot.xacro"
+    world_path = os.path.join(
+        get_package_share_directory('dobot_gazebo'),
+        'worlds',
+        'cr.world'
+    )
     gazebo = IncludeLaunchDescription(
                 PythonLaunchDescriptionSource([os.path.join(
                     get_package_share_directory('gazebo_ros'), 'launch'), '/gazebo.launch.py']),
-                launch_arguments={}.items(),
+                launch_arguments={'world': world_path}.items(),
              )
     cra_description_path = os.path.join(
         get_package_share_directory(package_name))
@@ -70,14 +75,21 @@ def generate_launch_description():
         output='screen'
     )
 
-    # # 路径执行控制器
+    # Arm trajectory controller
     load_joint_trajectory_controller = ExecuteProcess(
         cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
              f'{name}_group_controller'],
         output='screen'
     )
 
-    close_evt1 =  RegisterEventHandler( 
+    # Gripper position controller
+    load_gripper_controller = ExecuteProcess(
+        cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
+             'gripper_controller'],
+        output='screen'
+    )
+
+    close_evt1 =  RegisterEventHandler(
             event_handler=OnProcessExit(
                 target_action=spawn_entity,
                 on_exit=[load_joint_state_controller],
@@ -89,10 +101,17 @@ def generate_launch_description():
                 on_exit=[load_joint_trajectory_controller],
             )
     )
+    close_evt3 = RegisterEventHandler(
+            event_handler=OnProcessExit(
+                target_action=load_joint_trajectory_controller,
+                on_exit=[load_gripper_controller],
+            )
+    )
 
     return LaunchDescription([
       close_evt1,
       close_evt2,
+      close_evt3,
       gazebo,
       node_robot_state_publisher,
       spawn_entity

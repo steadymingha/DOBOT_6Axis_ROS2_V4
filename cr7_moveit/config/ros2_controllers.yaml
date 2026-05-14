@@ -10,6 +10,9 @@ controller_manager:
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
 
+    gripper_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
 cr7_group_controller:
   ros__parameters:
     joints:
@@ -24,3 +27,23 @@ cr7_group_controller:
     state_interfaces:
       - position
       - velocity
+
+gripper_controller:
+  ros__parameters:
+    joints:
+      - left_finger_joint
+      - right_finger_joint
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+    constraints:
+      goal_time: 5.0
+      stopped_velocity_tolerance: 0.05
+      left_finger_joint:
+        goal: 0.005
+        trajectory: 0.01
+      right_finger_joint:
+        goal: 0.005
+        trajectory: 0.01
