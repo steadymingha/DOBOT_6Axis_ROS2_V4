@@ -16,17 +16,17 @@ current_robot = json_data['current_robot']
 node_info = json_data["node_info"]
 
 
-# ip_address = json_data["node_info"][current_robot -
-#                                     1]["ip_address"]    # robot IP
-# robot_type = json_data["node_info"][current_robot -
-#                                     1]["robot_type"]  # robot type
+ip_address = json_data["node_info"][current_robot -
+                                    1]["ip_address"]    # robot IP
+robot_type = json_data["node_info"][current_robot -
+                                    1]["robot_type"]  # robot type
 trajectory_duration = json_data["node_info"][current_robot -
                                              1]["trajectory_duration"]
 robot_node_name = json_data["node_info"][current_robot -
                                          1]["robot_node_name"]
-ip_address = os.getenv("IP_address")
+# ip_address = os.getenv("IP_address")
              
-robot_type = os.getenv("DOBOT_TYPE")
+# robot_type = os.getenv("DOBOT_TYPE")
 
 
 dobot_ros2_params = [
