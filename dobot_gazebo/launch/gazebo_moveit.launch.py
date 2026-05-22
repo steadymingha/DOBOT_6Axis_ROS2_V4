@@ -2,7 +2,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import ExecuteProcess, IncludeLaunchDescription, RegisterEventHandler, TimerAction
+from launch.actions import ExecuteProcess, IncludeLaunchDescription, RegisterEventHandler
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 import xacro
@@ -89,12 +89,10 @@ def generate_launch_description():
         output='screen'
     )
 
-    # Wait 3s after spawn before loading controllers so that the
-    # gazebo_ros2_control plugin has time to initialize controller_manager.
     close_evt1 = RegisterEventHandler(
             event_handler=OnProcessExit(
                 target_action=spawn_entity,
-                on_exit=[TimerAction(period=3.0, actions=[load_joint_state_controller])],
+                on_exit=[load_joint_state_controller],
             )
     )
     close_evt2 = RegisterEventHandler(
