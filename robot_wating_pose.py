@@ -63,7 +63,8 @@ def main(args=None):
     # J2 + J3 + J5 = 90° ensures TCP faces -Z (vertical down)
     # J5 = 45° avoids wrist singularity
     # J3 = 90° avoids elbow singularity
-    OVERHEAD_POSE_DEG = [0, -30, 90, 0, 60, 0]
+    # OVERHEAD_POSE_DEG = [0, -30, 90, 0, 60, 0]
+    OVERHEAD_POSE_DEG = [0, -10, 1, 10, 10, 0]
 
     print("\n========== Moving to Overhead Pose ==========")
     node.move_to_joint_pose(OVERHEAD_POSE_DEG, duration_sec=4)
