@@ -34,11 +34,18 @@ def generate_launch_description():
     robot_name_in_model = f'{name}_robot'
     package_name = 'cra_description'
     urdf_name = f"{name}_robot.xacro"
-    world_path = os.path.join(
-        get_package_share_directory('dobot_gazebo'),
-        'worlds',
-        'cr.world'
-    )
+    # world_path = os.path.join(
+    #     get_package_share_directory('dobot_gazebo'),
+    #     'worlds',
+    #     'cr.world'
+    # )
+    ## warehouse world cfg start##
+    dobot_gazebo_path = get_package_share_directory('dobot_gazebo')
+    os.environ['GAZEBO_MODEL_PATH'] = os.path.join(dobot_gazebo_path, 'models') + ':' + os.environ.get('GAZEBO_MODEL_PATH', '')
+    os.environ['GAZEBO_RESOURCE_PATH'] = dobot_gazebo_path + ':' + os.environ.get('GAZEBO_RESOURCE_PATH', '')
+    world_path = os.path.join(dobot_gazebo_path, 'worlds', 'no_roof_small_warehouse', 'no_roof_small_warehouse.world')
+    ## warehouse world cfg end ##
+    
     gazebo = IncludeLaunchDescription(
                 PythonLaunchDescriptionSource([os.path.join(
                     get_package_share_directory('gazebo_ros'), 'launch'), '/gazebo.launch.py']),

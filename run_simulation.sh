@@ -5,7 +5,8 @@ export DISPLAY=:0
 export DOBOT_TYPE=cr7
 
 source /opt/ros/humble/setup.bash
-source ~/dobot_ws/install/local_setup.bash
+source ~/work/DOBOT_6Axis_ROS2_V4/install/local_setup.bash
+source /usr/share/gazebo/setup.bash
 
 echo "=== [1/2] Gazebo + controller starting ==="
 ros2 launch dobot_gazebo gazebo_moveit.launch.py &

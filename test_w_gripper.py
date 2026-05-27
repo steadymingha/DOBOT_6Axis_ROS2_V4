@@ -479,7 +479,7 @@ def main(args=None):
     target.pose.orientation.w = 0.0
 
     GRIPPER_OPEN  = [0.1, 0.1]   # fingers wide open
-    GRIPPER_CLOSE = [0.063, 0.063]   # fingers pressed against box
+    GRIPPER_CLOSE = [0.066, 0.066]   # fingers pressed against box
 
 
     #  방향별 참고표 (기본 자세 (0,1,0,0) 기준)
