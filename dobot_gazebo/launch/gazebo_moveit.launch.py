@@ -72,7 +72,8 @@ def generate_launch_description():
 
     spawn_entity = Node(package='gazebo_ros', executable='spawn_entity.py',
                         arguments=['-topic', 'robot_description',
-                                   '-entity', robot_name_in_model],
+                                   '-entity', robot_name_in_model,
+                                   '-z', '0.05'],
                         output='screen')
     
     # # 关节状态发布器
