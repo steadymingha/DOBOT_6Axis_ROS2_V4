@@ -31,8 +31,8 @@ cr7_group_controller:
 gripper_controller:
   ros__parameters:
     joints:
-      - left_finger_joint
-      - right_finger_joint
+      - gripper_gripper_joint
+      - gripper_right_finger_joint
     command_interfaces:
       - position
     state_interfaces:
@@ -41,9 +41,9 @@ gripper_controller:
     constraints:
       goal_time: 5.0
       stopped_velocity_tolerance: 0.05
-      left_finger_joint:
+      gripper_gripper_joint:
         goal: 0.005
         trajectory: 0.01
-      right_finger_joint:
+      gripper_right_finger_joint:
         goal: 0.005
         trajectory: 0.01

@@ -12,6 +12,8 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <run_depend>onrobot_2fg7_description</run_depend>
+
   <export>
       <build_type>ament_cmake</build_type>
   </export>

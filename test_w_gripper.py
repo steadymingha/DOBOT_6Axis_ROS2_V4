@@ -16,6 +16,7 @@ from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
 from geometry_msgs.msg import PoseStamped
 from moveit_msgs.msg import RobotState
+from linkattacher_msgs.srv import AttachLink, DetachLink
 
 class RRTNode:
     def __init__(self, joints):
@@ -49,6 +50,17 @@ class CR7RRTPlanner(Node):
         
         # 5. gripper
         self.gripper_client = ActionClient(self, FollowJointTrajectory, '/gripper_controller/follow_joint_trajectory')
+
+        # 6. link attacher (grasp fix): attach/detach the box to the gripper
+        self.attach_client = self.create_client(AttachLink, '/ATTACHLINK', callback_group=self.cb_group)
+        self.detach_client = self.create_client(DetachLink, '/DETACHLINK', callback_group=self.cb_group)
+        # Robot/box names as known to Gazebo
+        self.robot_model   = 'cr7_robot'
+        # NOTE: the finger mesh link is lumped into its prismatic-joint parent by Gazebo
+        # (fixed joints get merged), so attach to the link that actually exists: the attachment link.
+        self.gripper_link  = 'gripper_left_attachment'
+        self.object_model  = 'pick_box'
+        self.object_link   = 'box_link'
 
 
 
@@ -92,9 +104,10 @@ class CR7RRTPlanner(Node):
             return False
 
         goal_msg = FollowJointTrajectory.Goal()
-        goal_msg.trajectory.joint_names = ['left_finger_joint', 'right_finger_joint']
+        # OnRobot 2FG7: drive both fingers together (mimic is not enforced in Gazebo)
+        goal_msg.trajectory.joint_names = ['gripper_gripper_joint', 'gripper_right_finger_joint']
         point = JointTrajectoryPoint()
-        point.positions = [float(p) for p in positions]
+        point.positions = [float(positions[0]), float(positions[0])]
         point.velocities = [0.0, 0.0]
         point.time_from_start.sec = 2
         goal_msg.trajectory.points.append(point)
@@ -113,6 +126,38 @@ class CR7RRTPlanner(Node):
             time.sleep(0.01)
         self.get_logger().info(f"Gripper moved to positions: {positions}")
         return True
+
+    def attach_box(self):
+        """Fix the box to the gripper (grasp) via the link attacher service."""
+        if not self.attach_client.wait_for_service(timeout_sec=5.0):
+            self.get_logger().error("ATTACHLINK service not available")
+            return False
+        req = AttachLink.Request()
+        req.model1_name = self.robot_model
+        req.link1_name  = self.gripper_link
+        req.model2_name = self.object_model
+        req.link2_name  = self.object_link
+        future = self.attach_client.call_async(req)
+        while rclpy.ok() and not future.done():
+            time.sleep(0.01)
+        self.get_logger().info(f"Attach: {future.result().message}")
+        return future.result().success
+
+    def detach_box(self):
+        """Release the box from the gripper via the link attacher service."""
+        if not self.detach_client.wait_for_service(timeout_sec=5.0):
+            self.get_logger().error("DETACHLINK service not available")
+            return False
+        req = DetachLink.Request()
+        req.model1_name = self.robot_model
+        req.link1_name  = self.gripper_link
+        req.model2_name = self.object_model
+        req.link2_name  = self.object_link
+        future = self.detach_client.call_async(req)
+        while rclpy.ok() and not future.done():
+            time.sleep(0.01)
+        self.get_logger().info(f"Detach: {future.result().message}")
+        return future.result().success
 
     # --- [Service call wrapper functions] ---
 
@@ -470,7 +515,7 @@ def main(args=None):
     target.header.frame_id = "base_link" # Check the robot base link name
     target.pose.position.x = 0.4#0.4
     target.pose.position.y = 0.0
-    target.pose.position.z = 0.2#0.2
+    target.pose.position.z = 0.3#0.2
     # target.pose.orientation.w = 1.0 # Default rotation (quaternion)
 
     target.pose.orientation.x = 0.707#0.0
@@ -478,8 +523,8 @@ def main(args=None):
     target.pose.orientation.z = 0.0
     target.pose.orientation.w = 0.0
 
-    GRIPPER_OPEN  = [0.1, 0.1]   # fingers wide open
-    GRIPPER_CLOSE = [0.063, 0.063]   # fingers pressed against box
+    GRIPPER_OPEN  = [0.07]     # fingers wide open (joint upper limit, ~100 mm gap)
+    GRIPPER_CLOSE = [0.036]    # light grip on the 81 mm box (gap ~78 mm); do NOT fully close or the box gets ejected
 
 
     #  방향별 참고표 (기본 자세 (0,1,0,0) 기준)
@@ -497,12 +542,32 @@ def main(args=None):
         node.control_gripper(GRIPPER_OPEN)
         time.sleep(0.5)
 
-        target.pose.position.z = 0.12#0.2
+        # fine-tune the position to grasp the box
+        target.pose.position.z = 0.24 # 0.12#0.2
         node.move_to_pose(target)
         time.sleep(0.5)
-        node.control_gripper(GRIPPER_CLOSE)
-        time.sleep(1.0)
 
+        # Grasp the box
+        node.control_gripper(GRIPPER_CLOSE)
+        node.attach_box()
+
+        # Lift the box up
+        target.pose.position.z = 0.45 # 0.12#0.2
+        node.move_to_pose(target)
+        time.sleep(0.5)
+
+        # Move to a different location while holding the box
+        target.pose.position.x = 0.08#0.4
+        target.pose.position.y = 0.08
+        target.pose.position.z = 0.041#0.2
+
+        node.move_to_pose(target)
+        time.sleep(0.5)
+
+        # Release the box
+        node.detach_box()
+
+        # Move to the waiting pose
         OVERHEAD_POSE_DEG = [0, -10, 1, 10, 10, 0]
         print("\n========== Moving to Overhead Pose ==========")
         node.move_to_joint_pose(OVERHEAD_POSE_DEG, duration_sec=4)
@@ -513,3 +578,5 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
+
+# 0.08 0.08 0.004

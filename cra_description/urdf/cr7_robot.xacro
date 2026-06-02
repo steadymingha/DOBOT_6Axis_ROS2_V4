@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <robot name="cr7_robot"  xmlns:xacro="http://ros.org/wiki/xacro">
-  <xacro:include filename="$(find cra_description)/urdf/gripper.xacro"/>
+  <xacro:include filename="$(find onrobot_2fg7_description)/urdf/onrobot_2fg7.xacro"/>
     <link name="dummy_link" />
   <link name="base_link">
     <inertial>
@@ -429,9 +429,44 @@
         <gravity>false</gravity>
         <selfCollide>true</selfCollide>
     </gazebo> 
-    <xacro:simple_gripper parent="Link6" prefix="">
+    <!-- OnRobot 2FG7 gripper attached to Link6 -->
+    <xacro:onrobot_2fg7 prefix="gripper_" parent="Link6">
       <origin xyz="0 0 0" rpy="0 0 0"/>
-    </xacro:simple_gripper>
+    </xacro:onrobot_2fg7>
+
+    <xacro:onrobot_2fg7_fingertip prefix="gripper_right_" parent="gripper_right_attachment">
+      <origin xyz="0 0 0" rpy="0 0 3.14159265359"/>
+    </xacro:onrobot_2fg7_fingertip>
+
+    <xacro:onrobot_2fg7_fingertip prefix="gripper_left_" parent="gripper_left_attachment">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </xacro:onrobot_2fg7_fingertip>
+
+    <!-- Gazebo settings for gripper links (blue base, yellow fingers, no gravity, grip contact tuning) -->
+    <gazebo reference="gripper_base_link">
+        <material>Gazebo/Blue</material>
+        <gravity>false</gravity>
+    </gazebo>
+    <gazebo reference="gripper_right_onrobot_2fg7_finger_link">
+        <material>Gazebo/Yellow</material>
+        <gravity>false</gravity>
+        <mu1>100.0</mu1>
+        <mu2>100.0</mu2>
+        <kp>200000.0</kp>
+        <kd>10.0</kd>
+        <minDepth>0.002</minDepth>
+        <maxVel>0.05</maxVel>
+    </gazebo>
+    <gazebo reference="gripper_left_onrobot_2fg7_finger_link">
+        <material>Gazebo/Yellow</material>
+        <gravity>false</gravity>
+        <mu1>100.0</mu1>
+        <mu2>100.0</mu2>
+        <kp>200000.0</kp>
+        <kd>10.0</kd>
+        <minDepth>0.002</minDepth>
+        <maxVel>0.05</maxVel>
+    </gazebo>
 
     <ros2_control name="GazeboSystem" type="system">
         <hardware>
@@ -497,21 +532,25 @@
             </state_interface>
             <state_interface name="velocity"/>
         </joint>
-        <joint name="left_finger_joint">
+        <joint name="gripper_gripper_joint">
             <command_interface name="position">
-                <param name="min">0.0</param>
-                <param name="max">0.080</param>
+                <param name="min">0.0115</param>
+                <param name="max">0.10</param>
             </command_interface>
-            <state_interface name="position"/>
+            <state_interface name="position">
+                <param name="initial_value">0.0115</param>
+            </state_interface>
             <state_interface name="velocity"/>
             <state_interface name="effort"/>
         </joint>
-        <joint name="right_finger_joint">
+        <joint name="gripper_right_finger_joint">
             <command_interface name="position">
-                <param name="min">0.0</param>
-                <param name="max">0.080</param>
+                <param name="min">0.0115</param>
+                <param name="max">0.10</param>
             </command_interface>
-            <state_interface name="position"/>
+            <state_interface name="position">
+                <param name="initial_value">0.0115</param>
+            </state_interface>
             <state_interface name="velocity"/>
             <state_interface name="effort"/>
         </joint>

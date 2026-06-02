@@ -11,7 +11,7 @@
 
     <!-- Red box to be picked up at (0.4, 0.0) -->
     <model name="pick_box">
-      <pose>0.4 0.0 0.0405 0 0 0</pose>
+      <pose>0.4 0.0 0.07 1.5708 0 0</pose>
       <link name="box_link">
         <inertial>
           <mass>0.1</mass>
@@ -27,7 +27,7 @@
           </geometry>
           <surface>
             <friction>
-              <ode><mu>10.0</mu><mu2>10.0</mu2></ode>
+              <ode><mu>100.0</mu><mu2>100.0</mu2></ode>
             </friction>
             <contact>
               <ode><kp>1000000.0</kp><kd>1.0</kd></ode>
@@ -87,8 +87,15 @@
       </link>
     </model>
 
+    <!-- GUI camera initial viewpoint -->
+    <gui>
+      <camera name="user_camera">
+        <pose>1.682340 -1.406788 1.015652 -0.000001 0.275643 2.356194</pose>
+      </camera>
+    </gui>
 
-
+    <!-- Link attacher: provides /ATTACHLINK and /DETACHLINK services for grasping -->
+    <plugin name="gazebo_link_attacher" filename="libgazebo_link_attacher.so"/>
 
   </world>
 </sdf>
