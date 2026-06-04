@@ -1,27 +1,24 @@
-"""Segmented pick-and-place: the motion is split into 6 path-planning segments,
-each using the planner best suited to it. The grasp orientation (gripper pointing
-straight down) is held through every segment after the grasp.
+"""Pick-and-place demo that mirrors test_w_gripper.py's main() sequence, but
+replaces the joint-space RRT with CBiRRT for every motion performed while the
+grasp orientation must be held.
 
-Segments:
-  1. Approach        -> free joint-space RRT to a pre-grasp pose above the object
-                        (CR7RRTPlanner.move_to_pose). No constraint needed yet.
-  2. Descend->grasp  -> vertical straight-line Cartesian servo down onto the box
-                        (pinocchio Jacobian, no RRT), then close gripper + attach.
-  3. Lift            -> vertical straight-line Cartesian servo up to carry height.
-  4. Carry           -> CBiRRT at constant carry height to above the place marker,
-                        holding the tilt (gripper stays down, yaw free).
-  5. Descend->place  -> vertical straight-line Cartesian servo down, then detach.
-  6. Wait            -> small vertical retreat, then move to the overhead pose.
-
-The vertical segments (2, 3, 5) use a Cartesian-Jacobian servo instead of RRT:
-they are simple straight lines with no need to route around obstacles, so a
-deterministic servo is faster and smoother than a sampling planner. Only the
-horizontal carry (4) may need to route through joint space, so it uses CBiRRT.
+Phases:
+  1. Approach the grasp pose      -> free joint-space RRT (reused from
+     CR7RRTPlanner.move_to_pose); this is what establishes the grasp tilt.
+  2. Open gripper.
+  3. Descend onto the box         -> CBiRRT (orientation held).
+  4. Close gripper + attach box.
+  5. Lift the box                 -> CBiRRT (orientation held).
+  6. Carry to the place location  -> CBiRRT (orientation held; the box keeps
+     the exact pose it had when grasped).
+  7. Detach + open gripper.
+  8. Move to the overhead/waiting pose -> direct joint move.
 
 Reuses CR7RRTPlanner from test_w_gripper.py for IK (/compute_ik), collision
-checking (/check_state_validity), the gripper controller and the link attacher.
-test_w_gripper.py itself is NOT modified. The CBiRRT/servo Jacobian comes from
-pinocchio (see constrained_cbirrt.py).
+checking (/check_state_validity), the gripper controller and the link
+attacher. test_w_gripper.py itself is NOT modified.
+
+The CBiRRT constraint Jacobian comes from pinocchio (see constrained_cbirrt.py).
 
 Run (sim already up):
     source /opt/ros/humble/setup.bash
@@ -177,25 +174,23 @@ class CBiRRTPickPlace(CR7RRTPlanner):
         self.get_logger().info("[execute_path] done")
         return True
 
-    def vertical_servo(self, dz, speed=0.4):
-        """Move the EE straight along world z by dz metres (sign = direction),
-        holding its current orientation, via a pinocchio Cartesian-Jacobian servo
-        seeded at the current pose (no IK branch jump). Automatically stops just
-        before any joint reaches its limit or a collision occurs. Blocks."""
-        direction = "up" if dz >= 0 else "down"
+    def lift_straight(self, dz, speed=0.4):
+        """Lift the EE straight up by up to dz metres, holding orientation, via a
+        pinocchio Cartesian-Jacobian servo seeded at the current pose (no IK branch
+        jump). Automatically stops just before any joint reaches its limit. Blocks."""
         while self.current_joints is None:
             self.get_logger().info("Waiting for /joint_states...")
             time.sleep(0.5)
         start_q = self.current_joints.tolist()
         path, reached = self.cbirrt.lift_path(start_q, dz, self.is_state_valid, self.joint_limits)
         if reached <= 1e-3 or len(path) < 2:
-            self.get_logger().error(f"[servo] could not move {direction} (reached {reached*1000:.0f} mm)")
+            self.get_logger().error(f"[lift] could not lift (reached {reached*1000:.0f} mm)")
             return False
         if reached < abs(dz) - 1e-3:
             self.get_logger().warn(
-                f"[servo] stopped at {reached*1000:.0f} mm of requested {abs(dz)*1000:.0f} mm "
-                f"(joint limit / collision)")
-        self.get_logger().info(f"[servo] straight {direction} {reached*1000:.0f} mm, {len(path)} waypoints")
+                f"[lift] stopped at {reached*1000:.0f} mm of requested {abs(dz)*1000:.0f} mm "
+                f"(joint limit reached)")
+        self.get_logger().info(f"[lift] straight up {reached*1000:.0f} mm, {len(path)} waypoints")
         return self.execute_path(path, speed=speed)
 
 
@@ -212,69 +207,64 @@ def main(args=None):
     GRIPPER_OPEN = [0.09]
     GRIPPER_CLOSE = [0.036]
 
-    # Workspace constants.
-    OBJECT_XY = (0.4, 0.0)     # pick_box location
-    MARKER_XY = (0.2, 0.35)    # place_marker location
-    Z_PREGRASP = 0.30          # approach height above the object
-    Z_GRASP = 0.24             # EE height that grasps the box
-    Z_CARRY = 0.30             # lift / transport height (above-marker is only
-                               # IK-reachable up to ~0.30 with the down orientation)
-    Z_PLACE = 0.25             # EE height to release over the marker
-    # Gripper pointing straight DOWN (local z -> world -Z); held by the constraint.
-    DOWN = (0.707, 0.707, 0.0, 0.0)
+    # Grasp pose (same as test_w_gripper.py). The approach uses the free RRT.
+    target = PoseStamped()
+    target.header.frame_id = "base_link"
+    target.pose.position.x = 0.4
+    target.pose.position.y = 0.0
+    target.pose.position.z = 0.3
+    target.pose.orientation.x = 0.707
+    target.pose.orientation.y = 0.707
+    target.pose.orientation.z = 0.0
+    target.pose.orientation.w = 0.0
 
-    def pose_at(xy, z):
-        p = PoseStamped()
-        p.header.frame_id = "base_link"
-        p.pose.position.x, p.pose.position.y, p.pose.position.z = xy[0], xy[1], z
-        p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w = DOWN
-        return p
+    # 1. Approach the grasp pose with the free joint-space RRT.
+    if not node.move_to_pose(target):
+        node.get_logger().error("Approach failed")
+        node.destroy_node(); rclpy.shutdown(); return
 
-    def fail(msg):
-        node.get_logger().error(msg)
-        node.destroy_node(); rclpy.shutdown()
-
-    # --- Segment 1: approach a pre-grasp pose above the object (free RRT) ---
-    print("\n===== [1/6] Approach (free RRT) =====")
-    if not node.move_to_pose(pose_at(OBJECT_XY, Z_PREGRASP)):
-        return fail("Segment 1 (approach) failed")
     time.sleep(1.0)
     node.control_gripper(GRIPPER_OPEN)
     time.sleep(0.5)
 
-    # --- Segment 2: vertical descend onto the box, then grasp (Cartesian servo) ---
-    print("\n===== [2/6] Vertical descend -> grasp =====")
-    if not node.vertical_servo(Z_GRASP - Z_PREGRASP):
-        return fail("Segment 2 (descend) failed")
+    # 2. Descend onto the box, holding the grasp orientation (CBiRRT).
+    target.pose.position.z = 0.24
+    if not node.move_constrained(target):
+        node.get_logger().error("Descend (constrained) failed")
+        node.destroy_node(); rclpy.shutdown(); return
     time.sleep(0.5)
+
+    # 3. Grasp and fix the box to the gripper.
     node.control_gripper(GRIPPER_CLOSE)
     node.attach_box()
 
-    # --- Segment 3: vertical lift to carry height (Cartesian servo) ---
-    print("\n===== [3/6] Vertical lift =====")
-    if not node.vertical_servo(Z_CARRY - Z_GRASP):
-        return fail("Segment 3 (lift) failed")
+    # 4. Lift the box straight up, holding orientation (pinocchio Cartesian servo).
+    #    Requests +0.21 m; stops automatically just before joint4 hits its 0 deg limit.
+    if not node.lift_straight(0.21):
+        node.get_logger().error("Lift (straight-up) failed")
+        node.destroy_node(); rclpy.shutdown(); return
     time.sleep(0.5)
 
-    # --- Segment 4: carry at constant height to above the marker (CBiRRT) ---
-    print("\n===== [4/6] Carry to above marker (CBiRRT, tilt held) =====")
-    if not node.move_constrained(pose_at(MARKER_XY, Z_CARRY), time_limit=90.0):
-        return fail("Segment 4 (carry) failed")
+    # 5. Carry to above the place_marker at (0.2, 0.35), holding the grasp tilt
+    #    (CBiRRT). z=0.25 puts the box bottom just over the marker; detach lets it
+    #    settle. (The original (0.08, 0.08) target was unreachable with the grasp
+    #    orientation; the marker location is reachable.)
+    target.pose.position.x = 0.2
+    target.pose.position.y = 0.35
+    target.pose.position.z = 0.25
+    if not node.move_constrained(target, time_limit=90.0):
+        node.get_logger().error("Transport (constrained) failed")
+        node.destroy_node(); rclpy.shutdown(); return
     time.sleep(0.5)
 
-    # --- Segment 5: vertical descend over the marker, then release (Cartesian servo) ---
-    print("\n===== [5/6] Vertical descend -> place =====")
-    if not node.vertical_servo(Z_PLACE - Z_CARRY):
-        return fail("Segment 5 (place descend) failed")
-    time.sleep(0.5)
+    # 6. Release the box.
     node.detach_box()
     node.control_gripper(GRIPPER_OPEN)
     time.sleep(0.5)
 
-    # --- Segment 6: retreat up a little, then go to the overhead/waiting pose ---
-    print("\n===== [6/6] Retreat + overhead pose =====")
-    node.vertical_servo(0.08)
+    # 7. Move to the overhead/waiting pose.
     OVERHEAD_POSE_DEG = [0, -10, 1, 10, 10, 0]
+    print("\n========== Moving to Overhead Pose ==========")
     node.move_to_joint_pose(OVERHEAD_POSE_DEG, duration_sec=4)
     print("========== Done ==========\n")
 

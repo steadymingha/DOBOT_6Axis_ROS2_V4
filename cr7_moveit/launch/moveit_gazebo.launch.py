@@ -22,7 +22,7 @@ def generate_launch_description():
     # 启动move_group
     my_generate_move_group_launch(ld, moveit_config)
     # 启动rviz
-    # my_generate_moveit_rviz_launch(ld, moveit_config)
+    my_generate_moveit_rviz_launch(ld, moveit_config)
 
     return ld
 
