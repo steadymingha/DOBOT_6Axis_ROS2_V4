@@ -64,6 +64,12 @@ DEFAULT_LIMITS_DEG = [
 
 DOWN_WORLD = np.array([0.0, 0.0, -1.0])  # world -Z; gripper "down" approach axis
 
+# Offset from Link6 origin to TCP along the tool z-axis (gripper body length).
+# OnRobot 2FG7: gripper_2fg7_attach_joint has xyz="0 0 0", finger attachment
+# joints are at z=0.12005 from gripper_base_link → TCP ≈ 0.12 m from Link6.
+# Change this value when swapping grippers.
+TCP_OFFSET_M = 0.12005
+
 
 # Model + self-collision -------------------------------------------------------
 
@@ -133,11 +139,19 @@ class ReachabilityModel:
         return qp
 
     def fk(self, qp):
-        """Link6 placement for a reduced-model config -> (position, rotation)."""
+        """TCP placement for a reduced-model config -> (position, rotation).
+
+        Returns the TCP position (Link6 origin + TCP_OFFSET_M along tool z-axis)
+        and the Link6 rotation.  The rotation itself is unchanged; only the
+        reported position is shifted to the gripper tip so the cloud reflects
+        where the gripper actually contacts an object.
+        """
         pin.forwardKinematics(self.model, self.data, qp)
         pin.updateFramePlacement(self.model, self.data, self.frame_id)
         oMf = self.data.oMf[self.frame_id]
-        return oMf.translation.copy(), oMf.rotation.copy()
+        tool_z = oMf.rotation[:, 2]          # tool z-axis in world frame
+        tcp_pos = oMf.translation + TCP_OFFSET_M * tool_z
+        return tcp_pos.copy(), oMf.rotation.copy()
 
     def self_collides(self, qp):
         """True if the config is in self-collision (stops at first contact)."""
@@ -151,13 +165,13 @@ def parse_args(argv=None):
     p.add_argument('--xacro', default=DEFAULT_XACRO, help='robot xacro path')
     p.add_argument('--srdf', default=DEFAULT_SRDF,
                    help='SRDF with disabled collision pairs')
-    p.add_argument('--samples', '-N', type=int, default=300000,
-                   help='number of Monte-Carlo joint samples (default 300000)')
+    p.add_argument('--samples', '-N', type=int, default=1000000,
+                   help='number of Monte-Carlo joint samples (default 1000000)')
     p.add_argument('--voxel', type=float, default=0.02,
                    help='voxel size in meters for dedupe (default 0.02)')
-    p.add_argument('--down-tol-deg', type=float, default=15.0,
+    p.add_argument('--down-tol-deg', type=float, default=5.0,
                    help='tilt tolerance (deg) for the "down" set (default 15)')
-    p.add_argument('--seed', type=int, default=0, help='RNG seed')
+    p.add_argument('--seed', type=int, default=1, help='RNG seed')
     p.add_argument('--limits-deg', type=str, default=None,
                    help='override joint limits, 12 comma values: '
                         'j1lo,j1hi,...,j6lo,j6hi (degrees)')
@@ -237,6 +251,21 @@ def save_clouds(centers, down_flags, down_centers, args, limits_deg, stats):
         f.write('x,y,z,down\n')
         for p, d in zip(centers, down_flags):
             f.write(f'{p[0]:.6f},{p[1]:.6f},{p[2]:.6f},{int(d)}\n')
+
+        # Append per-height reach summary: for each z level, the farthest
+        # down-reachable point and its horizontal distance from the base.
+        if len(down_centers) > 0:
+            dc = np.asarray(down_centers)
+            dist_xy = np.sqrt(dc[:, 0]**2 + dc[:, 1]**2)
+            z_bins = np.round(dc[:, 2] / args.voxel) * args.voxel
+            f.write('\n# reach_down summary: farthest TCP per height\n')
+            f.write('# z_m,max_dist_from_base_m,farthest_x,farthest_y\n')
+            for z in sorted(np.unique(z_bins)):
+                mask = z_bins == z
+                idx_max = int(np.argmax(dist_xy[mask]))
+                max_d = dist_xy[mask][idx_max]
+                px, py = dc[mask][idx_max, 0], dc[mask][idx_max, 1]
+                f.write(f'# {z:+.3f},{max_d:.3f},{px:.3f},{py:.3f}\n')
     write_pcd(all_pcd, centers)
     write_pcd(down_pcd, down_centers)
 
@@ -262,50 +291,41 @@ def save_clouds(centers, down_flags, down_centers, args, limits_deg, stats):
     return meta
 
 
-def _pack_rgb(r, g, b):
-    """Pack R,G,B (0-255) into a float32 for the PointCloud2 'rgb' field."""
-    packed = np.array([(int(r) << 16) | (int(g) << 8) | int(b)], dtype=np.uint32)
-    return float(packed.view(np.float32)[0])
-
-
-def _make_xyzrgb_cloud(header, pts, r, g, b):
-    """Build a PointCloud2 with embedded RGB color (no Color Transformer needed)."""
+def _make_xyz_cloud(header, pts):
+    """Build a PointCloud2 with XYZ only (use AxisColor in RViz Color Transformer)."""
     from sensor_msgs.msg import PointCloud2, PointField
-    rgb_val = _pack_rgb(r, g, b)
+    import struct
     fields = [
         PointField(name='x', offset=0,  datatype=PointField.FLOAT32, count=1),
         PointField(name='y', offset=4,  datatype=PointField.FLOAT32, count=1),
         PointField(name='z', offset=8,  datatype=PointField.FLOAT32, count=1),
-        PointField(name='rgb', offset=12, datatype=PointField.FLOAT32, count=1),
     ]
-    import struct
     data = bytearray()
     for p in pts:
-        data += struct.pack('ffff', float(p[0]), float(p[1]), float(p[2]), rgb_val)
+        data += struct.pack('fff', float(p[0]), float(p[1]), float(p[2]))
     msg = PointCloud2()
     msg.header = header
     msg.height = 1
     msg.width = len(pts)
     msg.fields = fields
     msg.is_bigendian = False
-    msg.point_step = 16
-    msg.row_step = 16 * len(pts)
+    msg.point_step = 12
+    msg.row_step = 12 * len(pts)
     msg.data = bytes(data)
     msg.is_dense = True
     return msg
 
 
 def publish_clouds(centers, down_centers, args):
-    """Publish /reach_all (grey) and /reach_down (red) with RGB embedded.
+    """Publish /reach_all and /reach_down as XYZ-only PointCloud2.
 
     Republishes every 3 s with default QoS so RViz2 always catches a message
-    regardless of startup order, and the Color Transformer dropdown is not
-    needed because each point already carries its color.
+    regardless of startup order. Use AxisColor (Z axis) in RViz Color Transformer.
     """
     import rclpy
     from rclpy.node import Node
     from std_msgs.msg import Header
-    from sensor_msgs.msg import PointCloud2  # noqa: F401 (used in _make_xyzrgb_cloud)
+    from sensor_msgs.msg import PointCloud2  # noqa: F401
 
     rclpy.init()
     node = Node('reachability_map')
@@ -316,8 +336,8 @@ def publish_clouds(centers, down_centers, args):
         h = Header()
         h.frame_id = args.frame_id
         h.stamp = node.get_clock().now().to_msg()
-        return (_make_xyzrgb_cloud(h, centers,      180, 180, 180),  # grey
-                _make_xyzrgb_cloud(h, down_centers, 255,  60,  60))  # red
+        return (_make_xyz_cloud(h, centers),
+                _make_xyz_cloud(h, down_centers))
 
     def republish():
         ma, md = make_msgs()
@@ -327,9 +347,9 @@ def publish_clouds(centers, down_centers, args):
     republish()
     node.create_timer(3.0, republish)
     node.get_logger().info(
-        f'Publishing /reach_all ({len(centers)} pts, grey) and '
-        f'/reach_down ({len(down_centers)} pts, red) every 3s. '
-        f'RViz: Fixed Frame={args.frame_id}, Color Transformer=RGB8. '
+        f'Publishing /reach_all ({len(centers)} pts) and '
+        f'/reach_down ({len(down_centers)} pts) every 3s. '
+        f'RViz: Fixed Frame={args.frame_id}, Color Transformer=AxisColor (Z). '
         f'Ctrl+C to stop.')
     try:
         rclpy.spin(node)
