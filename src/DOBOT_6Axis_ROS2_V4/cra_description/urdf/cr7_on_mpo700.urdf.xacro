@@ -32,22 +32,36 @@
     <inertial>
       <mass value="2.0"/>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <!-- box 0.741 x 0.509 x 0.15 m, m=2: ixx=m/12*(w*w+h*h), iyy=m/12*(l*l+h*h), izz=m/12*(l*l+w*w) -->
       <inertia ixx="0.04693" ixy="0" ixz="0" iyy="0.09526" iyz="0" izz="0.13469"/>
     </inertial>
+    <!-- Rear half (-X): robot mounting area, 0.3705 x 0.509 x 0.15 m -->
     <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="-0.18525 0 0" rpy="0 0 0"/>
       <geometry>
-        <box size="0.741 0.509 0.15"/>
+        <box size="0.3705 0.509 0.15"/>
       </geometry>
       <material name="cube_gray">
         <color rgba="0.25 0.25 0.25 1"/>
       </material>
     </visual>
     <collision>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="-0.18525 0 0" rpy="0 0 0"/>
       <geometry>
-        <box size="0.741 0.509 0.15"/>
+        <box size="0.3705 0.509 0.15"/>
+      </geometry>
+    </collision>
+    <!-- Front half (+X): magazine pocket, 0.3705 x 0.509 x 0.10 m, recessed 5 cm from top -->
+    <visual>
+      <origin xyz="0.18525 0 -0.025" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.3705 0.509 0.10"/>
+      </geometry>
+      <material name="cube_gray"/>
+    </visual>
+    <collision>
+      <origin xyz="0.18525 0 -0.025" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.3705 0.509 0.10"/>
       </geometry>
     </collision>
   </link>
@@ -62,9 +76,9 @@
     <child link="cube_link"/>
   </joint>
 
-  <!-- Cube top -> CR7 base_link. z = cube_half(0.075) -->
+  <!-- Cube top -> CR7 base_link; arm on rear half (-X), rotated 180 deg to face magazine pocket (+X). -->
   <joint name="arm_mount_joint" type="fixed">
-    <origin xyz="0 0 0.075" rpy="0 0 0"/>
+    <origin xyz="-0.18525 0 0.075" rpy="0 0 3.14159"/>
     <parent link="cube_link"/>
     <child link="base_link"/>
   </joint>
