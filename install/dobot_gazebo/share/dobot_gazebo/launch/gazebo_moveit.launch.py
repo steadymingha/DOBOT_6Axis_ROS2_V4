@@ -1,1 +1,1 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/dobot_gazebo/launch/gazebo_moveit.launch.py
+/home/user/dobot_ws/src/DOBOT_6Axis_ROS2_V4/dobot_gazebo/launch/gazebo_moveit.launch.py

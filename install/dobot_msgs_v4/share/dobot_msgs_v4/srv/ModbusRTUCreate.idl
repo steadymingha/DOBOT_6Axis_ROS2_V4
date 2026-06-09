@@ -1,1 +1,25 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_adapter/dobot_msgs_v4/srv/ModbusRTUCreate.idl
+// generated from rosidl_adapter/resource/srv.idl.em
+// with input from dobot_msgs_v4/srv/ModbusRTUCreate.srv
+// generated code does not contain a copyright notice
+
+
+module dobot_msgs_v4 {
+  module srv {
+    struct ModbusRTUCreate_Request {
+      int32 slave_id;
+
+      int32 baud;
+
+      string parity;
+
+      int32 data_bit;
+
+      int32 stop_bit;
+    };
+    struct ModbusRTUCreate_Response {
+      string robot_return;
+
+      int32 res;
+    };
+  };
+};

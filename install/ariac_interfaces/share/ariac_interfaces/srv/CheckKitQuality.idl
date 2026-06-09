@@ -1,0 +1,19 @@
+// generated from rosidl_adapter/resource/srv.idl.em
+// with input from ariac_interfaces/srv/CheckKitQuality.srv
+// generated code does not contain a copyright notice
+
+
+module ariac_interfaces {
+  module srv {
+    @verbatim (language="comment", text=
+      "CheckKitQuality.srv")
+    struct CheckKitQuality_Request {
+      uint8 cell_type;
+    };
+    struct CheckKitQuality_Response {
+      boolean is_good;
+
+      string message;
+    };
+  };
+};

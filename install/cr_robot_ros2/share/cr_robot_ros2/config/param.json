@@ -1,1 +1,18 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/dobot_bringup_v4/config/param.json
+{
+    "robot_number": 1,
+    "current_robot": 1,
+    "node_info": [
+        {
+            "ip_address": "192.168.5.1",
+            "robot_type": "cr7",
+            "trajectory_duration": 0.3,
+            "robot_node_name": "dobot_bringup_ros2"
+        },
+        {
+            "ip_address": "192.168.1.7",
+            "robot_type": "cr7",
+            "trajectory_duration": 0.3,
+            "robot_node_name": "robot_node_name2"
+        }
+    ]
+}

@@ -1,0 +1,33 @@
+[0.049s] Invoking command in '/home/user/dobot_ws/build/onrobot_2fg7_description': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/user/dobot_ws/install/servo_action:/home/user/dobot_ws/install/dobot_moveit:/home/user/dobot_ws/install/dobot_demo:/opt/ros/humble /usr/bin/cmake --build /home/user/dobot_ws/build/onrobot_2fg7_description -- -j16 -l16
+[1.035s] Invoked command in '/home/user/dobot_ws/build/onrobot_2fg7_description' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/user/dobot_ws/install/servo_action:/home/user/dobot_ws/install/dobot_moveit:/home/user/dobot_ws/install/dobot_demo:/opt/ros/humble /usr/bin/cmake --build /home/user/dobot_ws/build/onrobot_2fg7_description -- -j16 -l16
+[1.038s] Invoking command in '/home/user/dobot_ws/build/onrobot_2fg7_description': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/user/dobot_ws/install/servo_action:/home/user/dobot_ws/install/dobot_moveit:/home/user/dobot_ws/install/dobot_demo:/opt/ros/humble /usr/bin/cmake --install /home/user/dobot_ws/build/onrobot_2fg7_description
+[1.053s] -- Install configuration: ""
+[1.054s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/config
+[1.055s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/config/onrobot_2fg7_config.rviz
+[1.055s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/urdf
+[1.056s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/urdf/materials.xacro
+[1.056s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/urdf/onrobot_2fg7.urdf.xacro
+[1.057s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/urdf/onrobot_2fg7.xacro
+[1.058s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/launch
+[1.059s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/launch/rviz.launch.py
+[1.059s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/meshes
+[1.060s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/meshes/finger_link.stl
+[1.060s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/meshes/base_link.stl
+[1.061s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/ros2_control
+[1.061s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/ros2_control/onrobot_2fg7.ros2_control.xacro
+[1.062s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/ament_index/resource_index/package_run_dependencies/onrobot_2fg7_description
+[1.063s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/ament_index/resource_index/parent_prefix_path/onrobot_2fg7_description
+[1.064s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/environment/ament_prefix_path.sh
+[1.064s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/environment/ament_prefix_path.dsv
+[1.065s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/environment/path.sh
+[1.065s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/environment/path.dsv
+[1.066s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/local_setup.bash
+[1.067s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/local_setup.sh
+[1.068s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/local_setup.zsh
+[1.068s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/local_setup.dsv
+[1.069s] -- Installing: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/package.dsv
+[1.069s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/ament_index/resource_index/packages/onrobot_2fg7_description
+[1.069s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/cmake/onrobot_2fg7_descriptionConfig.cmake
+[1.071s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/cmake/onrobot_2fg7_descriptionConfig-version.cmake
+[1.071s] -- Up-to-date: /home/user/dobot_ws/install/onrobot_2fg7_description/share/onrobot_2fg7_description/package.xml
+[1.410s] Invoked command in '/home/user/dobot_ws/build/onrobot_2fg7_description' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/user/dobot_ws/install/servo_action:/home/user/dobot_ws/install/dobot_moveit:/home/user/dobot_ws/install/dobot_demo:/opt/ros/humble /usr/bin/cmake --install /home/user/dobot_ws/build/onrobot_2fg7_description

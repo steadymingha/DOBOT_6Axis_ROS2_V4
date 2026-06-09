@@ -1,1 +1,73 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_generator_c/dobot_msgs_v4/srv/detail/fc_force_mode__struct.h
+// generated from rosidl_generator_c/resource/idl__struct.h.em
+// with input from dobot_msgs_v4:srv/FCForceMode.idl
+// generated code does not contain a copyright notice
+
+#ifndef DOBOT_MSGS_V4__SRV__DETAIL__FC_FORCE_MODE__STRUCT_H_
+#define DOBOT_MSGS_V4__SRV__DETAIL__FC_FORCE_MODE__STRUCT_H_
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+
+// Constants defined in the message
+
+/// Struct defined in srv/FCForceMode in the package dobot_msgs_v4.
+typedef struct dobot_msgs_v4__srv__FCForceMode_Request
+{
+  int32_t x;
+  int32_t y;
+  int32_t z;
+  int32_t rx;
+  int32_t ry;
+  int32_t rz;
+  int32_t fx;
+  int32_t fy;
+  int32_t fz;
+  int32_t frx;
+  int32_t fry;
+  int32_t frz;
+  int32_t reference;
+  int32_t user;
+  int32_t tool;
+} dobot_msgs_v4__srv__FCForceMode_Request;
+
+// Struct for a sequence of dobot_msgs_v4__srv__FCForceMode_Request.
+typedef struct dobot_msgs_v4__srv__FCForceMode_Request__Sequence
+{
+  dobot_msgs_v4__srv__FCForceMode_Request * data;
+  /// The number of valid items in data
+  size_t size;
+  /// The number of allocated items in data
+  size_t capacity;
+} dobot_msgs_v4__srv__FCForceMode_Request__Sequence;
+
+
+// Constants defined in the message
+
+/// Struct defined in srv/FCForceMode in the package dobot_msgs_v4.
+typedef struct dobot_msgs_v4__srv__FCForceMode_Response
+{
+  int32_t res;
+} dobot_msgs_v4__srv__FCForceMode_Response;
+
+// Struct for a sequence of dobot_msgs_v4__srv__FCForceMode_Response.
+typedef struct dobot_msgs_v4__srv__FCForceMode_Response__Sequence
+{
+  dobot_msgs_v4__srv__FCForceMode_Response * data;
+  /// The number of valid items in data
+  size_t size;
+  /// The number of allocated items in data
+  size_t capacity;
+} dobot_msgs_v4__srv__FCForceMode_Response__Sequence;
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif  // DOBOT_MSGS_V4__SRV__DETAIL__FC_FORCE_MODE__STRUCT_H_

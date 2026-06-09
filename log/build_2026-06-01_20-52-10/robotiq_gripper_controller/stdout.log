@@ -1,0 +1,4 @@
+[ 25%] [34m[1mRunning `/opt/ros/humble/bin/generate_parameter_library_cpp /home/user/dobot_ws/build/robotiq_gripper_controller/include/robotiq_gripper_controller/robotiq_gripper_controller_parameters.hpp /home/user/dobot_ws/src/ARIAC/robotiq_gripper_controller/src/robotiq_gripper_controller_parameters.yaml `[0m
+[ 50%] [34m[1mCreating deprecated header file /home/user/dobot_ws/build/robotiq_gripper_controller/include/robotiq_gripper_controller_parameters.hpp[0m
+[ 50%] Built target robotiq_gripper_controller_parameters
+[ 75%] [32mBuilding CXX object CMakeFiles/robotiq_gripper_controller.dir/src/robotiq_gripper_controller.cpp.o[0m

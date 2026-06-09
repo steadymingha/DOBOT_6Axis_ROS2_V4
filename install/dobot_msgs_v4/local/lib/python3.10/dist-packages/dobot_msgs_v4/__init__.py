@@ -1,1 +1,0 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_generator_py/dobot_msgs_v4/__init__.py

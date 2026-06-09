@@ -1,1 +1,2 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_generator_py/dobot_msgs_v4/msg/__init__.py
+from dobot_msgs_v4.msg._robot_status import RobotStatus  # noqa: F401
+from dobot_msgs_v4.msg._tool_vector_actual import ToolVectorActual  # noqa: F401

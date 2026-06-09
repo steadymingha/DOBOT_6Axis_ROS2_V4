@@ -1,1 +1,17 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_adapter/dobot_msgs_v4/srv/CP.idl
+// generated from rosidl_adapter/resource/srv.idl.em
+// with input from dobot_msgs_v4/srv/CP.srv
+// generated code does not contain a copyright notice
+
+
+module dobot_msgs_v4 {
+  module srv {
+    @verbatim (language="comment", text=
+      "r --> 1 - 100")
+    struct CP_Request {
+      int32 r;
+    };
+    struct CP_Response {
+      int32 res;
+    };
+  };
+};

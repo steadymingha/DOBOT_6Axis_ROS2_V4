@@ -1,0 +1,20 @@
+[1.540s] Invoking command in '/home/user/dobot_ws/src/DOBOT_6Axis_ROS2_V4/dobot_demo': PYTHONPATH=/home/user/dobot_ws/build/dobot_demo/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/user/dobot_ws/install/dobot_demo/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../../build/dobot_demo build --build-base /home/user/dobot_ws/build/dobot_demo/build install --record /home/user/dobot_ws/build/dobot_demo/install.log --single-version-externally-managed install_data
+[1.771s] running egg_info
+[1.772s] writing ../../../build/dobot_demo/dobot_demo.egg-info/PKG-INFO
+[1.772s] writing dependency_links to ../../../build/dobot_demo/dobot_demo.egg-info/dependency_links.txt
+[1.772s] writing entry points to ../../../build/dobot_demo/dobot_demo.egg-info/entry_points.txt
+[1.772s] writing requirements to ../../../build/dobot_demo/dobot_demo.egg-info/requires.txt
+[1.772s] writing top-level names to ../../../build/dobot_demo/dobot_demo.egg-info/top_level.txt
+[1.774s] reading manifest file '../../../build/dobot_demo/dobot_demo.egg-info/SOURCES.txt'
+[1.775s] writing manifest file '../../../build/dobot_demo/dobot_demo.egg-info/SOURCES.txt'
+[1.775s] running build
+[1.776s] running build_py
+[1.776s] running install
+[1.776s] running install_lib
+[1.778s] running install_data
+[1.778s] running install_egg_info
+[1.780s] removing '/home/user/dobot_ws/install/dobot_demo/lib/python3.10/site-packages/dobot_demo-0.0.0-py3.10.egg-info' (and everything under it)
+[1.780s] Copying ../../../build/dobot_demo/dobot_demo.egg-info to /home/user/dobot_ws/install/dobot_demo/lib/python3.10/site-packages/dobot_demo-0.0.0-py3.10.egg-info
+[1.781s] running install_scripts
+[1.807s] Installing demo script to /home/user/dobot_ws/install/dobot_demo/lib/dobot_demo
+[1.808s] writing list of installed files to '/home/user/dobot_ws/build/dobot_demo/install.log'

@@ -1,0 +1,65 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <world name="default">
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+
+    <include>
+      <uri>model://sun</uri>
+    </include>
+
+    <!-- AGV body + cube platform are now part of the robot URDF
+         (cr7_on_mpo700.urdf.xacro: MPO-700 base + cube_link),
+         so they move together with the arm. -->
+
+    <!-- Blender shelf: 3-tier, board tops at z=0.30/0.60/0.90, footprint 2.0x0.30m -->
+    <include>
+      <name>shelf</name>
+      <pose>0.8 0.5 0 0 0 0</pose>
+      <uri>model://shelf</uri>
+    </include>
+
+    <!-- Shelf tier 1 boxes (board top z=0.30, box centre z=0.37) -->
+    <include>
+      <name>box_l1a</name>
+      <pose>0.7095 0.5 0.47 0 0 1.5708</pose>
+      <uri>model://box</uri>
+    </include>
+    <include>
+      <name>box_l1b</name>
+      <pose>0.8905 0.5 0.47 0 0 1.5708</pose>
+      <uri>model://box</uri>
+    </include>
+
+    <!-- Shelf tier 2 boxes (board top z=0.60, box centre z=0.67) -->
+    <include>
+      <name>box_l2a</name>
+      <pose>0.7095 0.5 0.77 0 0 1.5708</pose>
+      <uri>model://box</uri>
+    </include>
+    <include>
+      <name>box_l2b</name>
+      <pose>0.8905 0.5 0.77 0 0 1.5708</pose>
+      <uri>model://box</uri>
+    </include>
+
+    <!-- ArUco box on tier 2 right end (aruco centre z=0.625) -->
+    <include>
+      <name>aruco</name>
+      <pose>0.72 0.5 1.025 0 0 0</pose>
+      <uri>model://aruco_box</uri>
+    </include>
+
+    <!-- GUI camera initial viewpoint -->
+    <gui>
+      <camera name="user_camera">
+        <pose>2.1 -1.8 1.8 0 0.42 2.36</pose>
+      </camera>
+    </gui>
+
+    <!-- Link attacher: provides /ATTACHLINK and /DETACHLINK services for grasping -->
+    <plugin name="gazebo_link_attacher" filename="libgazebo_link_attacher.so"/>
+
+  </world>
+</sdf>

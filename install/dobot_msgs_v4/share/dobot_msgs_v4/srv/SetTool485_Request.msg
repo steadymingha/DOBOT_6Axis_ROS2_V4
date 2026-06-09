@@ -1,1 +1,4 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_cmake/srv/SetTool485_Request.msg
+int32  baudrate
+string parity
+int32  stop
+int32  identify

@@ -1,1 +1,5 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/dobot_msgs_v4/srv/CalcUser.srv
+int32  index
+int32  matrix
+string offset
+---
+int32  res

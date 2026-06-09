@@ -1,0 +1,35 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from ariac_interfaces/msg/CellTypes.msg
+// generated code does not contain a copyright notice
+
+
+module ariac_interfaces {
+  module msg {
+    module CellTypes_Constants {
+      const uint8 NONE = 0;
+      @verbatim (language="comment", text=
+        "Lithium Ion cells")
+      const uint8 LI_ION = 1;
+      @verbatim (language="comment", text=
+        "Nickel-Metal Hydride")
+      const uint8 NIMH = 2;
+      @verbatim (language="comment", text=
+        "Volts")
+      const double LI_ION_NOMINAL_VOLTAGE = 3.6;
+      @verbatim (language="comment", text=
+        "Volts")
+      const double NIMH_NOMINAL_VOLTAGE = 1.2;
+      @verbatim (language="comment", text=
+        "± Volts")
+      const double CELL_VOLTAGE_TOLERANCE = 0.2;
+      @verbatim (language="comment", text=
+        "± Volts")
+      const double KIT_VOLTAGE_TOLERANCE = 0.15;
+    };
+    @verbatim (language="comment", text=
+      "CellTypes.msg")
+    struct CellTypes {
+      uint8 structure_needs_at_least_one_member;
+    };
+  };
+};

@@ -1,1 +1,5 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_cmake/srv/SetHoldRegs_Request.msg
+int32    index
+int32    addr
+int32    count
+string   val_tab
+string   val_type

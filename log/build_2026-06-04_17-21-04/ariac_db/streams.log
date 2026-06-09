@@ -1,0 +1,43 @@
+[1.607s] Invoking command in '/home/user/dobot_ws/src/ARIAC/ariac_db': PYTHONPATH=/home/user/dobot_ws/build/ariac_db/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/user/dobot_ws/install/ariac_db/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../../build/ariac_db build --build-base /home/user/dobot_ws/build/ariac_db/build install --record /home/user/dobot_ws/build/ariac_db/install.log --single-version-externally-managed install_data
+[1.726s] running egg_info
+[1.726s] writing ../../../build/ariac_db/ariac_db.egg-info/PKG-INFO
+[1.726s] writing dependency_links to ../../../build/ariac_db/ariac_db.egg-info/dependency_links.txt
+[1.726s] writing entry points to ../../../build/ariac_db/ariac_db.egg-info/entry_points.txt
+[1.727s] writing requirements to ../../../build/ariac_db/ariac_db.egg-info/requires.txt
+[1.727s] writing top-level names to ../../../build/ariac_db/ariac_db.egg-info/top_level.txt
+[1.728s] reading manifest file '../../../build/ariac_db/ariac_db.egg-info/SOURCES.txt'
+[1.728s] adding license file 'LICENSE'
+[1.729s] writing manifest file '../../../build/ariac_db/ariac_db.egg-info/SOURCES.txt'
+[1.729s] running build
+[1.729s] running build_py
+[1.730s] running install
+[1.730s] running install_lib
+[1.731s] creating /home/user/dobot_ws/install/ariac_db/lib/python3.10/site-packages/ariac_db
+[1.731s] copying /home/user/dobot_ws/build/ariac_db/build/lib/ariac_db/structures.py -> /home/user/dobot_ws/install/ariac_db/lib/python3.10/site-packages/ariac_db
+[1.731s] copying /home/user/dobot_ws/build/ariac_db/build/lib/ariac_db/__init__.py -> /home/user/dobot_ws/install/ariac_db/lib/python3.10/site-packages/ariac_db
+[1.731s] copying /home/user/dobot_ws/build/ariac_db/build/lib/ariac_db/manager.py -> /home/user/dobot_ws/install/ariac_db/lib/python3.10/site-packages/ariac_db
+[1.731s] copying /home/user/dobot_ws/build/ariac_db/build/lib/ariac_db/scoring.py -> /home/user/dobot_ws/install/ariac_db/lib/python3.10/site-packages/ariac_db
+[1.732s] byte-compiling /home/user/dobot_ws/install/ariac_db/lib/python3.10/site-packages/ariac_db/structures.py to structures.cpython-310.pyc
+[1.733s] byte-compiling /home/user/dobot_ws/install/ariac_db/lib/python3.10/site-packages/ariac_db/__init__.py to __init__.cpython-310.pyc
+[1.733s] byte-compiling /home/user/dobot_ws/install/ariac_db/lib/python3.10/site-packages/ariac_db/manager.py to manager.cpython-310.pyc
+[1.733s]   File "/home/user/dobot_ws/install/ariac_db/lib/python3.10/site-packages/ariac_db/manager.py", line 77
+[1.734s]     query = f"SELECT {", ".join([f.name for f in fields(Trial)])} from Trial WHERE id={run.trial_id}"
+[1.734s]                        ^
+[1.734s] SyntaxError: f-string: expecting '}'
+[1.734s] 
+[1.734s] byte-compiling /home/user/dobot_ws/install/ariac_db/lib/python3.10/site-packages/ariac_db/scoring.py to scoring.cpython-310.pyc
+[1.735s] running install_data
+[1.735s] creating /home/user/dobot_ws/install/ariac_db/share/ament_index
+[1.735s] creating /home/user/dobot_ws/install/ariac_db/share/ament_index/resource_index
+[1.735s] creating /home/user/dobot_ws/install/ariac_db/share/ament_index/resource_index/packages
+[1.735s] copying resource/ariac_db -> /home/user/dobot_ws/install/ariac_db/share/ament_index/resource_index/packages
+[1.735s] copying package.xml -> /home/user/dobot_ws/install/ariac_db/share/ariac_db
+[1.735s] creating /home/user/dobot_ws/install/ariac_db/share/ariac_db/schema
+[1.735s] copying schema/ariac.sql -> /home/user/dobot_ws/install/ariac_db/share/ariac_db/schema
+[1.735s] creating /home/user/dobot_ws/install/ariac_db/share/ariac_db/config
+[1.736s] copying config/scoring_weights.yaml -> /home/user/dobot_ws/install/ariac_db/share/ariac_db/config
+[1.736s] running install_egg_info
+[1.738s] Copying ../../../build/ariac_db/ariac_db.egg-info to /home/user/dobot_ws/install/ariac_db/lib/python3.10/site-packages/ariac_db-2025.3.4-py3.10.egg-info
+[1.738s] running install_scripts
+[1.756s] writing list of installed files to '/home/user/dobot_ws/build/ariac_db/install.log'
+[1.825s] Invoked command in '/home/user/dobot_ws/src/ARIAC/ariac_db' returned '0': PYTHONPATH=/home/user/dobot_ws/build/ariac_db/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/user/dobot_ws/install/ariac_db/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../../build/ariac_db build --build-base /home/user/dobot_ws/build/ariac_db/build install --record /home/user/dobot_ws/build/ariac_db/install.log --single-version-externally-managed install_data

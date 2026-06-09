@@ -1,0 +1,15 @@
+// generated from rosidl_adapter/resource/srv.idl.em
+// with input from ariac_interfaces/srv/ConveyorControl.srv
+// generated code does not contain a copyright notice
+
+
+module ariac_interfaces {
+  module srv {
+    struct ConveyorControl_Request {
+      double speed;
+    };
+    struct ConveyorControl_Response {
+      boolean success;
+    };
+  };
+};

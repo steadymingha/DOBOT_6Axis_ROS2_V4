@@ -1,1 +1,58 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_generator_c/dobot_msgs_v4/srv/detail/check_odd_mov_j__type_support.h
+// generated from rosidl_generator_c/resource/idl__type_support.h.em
+// with input from dobot_msgs_v4:srv/CheckOddMovJ.idl
+// generated code does not contain a copyright notice
+
+#ifndef DOBOT_MSGS_V4__SRV__DETAIL__CHECK_ODD_MOV_J__TYPE_SUPPORT_H_
+#define DOBOT_MSGS_V4__SRV__DETAIL__CHECK_ODD_MOV_J__TYPE_SUPPORT_H_
+
+#include "rosidl_typesupport_interface/macros.h"
+
+#include "dobot_msgs_v4/msg/rosidl_generator_c__visibility_control.h"
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include "rosidl_runtime_c/message_type_support_struct.h"
+
+// Forward declare the get type support functions for this type.
+ROSIDL_GENERATOR_C_PUBLIC_dobot_msgs_v4
+const rosidl_message_type_support_t *
+ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
+  rosidl_typesupport_c,
+  dobot_msgs_v4,
+  srv,
+  CheckOddMovJ_Request
+)();
+
+// already included above
+// #include "rosidl_runtime_c/message_type_support_struct.h"
+
+// Forward declare the get type support functions for this type.
+ROSIDL_GENERATOR_C_PUBLIC_dobot_msgs_v4
+const rosidl_message_type_support_t *
+ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
+  rosidl_typesupport_c,
+  dobot_msgs_v4,
+  srv,
+  CheckOddMovJ_Response
+)();
+
+#include "rosidl_runtime_c/service_type_support_struct.h"
+
+// Forward declare the get type support functions for this type.
+ROSIDL_GENERATOR_C_PUBLIC_dobot_msgs_v4
+const rosidl_service_type_support_t *
+ROSIDL_TYPESUPPORT_INTERFACE__SERVICE_SYMBOL_NAME(
+  rosidl_typesupport_c,
+  dobot_msgs_v4,
+  srv,
+  CheckOddMovJ
+)();
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif  // DOBOT_MSGS_V4__SRV__DETAIL__CHECK_ODD_MOV_J__TYPE_SUPPORT_H_

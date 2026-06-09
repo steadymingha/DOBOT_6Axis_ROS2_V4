@@ -1,1 +1,4 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_cmake/srv/SetPayload_Request.msg
+float64 load
+float64 x
+float64 y
+float64 z

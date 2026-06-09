@@ -1,1 +1,9 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_cmake/srv/MovLIO_Request.msg
+bool mode
+float64 a
+float64 b
+float64 c
+float64 d
+float64 e
+float64 f
+string[] mdis
+string[] param_value

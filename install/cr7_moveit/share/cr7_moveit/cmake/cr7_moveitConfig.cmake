@@ -1,1 +1,1 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/cr7_moveit/ament_cmake_core/cr7_moveitConfig.cmake
+/home/user/dobot_ws/build/cr7_moveit/ament_cmake_core/cr7_moveitConfig.cmake

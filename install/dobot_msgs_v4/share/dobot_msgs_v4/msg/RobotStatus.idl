@@ -1,1 +1,14 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_adapter/dobot_msgs_v4/msg/RobotStatus.idl
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from dobot_msgs_v4/msg/RobotStatus.msg
+// generated code does not contain a copyright notice
+
+
+module dobot_msgs_v4 {
+  module msg {
+    struct RobotStatus {
+      boolean is_enable;
+
+      boolean is_connected;
+    };
+  };
+};

@@ -1,0 +1,3 @@
+# ControlCellFeeder.srv
+
+uint8 cell_type     # available types are in CellTypes.msg

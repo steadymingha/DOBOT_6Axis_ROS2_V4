@@ -1,1 +1,1 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_cmake/srv/GetStartPose_Request.msg
+string trace_name

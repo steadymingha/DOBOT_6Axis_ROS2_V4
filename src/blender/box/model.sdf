@@ -1,0 +1,46 @@
+<?xml version='1.0'?>
+<sdf version='1.7'>
+  <!-- Cardboard box: 0.236 x 0.081 x 0.14 m (L x W x H).
+       The 0.236 x 0.081 face rests on the surface; height is 0.14 m.
+       Origin is at the geometric centre, so spawn with the link centre at
+       (shelf board top + 0.07) to place it sitting on a shelf. -->
+  <model name='box_236'>
+    <pose>0 0 0 0 0 0</pose>
+    <link name='box_link'>
+      <pose>0 0 0 0 0 0</pose>
+      <inertial>
+        <mass>0.3</mass>
+        <inertia>
+          <ixx>0.000654</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.001882</iyy>
+          <iyz>0</iyz>
+          <izz>0.001556</izz>
+        </inertia>
+      </inertial>
+      <visual name='box_visual'>
+        <geometry>
+          <mesh>
+            <uri>model://box/meshes/box.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <collision name='box_collision'>
+        <geometry>
+          <box>
+            <size>0.236 0.081 0.14</size>
+          </box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>1.0</mu>
+              <mu2>1.0</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+    </link>
+  </model>
+</sdf>

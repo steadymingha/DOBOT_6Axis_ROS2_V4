@@ -1,1 +1,20 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_adapter/dobot_msgs_v4/srv/AOInstant.idl
+// generated from rosidl_adapter/resource/srv.idl.em
+// with input from dobot_msgs_v4/srv/AOInstant.srv
+// generated code does not contain a copyright notice
+
+
+module dobot_msgs_v4 {
+  module srv {
+    @verbatim (language="comment", text=
+      "index --> 1 - 2" "\n"
+      "value --> 0 - 10")
+    struct AOInstant_Request {
+      int32 index;
+
+      int32 value;
+    };
+    struct AOInstant_Response {
+      int32 res;
+    };
+  };
+};

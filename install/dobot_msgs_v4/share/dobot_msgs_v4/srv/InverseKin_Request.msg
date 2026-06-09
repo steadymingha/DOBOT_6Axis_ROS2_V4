@@ -1,1 +1,10 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_cmake/srv/InverseKin_Request.msg
+float64 x
+float64 y
+float64 z
+float64 rx
+float64 ry
+float64 rz
+string  use_joint_near 
+string  joint_near
+string  user
+string  tool

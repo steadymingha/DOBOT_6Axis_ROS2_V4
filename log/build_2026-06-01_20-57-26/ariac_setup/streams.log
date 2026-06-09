@@ -1,0 +1,54 @@
+[0.415s] Invoking command in '/home/user/dobot_ws/src/ARIAC/ariac_setup': PYTHONPATH=/home/user/dobot_ws/build/ariac_setup/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../../build/ariac_setup build --build-base /home/user/dobot_ws/build/ariac_setup/build install --record /home/user/dobot_ws/build/ariac_setup/install.log --single-version-externally-managed install_data
+[0.574s] running egg_info
+[0.574s] writing ../../../build/ariac_setup/ariac_setup.egg-info/PKG-INFO
+[0.575s] writing dependency_links to ../../../build/ariac_setup/ariac_setup.egg-info/dependency_links.txt
+[0.575s] writing entry points to ../../../build/ariac_setup/ariac_setup.egg-info/entry_points.txt
+[0.575s] writing requirements to ../../../build/ariac_setup/ariac_setup.egg-info/requires.txt
+[0.575s] writing top-level names to ../../../build/ariac_setup/ariac_setup.egg-info/top_level.txt
+[0.576s] reading manifest file '../../../build/ariac_setup/ariac_setup.egg-info/SOURCES.txt'
+[0.577s] writing manifest file '../../../build/ariac_setup/ariac_setup.egg-info/SOURCES.txt'
+[0.577s] running build
+[0.577s] running build_py
+[0.577s] running install
+[0.578s] running install_lib
+[0.578s] creating /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup
+[0.578s] copying /home/user/dobot_ws/build/ariac_setup/build/lib/ariac_setup/startup.py -> /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup
+[0.579s] copying /home/user/dobot_ws/build/ariac_setup/build/lib/ariac_setup/ready.py -> /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup
+[0.579s] copying /home/user/dobot_ws/build/ariac_setup/build/lib/ariac_setup/sensor_spawner.py -> /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup
+[0.579s] copying /home/user/dobot_ws/build/ariac_setup/build/lib/ariac_setup/structures.py -> /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup
+[0.579s] copying /home/user/dobot_ws/build/ariac_setup/build/lib/ariac_setup/__init__.py -> /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup
+[0.579s] copying /home/user/dobot_ws/build/ariac_setup/build/lib/ariac_setup/param_setter.py -> /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup
+[0.579s] copying /home/user/dobot_ws/build/ariac_setup/build/lib/ariac_setup/utils.py -> /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup
+[0.579s] copying /home/user/dobot_ws/build/ariac_setup/build/lib/ariac_setup/user_config_parser.py -> /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup
+[0.579s] copying /home/user/dobot_ws/build/ariac_setup/build/lib/ariac_setup/controller_starter.py -> /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup
+[0.579s] copying /home/user/dobot_ws/build/ariac_setup/build/lib/ariac_setup/score_logger.py -> /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup
+[0.579s] copying /home/user/dobot_ws/build/ariac_setup/build/lib/ariac_setup/yaml_validation.py -> /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup
+[0.579s] byte-compiling /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup/startup.py to startup.cpython-310.pyc
+[0.580s] byte-compiling /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup/ready.py to ready.cpython-310.pyc
+[0.580s] byte-compiling /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup/sensor_spawner.py to sensor_spawner.cpython-310.pyc
+[0.580s] byte-compiling /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup/structures.py to structures.cpython-310.pyc
+[0.582s] byte-compiling /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup/__init__.py to __init__.cpython-310.pyc
+[0.582s] byte-compiling /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup/param_setter.py to param_setter.cpython-310.pyc
+[0.582s] byte-compiling /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup/utils.py to utils.cpython-310.pyc
+[0.583s] byte-compiling /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup/user_config_parser.py to user_config_parser.cpython-310.pyc
+[0.584s] byte-compiling /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup/controller_starter.py to controller_starter.cpython-310.pyc
+[0.584s] byte-compiling /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup/score_logger.py to score_logger.cpython-310.pyc
+[0.585s] byte-compiling /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup/yaml_validation.py to yaml_validation.cpython-310.pyc
+[0.586s] running install_data
+[0.586s] creating /home/user/dobot_ws/install/ariac_setup/share/ament_index
+[0.586s] creating /home/user/dobot_ws/install/ariac_setup/share/ament_index/resource_index
+[0.586s] creating /home/user/dobot_ws/install/ariac_setup/share/ament_index/resource_index/packages
+[0.586s] copying resource/ariac_setup -> /home/user/dobot_ws/install/ariac_setup/share/ament_index/resource_index/packages
+[0.586s] copying package.xml -> /home/user/dobot_ws/install/ariac_setup/share/ariac_setup
+[0.586s] creating /home/user/dobot_ws/install/ariac_setup/share/ariac_setup/config
+[0.586s] copying config/defects.yaml -> /home/user/dobot_ws/install/ariac_setup/share/ariac_setup/config
+[0.586s] copying config/user_config_schema.json -> /home/user/dobot_ws/install/ariac_setup/share/ariac_setup/config
+[0.586s] copying config/trial_schema.json -> /home/user/dobot_ws/install/ariac_setup/share/ariac_setup/config
+[0.586s] running install_egg_info
+[0.587s] Copying ../../../build/ariac_setup/ariac_setup.egg-info to /home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages/ariac_setup-2025.3.4-py3.10.egg-info
+[0.588s] running install_scripts
+[0.603s] Installing ready script to /home/user/dobot_ws/install/ariac_setup/lib/ariac_setup
+[0.604s] Installing score_logger script to /home/user/dobot_ws/install/ariac_setup/lib/ariac_setup
+[0.604s] Installing startup script to /home/user/dobot_ws/install/ariac_setup/lib/ariac_setup
+[0.604s] writing list of installed files to '/home/user/dobot_ws/build/ariac_setup/install.log'
+[0.620s] Invoked command in '/home/user/dobot_ws/src/ARIAC/ariac_setup' returned '0': PYTHONPATH=/home/user/dobot_ws/build/ariac_setup/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../../build/ariac_setup build --build-base /home/user/dobot_ws/build/ariac_setup/build install --record /home/user/dobot_ws/build/ariac_setup/install.log --single-version-externally-managed install_data

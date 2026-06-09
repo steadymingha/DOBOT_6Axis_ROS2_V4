@@ -1,1 +1,17 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_adapter/dobot_msgs_v4/srv/GetError.idl
+// generated from rosidl_adapter/resource/srv.idl.em
+// with input from dobot_msgs_v4/srv/GetError.srv
+// generated code does not contain a copyright notice
+
+
+module dobot_msgs_v4 {
+  module srv {
+    struct GetError_Request {
+      string language;
+    };
+    struct GetError_Response {
+      string robot_return;
+
+      int32 res;
+    };
+  };
+};

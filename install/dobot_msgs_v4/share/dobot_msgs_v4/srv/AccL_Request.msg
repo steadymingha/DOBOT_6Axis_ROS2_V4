@@ -1,1 +1,2 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_cmake/srv/AccL_Request.msg
+# r --> 1 - 100
+int32 r

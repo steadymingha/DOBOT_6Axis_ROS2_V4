@@ -1,1 +1,6 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_cmake/srv/FCSetDamping_Request.msg
+int32 x
+int32 y
+int32 z
+int32 rx
+int32 ry
+int32 rz

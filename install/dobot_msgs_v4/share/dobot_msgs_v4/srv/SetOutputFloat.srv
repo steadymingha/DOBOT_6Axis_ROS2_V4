@@ -1,1 +1,4 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/dobot_msgs_v4/srv/SetOutputFloat.srv
+int32 address
+float64 value
+---
+int32 res

@@ -1,1 +1,31 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_generator_cpp/dobot_msgs_v4/msg/detail/robot_status__type_support.hpp
+// generated from rosidl_generator_cpp/resource/idl__type_support.hpp.em
+// with input from dobot_msgs_v4:msg/RobotStatus.idl
+// generated code does not contain a copyright notice
+
+#ifndef DOBOT_MSGS_V4__MSG__DETAIL__ROBOT_STATUS__TYPE_SUPPORT_HPP_
+#define DOBOT_MSGS_V4__MSG__DETAIL__ROBOT_STATUS__TYPE_SUPPORT_HPP_
+
+#include "rosidl_typesupport_interface/macros.h"
+
+#include "dobot_msgs_v4/msg/rosidl_generator_cpp__visibility_control.hpp"
+
+#include "rosidl_typesupport_cpp/message_type_support.hpp"
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+// Forward declare the get type support functions for this type.
+ROSIDL_GENERATOR_CPP_PUBLIC_dobot_msgs_v4
+const rosidl_message_type_support_t *
+  ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
+  rosidl_typesupport_cpp,
+  dobot_msgs_v4,
+  msg,
+  RobotStatus
+)();
+#ifdef __cplusplus
+}
+#endif
+
+#endif  // DOBOT_MSGS_V4__MSG__DETAIL__ROBOT_STATUS__TYPE_SUPPORT_HPP_

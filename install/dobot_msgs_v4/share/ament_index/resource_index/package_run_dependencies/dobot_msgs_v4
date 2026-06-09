@@ -1,1 +1,1 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/ament_cmake_index/share/ament_index/resource_index/package_run_dependencies/dobot_msgs_v4
+rclcpp;std_msgs;rosidl_default_generators;rosidl_default_runtime;ament_lint_auto;ament_lint_common

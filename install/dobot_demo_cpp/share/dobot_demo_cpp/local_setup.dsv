@@ -1,1 +1,2 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_demo_cpp/ament_cmake_environment_hooks/local_setup.dsv
+source;share/dobot_demo_cpp/environment/ament_prefix_path.sh
+source;share/dobot_demo_cpp/environment/path.sh

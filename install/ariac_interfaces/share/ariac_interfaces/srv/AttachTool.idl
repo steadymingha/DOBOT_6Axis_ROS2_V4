@@ -1,0 +1,21 @@
+// generated from rosidl_adapter/resource/srv.idl.em
+// with input from ariac_interfaces/srv/AttachTool.srv
+// generated code does not contain a copyright notice
+
+
+module ariac_interfaces {
+  module srv {
+    @verbatim (language="comment", text=
+      "AttachTool.srv")
+    struct AttachTool_Request {
+      @verbatim (language="comment", text=
+        "Available types are in VacuumTools.msg")
+      int8 tool;
+    };
+    struct AttachTool_Response {
+      boolean success;
+
+      string message;
+    };
+  };
+};

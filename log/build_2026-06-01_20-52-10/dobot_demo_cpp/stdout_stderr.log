@@ -1,0 +1,18 @@
+[100%] Built target gemini_demo
+-- Install configuration: ""
+-- Up-to-date: /home/user/dobot_ws/install/dobot_demo_cpp/lib/dobot_demo_cpp/gemini_demo
+-- Up-to-date: /home/user/dobot_ws/install/dobot_demo_cpp/share/ament_index/resource_index/package_run_dependencies/dobot_demo_cpp
+-- Up-to-date: /home/user/dobot_ws/install/dobot_demo_cpp/share/ament_index/resource_index/parent_prefix_path/dobot_demo_cpp
+-- Up-to-date: /home/user/dobot_ws/install/dobot_demo_cpp/share/dobot_demo_cpp/environment/ament_prefix_path.sh
+-- Up-to-date: /home/user/dobot_ws/install/dobot_demo_cpp/share/dobot_demo_cpp/environment/ament_prefix_path.dsv
+-- Up-to-date: /home/user/dobot_ws/install/dobot_demo_cpp/share/dobot_demo_cpp/environment/path.sh
+-- Up-to-date: /home/user/dobot_ws/install/dobot_demo_cpp/share/dobot_demo_cpp/environment/path.dsv
+-- Up-to-date: /home/user/dobot_ws/install/dobot_demo_cpp/share/dobot_demo_cpp/local_setup.bash
+-- Up-to-date: /home/user/dobot_ws/install/dobot_demo_cpp/share/dobot_demo_cpp/local_setup.sh
+-- Up-to-date: /home/user/dobot_ws/install/dobot_demo_cpp/share/dobot_demo_cpp/local_setup.zsh
+-- Up-to-date: /home/user/dobot_ws/install/dobot_demo_cpp/share/dobot_demo_cpp/local_setup.dsv
+-- Installing: /home/user/dobot_ws/install/dobot_demo_cpp/share/dobot_demo_cpp/package.dsv
+-- Up-to-date: /home/user/dobot_ws/install/dobot_demo_cpp/share/ament_index/resource_index/packages/dobot_demo_cpp
+-- Up-to-date: /home/user/dobot_ws/install/dobot_demo_cpp/share/dobot_demo_cpp/cmake/dobot_demo_cppConfig.cmake
+-- Up-to-date: /home/user/dobot_ws/install/dobot_demo_cpp/share/dobot_demo_cpp/cmake/dobot_demo_cppConfig-version.cmake
+-- Up-to-date: /home/user/dobot_ws/install/dobot_demo_cpp/share/dobot_demo_cpp/package.xml

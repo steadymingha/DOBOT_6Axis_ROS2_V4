@@ -1,0 +1,12 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from ariac_interfaces/msg/HighPriorityOrder.msg
+// generated code does not contain a copyright notice
+
+
+module ariac_interfaces {
+  module msg {
+    struct HighPriorityOrder {
+      string id;
+    };
+  };
+};

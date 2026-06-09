@@ -1,1 +1,12 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_generator_c/dobot_msgs_v4/msg/robot_status.h
+// generated from rosidl_generator_c/resource/idl.h.em
+// with input from dobot_msgs_v4:msg/RobotStatus.idl
+// generated code does not contain a copyright notice
+
+#ifndef DOBOT_MSGS_V4__MSG__ROBOT_STATUS_H_
+#define DOBOT_MSGS_V4__MSG__ROBOT_STATUS_H_
+
+#include "dobot_msgs_v4/msg/detail/robot_status__struct.h"
+#include "dobot_msgs_v4/msg/detail/robot_status__functions.h"
+#include "dobot_msgs_v4/msg/detail/robot_status__type_support.h"
+
+#endif  // DOBOT_MSGS_V4__MSG__ROBOT_STATUS_H_

@@ -1,1 +1,1 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_gazebo/ament_cmake_environment_hooks/local_setup.zsh
+/home/user/dobot_ws/build/dobot_gazebo/ament_cmake_environment_hooks/local_setup.zsh

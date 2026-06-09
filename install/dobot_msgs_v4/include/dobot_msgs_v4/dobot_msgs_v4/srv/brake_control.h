@@ -1,1 +1,12 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_generator_c/dobot_msgs_v4/srv/brake_control.h
+// generated from rosidl_generator_c/resource/idl.h.em
+// with input from dobot_msgs_v4:srv/BrakeControl.idl
+// generated code does not contain a copyright notice
+
+#ifndef DOBOT_MSGS_V4__SRV__BRAKE_CONTROL_H_
+#define DOBOT_MSGS_V4__SRV__BRAKE_CONTROL_H_
+
+#include "dobot_msgs_v4/srv/detail/brake_control__struct.h"
+#include "dobot_msgs_v4/srv/detail/brake_control__functions.h"
+#include "dobot_msgs_v4/srv/detail/brake_control__type_support.h"
+
+#endif  // DOBOT_MSGS_V4__SRV__BRAKE_CONTROL_H_

@@ -1,1 +1,81 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_generator_c/dobot_msgs_v4/srv/detail/inverse_kin__struct.h
+// generated from rosidl_generator_c/resource/idl__struct.h.em
+// with input from dobot_msgs_v4:srv/InverseKin.idl
+// generated code does not contain a copyright notice
+
+#ifndef DOBOT_MSGS_V4__SRV__DETAIL__INVERSE_KIN__STRUCT_H_
+#define DOBOT_MSGS_V4__SRV__DETAIL__INVERSE_KIN__STRUCT_H_
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+
+// Constants defined in the message
+
+// Include directives for member types
+// Member 'use_joint_near'
+// Member 'joint_near'
+// Member 'user'
+// Member 'tool'
+#include "rosidl_runtime_c/string.h"
+
+/// Struct defined in srv/InverseKin in the package dobot_msgs_v4.
+typedef struct dobot_msgs_v4__srv__InverseKin_Request
+{
+  double x;
+  double y;
+  double z;
+  double rx;
+  double ry;
+  double rz;
+  rosidl_runtime_c__String use_joint_near;
+  rosidl_runtime_c__String joint_near;
+  rosidl_runtime_c__String user;
+  rosidl_runtime_c__String tool;
+} dobot_msgs_v4__srv__InverseKin_Request;
+
+// Struct for a sequence of dobot_msgs_v4__srv__InverseKin_Request.
+typedef struct dobot_msgs_v4__srv__InverseKin_Request__Sequence
+{
+  dobot_msgs_v4__srv__InverseKin_Request * data;
+  /// The number of valid items in data
+  size_t size;
+  /// The number of allocated items in data
+  size_t capacity;
+} dobot_msgs_v4__srv__InverseKin_Request__Sequence;
+
+
+// Constants defined in the message
+
+// Include directives for member types
+// Member 'robot_return'
+// already included above
+// #include "rosidl_runtime_c/string.h"
+
+/// Struct defined in srv/InverseKin in the package dobot_msgs_v4.
+typedef struct dobot_msgs_v4__srv__InverseKin_Response
+{
+  rosidl_runtime_c__String robot_return;
+  int32_t res;
+} dobot_msgs_v4__srv__InverseKin_Response;
+
+// Struct for a sequence of dobot_msgs_v4__srv__InverseKin_Response.
+typedef struct dobot_msgs_v4__srv__InverseKin_Response__Sequence
+{
+  dobot_msgs_v4__srv__InverseKin_Response * data;
+  /// The number of valid items in data
+  size_t size;
+  /// The number of allocated items in data
+  size_t capacity;
+} dobot_msgs_v4__srv__InverseKin_Response__Sequence;
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif  // DOBOT_MSGS_V4__SRV__DETAIL__INVERSE_KIN__STRUCT_H_

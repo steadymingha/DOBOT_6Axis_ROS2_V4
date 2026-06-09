@@ -1,0 +1,20 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from ariac_interfaces/msg/AgvTrayStatus.msg
+// generated code does not contain a copyright notice
+
+
+module ariac_interfaces {
+  module msg {
+    @verbatim (language="comment", text=
+      "AgvTrayStatus.msg")
+    struct AgvTrayStatus {
+      boolean slot_1_occupied;
+
+      boolean slot_2_occupied;
+
+      boolean slot_3_occupied;
+
+      boolean slot_4_occupied;
+    };
+  };
+};

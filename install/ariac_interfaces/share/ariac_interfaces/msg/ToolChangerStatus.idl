@@ -1,0 +1,14 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from ariac_interfaces/msg/ToolChangerStatus.msg
+// generated code does not contain a copyright notice
+
+
+module ariac_interfaces {
+  module msg {
+    @verbatim (language="comment", text=
+      "ToolChangerStatus.msg")
+    struct ToolChangerStatus {
+      int8 attached_tool;
+    };
+  };
+};

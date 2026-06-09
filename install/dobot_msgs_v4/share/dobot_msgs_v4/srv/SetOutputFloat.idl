@@ -1,1 +1,17 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_adapter/dobot_msgs_v4/srv/SetOutputFloat.idl
+// generated from rosidl_adapter/resource/srv.idl.em
+// with input from dobot_msgs_v4/srv/SetOutputFloat.srv
+// generated code does not contain a copyright notice
+
+
+module dobot_msgs_v4 {
+  module srv {
+    struct SetOutputFloat_Request {
+      int32 address;
+
+      double value;
+    };
+    struct SetOutputFloat_Response {
+      int32 res;
+    };
+  };
+};

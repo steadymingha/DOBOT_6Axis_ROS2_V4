@@ -1,1 +1,1 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_demo_cpp/ament_cmake_index/share/ament_index/resource_index/package_run_dependencies/dobot_demo_cpp
+rclcpp;rclcpp_action;geometry_msgs;moveit_msgs;control_msgs;trajectory_msgs;sensor_msgs

@@ -1,1 +1,8 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_cmake/srv/PositiveKin_Request.msg
+float64  j1
+float64  j2
+float64  j3
+float64  j4
+float64  j5
+float64  j6
+string   user 
+string   tool 

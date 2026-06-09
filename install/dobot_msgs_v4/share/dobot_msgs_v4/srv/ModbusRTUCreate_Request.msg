@@ -1,1 +1,5 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_cmake/srv/ModbusRTUCreate_Request.msg
+int32   slave_id
+int32   baud
+string  parity
+int32   data_bit
+int32   stop_bit

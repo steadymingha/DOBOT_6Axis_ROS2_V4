@@ -1,1 +1,3 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_cmake/srv/GetInputBool_Response.msg
+
+string robot_return
+int32 res

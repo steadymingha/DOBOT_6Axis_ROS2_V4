@@ -1,1 +1,11 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/dobot_msgs_v4/srv/MovJ.srv
+bool mode
+float64 a
+float64 b
+float64 c
+float64 d
+float64 e
+float64 f
+string[] param_value
+---
+string robot_return
+int32 res

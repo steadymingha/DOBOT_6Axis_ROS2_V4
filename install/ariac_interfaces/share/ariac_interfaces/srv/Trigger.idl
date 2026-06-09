@@ -1,0 +1,19 @@
+// generated from rosidl_adapter/resource/srv.idl.em
+// with input from ariac_interfaces/srv/Trigger.srv
+// generated code does not contain a copyright notice
+
+
+module ariac_interfaces {
+  module srv {
+    @verbatim (language="comment", text=
+      "Trigger.srv")
+    struct Trigger_Request {
+      uint8 structure_needs_at_least_one_member;
+    };
+    struct Trigger_Response {
+      boolean success;
+
+      string message;
+    };
+  };
+};

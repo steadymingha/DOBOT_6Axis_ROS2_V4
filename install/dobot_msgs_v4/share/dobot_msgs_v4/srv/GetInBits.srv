@@ -1,1 +1,6 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/dobot_msgs_v4/srv/GetInBits.srv
+int32 index
+int32 addr
+int32 count
+---
+string robot_return
+int32 res

@@ -1,0 +1,5 @@
+  File "/home/user/dobot_ws/install/ariac_db/lib/python3.10/site-packages/ariac_db/manager.py", line 139
+    query = f"SELECT {", ".join([f.name for f in fields(Trial)])} from Trial WHERE trial_id='{trial_id}'"
+                       ^
+SyntaxError: f-string: expecting '}'
+

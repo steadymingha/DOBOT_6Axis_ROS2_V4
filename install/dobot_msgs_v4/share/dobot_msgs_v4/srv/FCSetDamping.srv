@@ -1,1 +1,8 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/dobot_msgs_v4/srv/FCSetDamping.srv
+int32 x
+int32 y
+int32 z
+int32 rx
+int32 ry
+int32 rz
+---
+int32 res

@@ -1,0 +1,629 @@
+[0.000000] (-) TimerEvent: {}
+[0.000254] (-) JobUnselected: {'identifier': 'cr7_moveit'}
+[0.000291] (-) JobUnselected: {'identifier': 'cr_robot_ros2'}
+[0.000351] (-) JobUnselected: {'identifier': 'cra_description'}
+[0.000581] (-) JobUnselected: {'identifier': 'dobot_demo'}
+[0.000674] (-) JobUnselected: {'identifier': 'dobot_demo_cpp'}
+[0.000690] (-) JobUnselected: {'identifier': 'dobot_gazebo'}
+[0.000765] (-) JobUnselected: {'identifier': 'dobot_moveit'}
+[0.000778] (-) JobUnselected: {'identifier': 'dobot_msgs_v4'}
+[0.000791] (-) JobUnselected: {'identifier': 'dobot_rviz'}
+[0.000822] (-) JobUnselected: {'identifier': 'onrobot_2fg7_description'}
+[0.000836] (-) JobUnselected: {'identifier': 'servo_action'}
+[0.000850] (linkattacher_msgs) JobQueued: {'identifier': 'linkattacher_msgs', 'dependencies': OrderedDict()}
+[0.000916] (ros2_linkattacher) JobQueued: {'identifier': 'ros2_linkattacher', 'dependencies': OrderedDict([('linkattacher_msgs', '/home/user/dobot_ws/install/linkattacher_msgs')])}
+[0.000933] (linkattacher_msgs) JobStarted: {'identifier': 'linkattacher_msgs'}
+[0.007772] (linkattacher_msgs) JobProgress: {'identifier': 'linkattacher_msgs', 'progress': 'cmake'}
+[0.008202] (linkattacher_msgs) Command: {'cmd': ['/usr/bin/cmake', '/home/user/dobot_ws/src/IFRA_LinkAttacher/linkattacher_msgs', '-DCMAKE_INSTALL_PREFIX=/home/user/dobot_ws/install/linkattacher_msgs'], 'cwd': '/home/user/dobot_ws/build/linkattacher_msgs', 'env': OrderedDict([('PYTHON_BASIC_REPL', '1'), ('LESSOPEN', '| /usr/bin/lesspipe %s'), ('USER', 'user'), ('SSH_CLIENT', '192.168.3.136 7902 22'), ('LC_TIME', 'ko_KR.UTF-8'), ('XDG_SESSION_TYPE', 'tty'), ('GIT_ASKPASS', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/extensions/git/dist/askpass.sh'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/home/user/dobot_ws/install/dobot_msgs_v4/lib:/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib'), ('BROWSER', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/bin/helpers/browser.sh'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/user'), ('OLDPWD', '/home/user/dobot_ws/src'), ('TERM_PROGRAM_VERSION', '1.119.0'), ('VSCODE_IPC_HOOK_CLI', '/run/user/1000/vscode-ipc-372f516e-2455-44b6-883f-1fcdc5e7de97.sock'), ('ROS_PYTHON_VERSION', '3'), ('DOBOT_TYPE', 'cr7'), ('VSCODE_GIT_ASKPASS_MAIN', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/extensions/git/dist/askpass-main.js'), ('LC_MONETARY', 'ko_KR.UTF-8'), ('VSCODE_GIT_ASKPASS_NODE', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/node'), ('PYDEVD_DISABLE_FILE_VALIDATION', '1'), ('BUNDLED_DEBUGPY_PATH', '/home/user/.vscode-server/extensions/ms-python.debugpy-2026.6.0-linux-x64/bundled/libs/debugpy'), ('VSCODE_PYTHON_AUTOACTIVATE_GUARD', '1'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('COLORTERM', 'truecolor'), ('COLCON_PREFIX_PATH', '/home/user/dobot_ws/install'), ('ROS_DISTRO', 'humble'), ('LOGNAME', 'user'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('CLAUDE_CODE_SSE_PORT', '55914'), ('XDG_SESSION_CLASS', 'user'), ('TERM', 'xterm-256color'), ('XDG_SESSION_ID', '3'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/home/user/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand:/home/user/.vscode-server/data/User/globalStorage/github.copilot-chat/copilotCli:/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/bin/remote-cli:/home/user/.local/bin:/opt/ros/humble/bin:/home/user/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/user/.vscode-server/extensions/ms-python.debugpy-2026.6.0-linux-x64/bundled/scripts/noConfigScripts'), ('LC_ADDRESS', 'ko_KR.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('DISPLAY', ':0'), ('VSCODE_DEBUGPY_ADAPTER_ENDPOINTS', '/home/user/.vscode-server/extensions/ms-python.debugpy-2026.6.0-linux-x64/.noConfigDebugAdapterEndpoints/endpoint-3d9a2d9b6dbd1d91.txt'), ('LANG', 'en_US.UTF-8'), ('PYTHONSTARTUP', '/home/user/.vscode-server/data/User/workspaceStorage/99d34d3c4bebf8f89e15d79b7cf7d49c/ms-python.python/pythonrc.py'), ('LC_TELEPHONE', 'ko_KR.UTF-8'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('VSCODE_GIT_IPC_HANDLE', '/run/user/1000/vscode-git-506c1b93b6.sock'), ('TERM_PROGRAM', 'vscode'), ('AMENT_PREFIX_PATH', '/home/user/dobot_ws/install/onrobot_2fg7_description:/home/user/dobot_ws/install/servo_action:/home/user/dobot_ws/install/cr7_moveit:/home/user/dobot_ws/install/dobot_rviz:/home/user/dobot_ws/install/cr_robot_ros2:/home/user/dobot_ws/install/dobot_msgs_v4:/home/user/dobot_ws/install/dobot_moveit:/home/user/dobot_ws/install/dobot_gazebo:/home/user/dobot_ws/install/dobot_demo_cpp:/home/user/dobot_ws/install/dobot_demo:/home/user/dobot_ws/install/cra_description:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'ko_KR.UTF-8'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('LC_MEASUREMENT', 'ko_KR.UTF-8'), ('LC_IDENTIFICATION', 'ko_KR.UTF-8'), ('VSCODE_GIT_ASKPASS_EXTRA_ARGS', ''), ('PWD', '/home/user/dobot_ws/build/linkattacher_msgs'), ('LC_ALL', 'en_US.UTF-8'), ('SSH_CONNECTION', '192.168.3.136 7902 192.168.2.251 22'), ('XDG_DATA_DIRS', '/usr/share/gnome:/usr/local/share:/usr/share:/var/lib/snapd/desktop'), ('PYTHONPATH', '/home/user/dobot_ws/build/servo_action:/home/user/dobot_ws/install/servo_action/lib/python3.10/site-packages:/home/user/dobot_ws/install/dobot_msgs_v4/local/lib/python3.10/dist-packages:/home/user/dobot_ws/build/dobot_moveit:/home/user/dobot_ws/install/dobot_moveit/lib/python3.10/site-packages:/home/user/dobot_ws/build/dobot_demo:/home/user/dobot_ws/install/dobot_demo/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'ko_KR.UTF-8'), ('LC_PAPER', 'ko_KR.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/home/user/dobot_ws/install/onrobot_2fg7_description:/home/user/dobot_ws/install/cr7_moveit:/home/user/dobot_ws/install/dobot_rviz:/home/user/dobot_ws/install/cr_robot_ros2:/home/user/dobot_ws/install/dobot_msgs_v4:/home/user/dobot_ws/install/dobot_gazebo:/home/user/dobot_ws/install/dobot_demo_cpp:/home/user/dobot_ws/install/cra_description:/home/user/dobot_ws/install/servo_action:/home/user/dobot_ws/install/dobot_moveit:/home/user/dobot_ws/install/dobot_demo:/opt/ros/humble')]), 'shell': False}
+[0.051831] (linkattacher_msgs) StdoutLine: {'line': b'-- The C compiler identification is GNU 12.3.0\n'}
+[0.095022] (linkattacher_msgs) StdoutLine: {'line': b'-- The CXX compiler identification is GNU 12.3.0\n'}
+[0.099979] (-) TimerEvent: {}
+[0.100308] (linkattacher_msgs) StdoutLine: {'line': b'-- Detecting C compiler ABI info\n'}
+[0.151291] (linkattacher_msgs) StdoutLine: {'line': b'-- Detecting C compiler ABI info - done\n'}
+[0.157348] (linkattacher_msgs) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc - skipped\n'}
+[0.157544] (linkattacher_msgs) StdoutLine: {'line': b'-- Detecting C compile features\n'}
+[0.157867] (linkattacher_msgs) StdoutLine: {'line': b'-- Detecting C compile features - done\n'}
+[0.159986] (linkattacher_msgs) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info\n'}
+[0.200088] (-) TimerEvent: {}
+[0.219052] (linkattacher_msgs) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info - done\n'}
+[0.226107] (linkattacher_msgs) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++ - skipped\n'}
+[0.226258] (linkattacher_msgs) StdoutLine: {'line': b'-- Detecting CXX compile features\n'}
+[0.226646] (linkattacher_msgs) StdoutLine: {'line': b'-- Detecting CXX compile features - done\n'}
+[0.229038] (linkattacher_msgs) StdoutLine: {'line': b'-- Found ament_cmake: 1.3.14 (/opt/ros/humble/share/ament_cmake/cmake)\n'}
+[0.300198] (-) TimerEvent: {}
+[0.331847] (linkattacher_msgs) StdoutLine: {'line': b'-- Found Python3: /usr/bin/python3 (found version "3.10.12") found components: Interpreter \n'}
+[0.400313] (-) TimerEvent: {}
+[0.410818] (linkattacher_msgs) StdoutLine: {'line': b'-- Found ament_lint_auto: 0.12.15 (/opt/ros/humble/share/ament_lint_auto/cmake)\n'}
+[0.478408] (linkattacher_msgs) StdoutLine: {'line': b'-- Found rosidl_default_generators: 1.2.1 (/opt/ros/humble/share/rosidl_default_generators/cmake)\n'}
+[0.482109] (linkattacher_msgs) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[0.489186] (linkattacher_msgs) StdoutLine: {'line': b'-- Found rosidl_adapter: 3.1.8 (/opt/ros/humble/share/rosidl_adapter/cmake)\n'}
+[0.500360] (-) TimerEvent: {}
+[0.525818] (linkattacher_msgs) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[0.600446] (-) TimerEvent: {}
+[0.700670] (-) TimerEvent: {}
+[0.704300] (linkattacher_msgs) StdoutLine: {'line': b'-- Found ament_cmake_ros: 0.10.0 (/opt/ros/humble/share/ament_cmake_ros/cmake)\n'}
+[0.800785] (-) TimerEvent: {}
+[0.831085] (linkattacher_msgs) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[0.900898] (-) TimerEvent: {}
+[0.990980] (linkattacher_msgs) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[1.001006] (-) TimerEvent: {}
+[1.004855] (linkattacher_msgs) StdoutLine: {'line': b'-- Found PythonInterp: /usr/bin/python3 (found suitable version "3.10.12", minimum required is "3.6") \n'}
+[1.006691] (linkattacher_msgs) StdoutLine: {'line': b'-- Found python_cmake_module: 0.10.0 (/opt/ros/humble/share/python_cmake_module/cmake)\n'}
+[1.022575] (linkattacher_msgs) StdoutLine: {'line': b'-- Found PythonLibs: /usr/lib/x86_64-linux-gnu/libpython3.10.so (found suitable version "3.10.12", minimum required is "3.5") \n'}
+[1.022783] (linkattacher_msgs) StdoutLine: {'line': b'-- Using PYTHON_EXECUTABLE: /usr/bin/python3\n'}
+[1.022858] (linkattacher_msgs) StdoutLine: {'line': b'-- Using PYTHON_INCLUDE_DIRS: /usr/include/python3.10\n'}
+[1.022909] (linkattacher_msgs) StdoutLine: {'line': b'-- Using PYTHON_LIBRARIES: /usr/lib/x86_64-linux-gnu/libpython3.10.so\n'}
+[1.035361] (linkattacher_msgs) StdoutLine: {'line': b'-- Found PythonExtra: .so  \n'}
+[1.101090] (-) TimerEvent: {}
+[1.101231] (linkattacher_msgs) StdoutLine: {'line': b"-- Added test 'copyright' to check source files copyright and LICENSE\n"}
+[1.102612] (linkattacher_msgs) StdoutLine: {'line': b"-- Added test 'lint_cmake' to check CMake code style\n"}
+[1.103478] (linkattacher_msgs) StdoutLine: {'line': b"-- Added test 'xmllint' to check XML markup files\n"}
+[1.107892] (linkattacher_msgs) StdoutLine: {'line': b'-- Configuring done\n'}
+[1.134727] (linkattacher_msgs) StdoutLine: {'line': b'-- Generating done\n'}
+[1.142851] (linkattacher_msgs) StdoutLine: {'line': b'-- Build files have been written to: /home/user/dobot_ws/build/linkattacher_msgs\n'}
+[1.148870] (linkattacher_msgs) CommandEnded: {'returncode': 0}
+[1.149247] (linkattacher_msgs) JobProgress: {'identifier': 'linkattacher_msgs', 'progress': 'build'}
+[1.149300] (linkattacher_msgs) Command: {'cmd': ['/usr/bin/cmake', '--build', '/home/user/dobot_ws/build/linkattacher_msgs', '--', '-j16', '-l16'], 'cwd': '/home/user/dobot_ws/build/linkattacher_msgs', 'env': OrderedDict([('PYTHON_BASIC_REPL', '1'), ('LESSOPEN', '| /usr/bin/lesspipe %s'), ('USER', 'user'), ('SSH_CLIENT', '192.168.3.136 7902 22'), ('LC_TIME', 'ko_KR.UTF-8'), ('XDG_SESSION_TYPE', 'tty'), ('GIT_ASKPASS', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/extensions/git/dist/askpass.sh'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/home/user/dobot_ws/install/dobot_msgs_v4/lib:/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib'), ('BROWSER', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/bin/helpers/browser.sh'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/user'), ('OLDPWD', '/home/user/dobot_ws/src'), ('TERM_PROGRAM_VERSION', '1.119.0'), ('VSCODE_IPC_HOOK_CLI', '/run/user/1000/vscode-ipc-372f516e-2455-44b6-883f-1fcdc5e7de97.sock'), ('ROS_PYTHON_VERSION', '3'), ('DOBOT_TYPE', 'cr7'), ('VSCODE_GIT_ASKPASS_MAIN', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/extensions/git/dist/askpass-main.js'), ('LC_MONETARY', 'ko_KR.UTF-8'), ('VSCODE_GIT_ASKPASS_NODE', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/node'), ('PYDEVD_DISABLE_FILE_VALIDATION', '1'), ('BUNDLED_DEBUGPY_PATH', '/home/user/.vscode-server/extensions/ms-python.debugpy-2026.6.0-linux-x64/bundled/libs/debugpy'), ('VSCODE_PYTHON_AUTOACTIVATE_GUARD', '1'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('COLORTERM', 'truecolor'), ('COLCON_PREFIX_PATH', '/home/user/dobot_ws/install'), ('ROS_DISTRO', 'humble'), ('LOGNAME', 'user'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('CLAUDE_CODE_SSE_PORT', '55914'), ('XDG_SESSION_CLASS', 'user'), ('TERM', 'xterm-256color'), ('XDG_SESSION_ID', '3'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/home/user/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand:/home/user/.vscode-server/data/User/globalStorage/github.copilot-chat/copilotCli:/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/bin/remote-cli:/home/user/.local/bin:/opt/ros/humble/bin:/home/user/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/user/.vscode-server/extensions/ms-python.debugpy-2026.6.0-linux-x64/bundled/scripts/noConfigScripts'), ('LC_ADDRESS', 'ko_KR.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('DISPLAY', ':0'), ('VSCODE_DEBUGPY_ADAPTER_ENDPOINTS', '/home/user/.vscode-server/extensions/ms-python.debugpy-2026.6.0-linux-x64/.noConfigDebugAdapterEndpoints/endpoint-3d9a2d9b6dbd1d91.txt'), ('LANG', 'en_US.UTF-8'), ('PYTHONSTARTUP', '/home/user/.vscode-server/data/User/workspaceStorage/99d34d3c4bebf8f89e15d79b7cf7d49c/ms-python.python/pythonrc.py'), ('LC_TELEPHONE', 'ko_KR.UTF-8'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('VSCODE_GIT_IPC_HANDLE', '/run/user/1000/vscode-git-506c1b93b6.sock'), ('TERM_PROGRAM', 'vscode'), ('AMENT_PREFIX_PATH', '/home/user/dobot_ws/install/onrobot_2fg7_description:/home/user/dobot_ws/install/servo_action:/home/user/dobot_ws/install/cr7_moveit:/home/user/dobot_ws/install/dobot_rviz:/home/user/dobot_ws/install/cr_robot_ros2:/home/user/dobot_ws/install/dobot_msgs_v4:/home/user/dobot_ws/install/dobot_moveit:/home/user/dobot_ws/install/dobot_gazebo:/home/user/dobot_ws/install/dobot_demo_cpp:/home/user/dobot_ws/install/dobot_demo:/home/user/dobot_ws/install/cra_description:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'ko_KR.UTF-8'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('LC_MEASUREMENT', 'ko_KR.UTF-8'), ('LC_IDENTIFICATION', 'ko_KR.UTF-8'), ('VSCODE_GIT_ASKPASS_EXTRA_ARGS', ''), ('PWD', '/home/user/dobot_ws/build/linkattacher_msgs'), ('LC_ALL', 'en_US.UTF-8'), ('SSH_CONNECTION', '192.168.3.136 7902 192.168.2.251 22'), ('XDG_DATA_DIRS', '/usr/share/gnome:/usr/local/share:/usr/share:/var/lib/snapd/desktop'), ('PYTHONPATH', '/home/user/dobot_ws/build/servo_action:/home/user/dobot_ws/install/servo_action/lib/python3.10/site-packages:/home/user/dobot_ws/install/dobot_msgs_v4/local/lib/python3.10/dist-packages:/home/user/dobot_ws/build/dobot_moveit:/home/user/dobot_ws/install/dobot_moveit/lib/python3.10/site-packages:/home/user/dobot_ws/build/dobot_demo:/home/user/dobot_ws/install/dobot_demo/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'ko_KR.UTF-8'), ('LC_PAPER', 'ko_KR.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/home/user/dobot_ws/install/onrobot_2fg7_description:/home/user/dobot_ws/install/cr7_moveit:/home/user/dobot_ws/install/dobot_rviz:/home/user/dobot_ws/install/cr_robot_ros2:/home/user/dobot_ws/install/dobot_msgs_v4:/home/user/dobot_ws/install/dobot_gazebo:/home/user/dobot_ws/install/dobot_demo_cpp:/home/user/dobot_ws/install/cra_description:/home/user/dobot_ws/install/servo_action:/home/user/dobot_ws/install/dobot_moveit:/home/user/dobot_ws/install/dobot_demo:/opt/ros/humble')]), 'shell': False}
+[1.176987] (linkattacher_msgs) StdoutLine: {'line': b'[  2%] \x1b[34m\x1b[1mGenerating C code for ROS interfaces\x1b[0m\n'}
+[1.184063] (linkattacher_msgs) StdoutLine: {'line': b'[  7%] \x1b[34m\x1b[1mGenerating C++ code for ROS interfaces\x1b[0m\n'}
+[1.184188] (linkattacher_msgs) StdoutLine: {'line': b'[  7%] \x1b[34m\x1b[1mGenerating Rust code for ROS interfaces\x1b[0m\n'}
+[1.190577] (linkattacher_msgs) StdoutLine: {'line': b'[  7%] Built target ament_cmake_python_copy_linkattacher_msgs\n'}
+[1.201204] (-) TimerEvent: {}
+[1.301411] (-) TimerEvent: {}
+[1.370114] (linkattacher_msgs) StdoutLine: {'line': b'running egg_info\n'}
+[1.370531] (linkattacher_msgs) StdoutLine: {'line': b'creating linkattacher_msgs.egg-info\n'}
+[1.370656] (linkattacher_msgs) StdoutLine: {'line': b'writing linkattacher_msgs.egg-info/PKG-INFO\n'}
+[1.370754] (linkattacher_msgs) StdoutLine: {'line': b'writing dependency_links to linkattacher_msgs.egg-info/dependency_links.txt\n'}
+[1.370915] (linkattacher_msgs) StdoutLine: {'line': b'writing top-level names to linkattacher_msgs.egg-info/top_level.txt\n'}
+[1.371089] (linkattacher_msgs) StdoutLine: {'line': b"writing manifest file 'linkattacher_msgs.egg-info/SOURCES.txt'\n"}
+[1.372572] (linkattacher_msgs) StdoutLine: {'line': b"reading manifest file 'linkattacher_msgs.egg-info/SOURCES.txt'\n"}
+[1.373157] (linkattacher_msgs) StdoutLine: {'line': b"writing manifest file 'linkattacher_msgs.egg-info/SOURCES.txt'\n"}
+[1.391878] (linkattacher_msgs) StdoutLine: {'line': b'[  7%] Built target ament_cmake_python_build_linkattacher_msgs_egg\n'}
+[1.401484] (-) TimerEvent: {}
+[1.465742] (linkattacher_msgs) StdoutLine: {'line': b'[  7%] Built target linkattacher_msgs__rs\n'}
+[1.501565] (-) TimerEvent: {}
+[1.542058] (linkattacher_msgs) StdoutLine: {'line': b'[  7%] Built target linkattacher_msgs__cpp\n'}
+[1.549545] (linkattacher_msgs) StdoutLine: {'line': b'[ 15%] \x1b[34m\x1b[1mGenerating C++ introspection for ROS interfaces\x1b[0m\n'}
+[1.549668] (linkattacher_msgs) StdoutLine: {'line': b'[ 15%] \x1b[34m\x1b[1mGenerating C++ type support dispatch for ROS interfaces\x1b[0m\n'}
+[1.549724] (linkattacher_msgs) StdoutLine: {'line': b'[ 15%] \x1b[34m\x1b[1mGenerating C++ type support for eProsima Fast-RTPS\x1b[0m\n'}
+[1.585130] (linkattacher_msgs) StdoutLine: {'line': b'[ 20%] \x1b[32mBuilding C object CMakeFiles/linkattacher_msgs__rosidl_generator_c.dir/rosidl_generator_c/linkattacher_msgs/srv/detail/attach_link__functions.c.o\x1b[0m\n'}
+[1.585317] (linkattacher_msgs) StdoutLine: {'line': b'[ 20%] \x1b[32mBuilding C object CMakeFiles/linkattacher_msgs__rosidl_generator_c.dir/rosidl_generator_c/linkattacher_msgs/srv/detail/detach_link__functions.c.o\x1b[0m\n'}
+[1.601656] (-) TimerEvent: {}
+[1.637419] (linkattacher_msgs) StdoutLine: {'line': b'[ 22%] \x1b[32m\x1b[1mLinking C shared library liblinkattacher_msgs__rosidl_generator_c.so\x1b[0m\n'}
+[1.664862] (linkattacher_msgs) StdoutLine: {'line': b'[ 22%] Built target linkattacher_msgs__rosidl_generator_c\n'}
+[1.672324] (linkattacher_msgs) StdoutLine: {'line': b'[ 30%] \x1b[34m\x1b[1mGenerating C introspection for ROS interfaces\x1b[0m\n'}
+[1.672462] (linkattacher_msgs) StdoutLine: {'line': b'[ 30%] \x1b[34m\x1b[1mGenerating C type support for eProsima Fast-RTPS\x1b[0m\n'}
+[1.672525] (linkattacher_msgs) StdoutLine: {'line': b'[ 30%] \x1b[34m\x1b[1mGenerating C type support dispatch for ROS interfaces\x1b[0m\n'}
+[1.701760] (-) TimerEvent: {}
+[1.801978] (-) TimerEvent: {}
+[1.855115] (linkattacher_msgs) StdoutLine: {'line': b'[ 35%] \x1b[32mBuilding CXX object CMakeFiles/linkattacher_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/linkattacher_msgs/srv/attach_link__type_support.cpp.o\x1b[0m\n'}
+[1.855255] (linkattacher_msgs) StdoutLine: {'line': b'[ 35%] \x1b[32mBuilding CXX object CMakeFiles/linkattacher_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/linkattacher_msgs/srv/detach_link__type_support.cpp.o\x1b[0m\n'}
+[1.880058] (linkattacher_msgs) StdoutLine: {'line': b'[ 37%] \x1b[32mBuilding CXX object CMakeFiles/linkattacher_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/linkattacher_msgs/srv/detail/detach_link__type_support.cpp.o\x1b[0m\n'}
+[1.880282] (linkattacher_msgs) StdoutLine: {'line': b'[ 40%] \x1b[32mBuilding CXX object CMakeFiles/linkattacher_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/linkattacher_msgs/srv/detail/attach_link__type_support.cpp.o\x1b[0m\n'}
+[1.902066] (-) TimerEvent: {}
+[1.910917] (linkattacher_msgs) StdoutLine: {'line': b'[ 42%] \x1b[32mBuilding CXX object CMakeFiles/linkattacher_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/linkattacher_msgs/srv/detail/dds_fastrtps/attach_link__type_support.cpp.o\x1b[0m\n'}
+[1.913725] (linkattacher_msgs) StdoutLine: {'line': b'[ 45%] \x1b[32mBuilding CXX object CMakeFiles/linkattacher_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/linkattacher_msgs/srv/detail/dds_fastrtps/detach_link__type_support.cpp.o\x1b[0m\n'}
+[1.998674] (linkattacher_msgs) StdoutLine: {'line': b'[ 47%] \x1b[32mBuilding CXX object CMakeFiles/linkattacher_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/linkattacher_msgs/srv/attach_link__type_support.cpp.o\x1b[0m\n'}
+[2.000295] (linkattacher_msgs) StdoutLine: {'line': b'[ 50%] \x1b[32mBuilding CXX object CMakeFiles/linkattacher_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/linkattacher_msgs/srv/detach_link__type_support.cpp.o\x1b[0m\n'}
+[2.002366] (-) TimerEvent: {}
+[2.038306] (linkattacher_msgs) StdoutLine: {'line': b'[ 52%] \x1b[32m\x1b[1mLinking CXX shared library liblinkattacher_msgs__rosidl_typesupport_c.so\x1b[0m\n'}
+[2.046760] (linkattacher_msgs) StdoutLine: {'line': b'[ 55%] \x1b[32mBuilding CXX object CMakeFiles/linkattacher_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/linkattacher_msgs/srv/detail/attach_link__type_support_c.cpp.o\x1b[0m\n'}
+[2.049991] (linkattacher_msgs) StdoutLine: {'line': b'[ 57%] \x1b[32mBuilding CXX object CMakeFiles/linkattacher_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/linkattacher_msgs/srv/detail/detach_link__type_support_c.cpp.o\x1b[0m\n'}
+[2.075803] (linkattacher_msgs) StdoutLine: {'line': b'[ 57%] Built target linkattacher_msgs__rosidl_typesupport_c\n'}
+[2.081932] (linkattacher_msgs) StdoutLine: {'line': b'[ 60%] \x1b[32mBuilding C object CMakeFiles/linkattacher_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/linkattacher_msgs/srv/detail/detach_link__type_support.c.o\x1b[0m\n'}
+[2.082181] (linkattacher_msgs) StdoutLine: {'line': b'[ 62%] \x1b[32mBuilding C object CMakeFiles/linkattacher_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/linkattacher_msgs/srv/detail/attach_link__type_support.c.o\x1b[0m\n'}
+[2.102466] (-) TimerEvent: {}
+[2.114066] (linkattacher_msgs) StdoutLine: {'line': b'[ 65%] \x1b[32m\x1b[1mLinking C shared library liblinkattacher_msgs__rosidl_typesupport_introspection_c.so\x1b[0m\n'}
+[2.138236] (linkattacher_msgs) StdoutLine: {'line': b'[ 65%] Built target linkattacher_msgs__rosidl_typesupport_introspection_c\n'}
+[2.169398] (linkattacher_msgs) StdoutLine: {'line': b'[ 67%] \x1b[32m\x1b[1mLinking CXX shared library liblinkattacher_msgs__rosidl_typesupport_cpp.so\x1b[0m\n'}
+[2.202563] (-) TimerEvent: {}
+[2.203104] (linkattacher_msgs) StdoutLine: {'line': b'[ 67%] Built target linkattacher_msgs__rosidl_typesupport_cpp\n'}
+[2.298391] (linkattacher_msgs) StdoutLine: {'line': b'[ 70%] \x1b[32m\x1b[1mLinking CXX shared library liblinkattacher_msgs__rosidl_typesupport_introspection_cpp.so\x1b[0m\n'}
+[2.302673] (-) TimerEvent: {}
+[2.348888] (linkattacher_msgs) StdoutLine: {'line': b'[ 70%] Built target linkattacher_msgs__rosidl_typesupport_introspection_cpp\n'}
+[2.402779] (-) TimerEvent: {}
+[2.415475] (linkattacher_msgs) StdoutLine: {'line': b'[ 72%] \x1b[32m\x1b[1mLinking CXX shared library liblinkattacher_msgs__rosidl_typesupport_fastrtps_c.so\x1b[0m\n'}
+[2.415843] (linkattacher_msgs) StdoutLine: {'line': b'[ 75%] \x1b[32m\x1b[1mLinking CXX shared library liblinkattacher_msgs__rosidl_typesupport_fastrtps_cpp.so\x1b[0m\n'}
+[2.472000] (linkattacher_msgs) StdoutLine: {'line': b'[ 75%] Built target linkattacher_msgs__rosidl_typesupport_fastrtps_cpp\n'}
+[2.472192] (linkattacher_msgs) StdoutLine: {'line': b'[ 75%] Built target linkattacher_msgs__rosidl_typesupport_fastrtps_c\n'}
+[2.486283] (linkattacher_msgs) StdoutLine: {'line': b'[ 75%] Built target linkattacher_msgs\n'}
+[2.500755] (linkattacher_msgs) StdoutLine: {'line': b'[ 77%] \x1b[34m\x1b[1mGenerating Python code for ROS interfaces\x1b[0m\n'}
+[2.502869] (-) TimerEvent: {}
+[2.603072] (-) TimerEvent: {}
+[2.703263] (-) TimerEvent: {}
+[2.803453] (-) TimerEvent: {}
+[2.903643] (-) TimerEvent: {}
+[3.003821] (-) TimerEvent: {}
+[3.058243] (linkattacher_msgs) StdoutLine: {'line': b'[ 77%] Built target linkattacher_msgs__py\n'}
+[3.072469] (linkattacher_msgs) StdoutLine: {'line': b'[ 82%] \x1b[32mBuilding C object CMakeFiles/linkattacher_msgs__rosidl_generator_py.dir/rosidl_generator_py/linkattacher_msgs/srv/_detach_link_s.c.o\x1b[0m\n'}
+[3.072602] (linkattacher_msgs) StdoutLine: {'line': b'[ 82%] \x1b[32mBuilding C object CMakeFiles/linkattacher_msgs__rosidl_generator_py.dir/rosidl_generator_py/linkattacher_msgs/srv/_attach_link_s.c.o\x1b[0m\n'}
+[3.103910] (-) TimerEvent: {}
+[3.162112] (linkattacher_msgs) StdoutLine: {'line': b'[ 85%] \x1b[32m\x1b[1mLinking C shared library rosidl_generator_py/linkattacher_msgs/liblinkattacher_msgs__rosidl_generator_py.so\x1b[0m\n'}
+[3.190405] (linkattacher_msgs) StdoutLine: {'line': b'[ 85%] Built target linkattacher_msgs__rosidl_generator_py\n'}
+[3.204005] (-) TimerEvent: {}
+[3.204740] (linkattacher_msgs) StdoutLine: {'line': b'[ 90%] \x1b[32mBuilding C object CMakeFiles/linkattacher_msgs__rosidl_typesupport_c__pyext.dir/rosidl_generator_py/linkattacher_msgs/_linkattacher_msgs_s.ep.rosidl_typesupport_c.c.o\x1b[0m\n'}
+[3.204892] (linkattacher_msgs) StdoutLine: {'line': b'[ 90%] \x1b[32mBuilding C object CMakeFiles/linkattacher_msgs__rosidl_typesupport_introspection_c__pyext.dir/rosidl_generator_py/linkattacher_msgs/_linkattacher_msgs_s.ep.rosidl_typesupport_introspection_c.c.o\x1b[0m\n'}
+[3.205168] (linkattacher_msgs) StdoutLine: {'line': b'[ 92%] \x1b[32mBuilding C object CMakeFiles/linkattacher_msgs__rosidl_typesupport_fastrtps_c__pyext.dir/rosidl_generator_py/linkattacher_msgs/_linkattacher_msgs_s.ep.rosidl_typesupport_fastrtps_c.c.o\x1b[0m\n'}
+[3.289613] (linkattacher_msgs) StdoutLine: {'line': b'[ 95%] \x1b[32m\x1b[1mLinking C shared library rosidl_generator_py/linkattacher_msgs/linkattacher_msgs_s__rosidl_typesupport_c.cpython-310-x86_64-linux-gnu.so\x1b[0m\n'}
+[3.290956] (linkattacher_msgs) StdoutLine: {'line': b'[ 97%] \x1b[32m\x1b[1mLinking C shared library rosidl_generator_py/linkattacher_msgs/linkattacher_msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-x86_64-linux-gnu.so\x1b[0m\n'}
+[3.291383] (linkattacher_msgs) StdoutLine: {'line': b'[100%] \x1b[32m\x1b[1mLinking C shared library rosidl_generator_py/linkattacher_msgs/linkattacher_msgs_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so\x1b[0m\n'}
+[3.304115] (-) TimerEvent: {}
+[3.314557] (linkattacher_msgs) StdoutLine: {'line': b'[100%] Built target linkattacher_msgs__rosidl_typesupport_c__pyext\n'}
+[3.315396] (linkattacher_msgs) StdoutLine: {'line': b'[100%] Built target linkattacher_msgs__rosidl_typesupport_fastrtps_c__pyext\n'}
+[3.316886] (linkattacher_msgs) StdoutLine: {'line': b'[100%] Built target linkattacher_msgs__rosidl_typesupport_introspection_c__pyext\n'}
+[3.325430] (linkattacher_msgs) CommandEnded: {'returncode': 0}
+[3.326174] (linkattacher_msgs) JobProgress: {'identifier': 'linkattacher_msgs', 'progress': 'install'}
+[3.332218] (linkattacher_msgs) Command: {'cmd': ['/usr/bin/cmake', '--install', '/home/user/dobot_ws/build/linkattacher_msgs'], 'cwd': '/home/user/dobot_ws/build/linkattacher_msgs', 'env': OrderedDict([('PYTHON_BASIC_REPL', '1'), ('LESSOPEN', '| /usr/bin/lesspipe %s'), ('USER', 'user'), ('SSH_CLIENT', '192.168.3.136 7902 22'), ('LC_TIME', 'ko_KR.UTF-8'), ('XDG_SESSION_TYPE', 'tty'), ('GIT_ASKPASS', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/extensions/git/dist/askpass.sh'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/home/user/dobot_ws/install/dobot_msgs_v4/lib:/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib'), ('BROWSER', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/bin/helpers/browser.sh'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/user'), ('OLDPWD', '/home/user/dobot_ws/src'), ('TERM_PROGRAM_VERSION', '1.119.0'), ('VSCODE_IPC_HOOK_CLI', '/run/user/1000/vscode-ipc-372f516e-2455-44b6-883f-1fcdc5e7de97.sock'), ('ROS_PYTHON_VERSION', '3'), ('DOBOT_TYPE', 'cr7'), ('VSCODE_GIT_ASKPASS_MAIN', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/extensions/git/dist/askpass-main.js'), ('LC_MONETARY', 'ko_KR.UTF-8'), ('VSCODE_GIT_ASKPASS_NODE', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/node'), ('PYDEVD_DISABLE_FILE_VALIDATION', '1'), ('BUNDLED_DEBUGPY_PATH', '/home/user/.vscode-server/extensions/ms-python.debugpy-2026.6.0-linux-x64/bundled/libs/debugpy'), ('VSCODE_PYTHON_AUTOACTIVATE_GUARD', '1'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('COLORTERM', 'truecolor'), ('COLCON_PREFIX_PATH', '/home/user/dobot_ws/install'), ('ROS_DISTRO', 'humble'), ('LOGNAME', 'user'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('CLAUDE_CODE_SSE_PORT', '55914'), ('XDG_SESSION_CLASS', 'user'), ('TERM', 'xterm-256color'), ('XDG_SESSION_ID', '3'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/home/user/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand:/home/user/.vscode-server/data/User/globalStorage/github.copilot-chat/copilotCli:/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/bin/remote-cli:/home/user/.local/bin:/opt/ros/humble/bin:/home/user/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/user/.vscode-server/extensions/ms-python.debugpy-2026.6.0-linux-x64/bundled/scripts/noConfigScripts'), ('LC_ADDRESS', 'ko_KR.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('DISPLAY', ':0'), ('VSCODE_DEBUGPY_ADAPTER_ENDPOINTS', '/home/user/.vscode-server/extensions/ms-python.debugpy-2026.6.0-linux-x64/.noConfigDebugAdapterEndpoints/endpoint-3d9a2d9b6dbd1d91.txt'), ('LANG', 'en_US.UTF-8'), ('PYTHONSTARTUP', '/home/user/.vscode-server/data/User/workspaceStorage/99d34d3c4bebf8f89e15d79b7cf7d49c/ms-python.python/pythonrc.py'), ('LC_TELEPHONE', 'ko_KR.UTF-8'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('VSCODE_GIT_IPC_HANDLE', '/run/user/1000/vscode-git-506c1b93b6.sock'), ('TERM_PROGRAM', 'vscode'), ('AMENT_PREFIX_PATH', '/home/user/dobot_ws/install/onrobot_2fg7_description:/home/user/dobot_ws/install/servo_action:/home/user/dobot_ws/install/cr7_moveit:/home/user/dobot_ws/install/dobot_rviz:/home/user/dobot_ws/install/cr_robot_ros2:/home/user/dobot_ws/install/dobot_msgs_v4:/home/user/dobot_ws/install/dobot_moveit:/home/user/dobot_ws/install/dobot_gazebo:/home/user/dobot_ws/install/dobot_demo_cpp:/home/user/dobot_ws/install/dobot_demo:/home/user/dobot_ws/install/cra_description:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'ko_KR.UTF-8'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('LC_MEASUREMENT', 'ko_KR.UTF-8'), ('LC_IDENTIFICATION', 'ko_KR.UTF-8'), ('VSCODE_GIT_ASKPASS_EXTRA_ARGS', ''), ('PWD', '/home/user/dobot_ws/build/linkattacher_msgs'), ('LC_ALL', 'en_US.UTF-8'), ('SSH_CONNECTION', '192.168.3.136 7902 192.168.2.251 22'), ('XDG_DATA_DIRS', '/usr/share/gnome:/usr/local/share:/usr/share:/var/lib/snapd/desktop'), ('PYTHONPATH', '/home/user/dobot_ws/build/servo_action:/home/user/dobot_ws/install/servo_action/lib/python3.10/site-packages:/home/user/dobot_ws/install/dobot_msgs_v4/local/lib/python3.10/dist-packages:/home/user/dobot_ws/build/dobot_moveit:/home/user/dobot_ws/install/dobot_moveit/lib/python3.10/site-packages:/home/user/dobot_ws/build/dobot_demo:/home/user/dobot_ws/install/dobot_demo/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'ko_KR.UTF-8'), ('LC_PAPER', 'ko_KR.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/home/user/dobot_ws/install/onrobot_2fg7_description:/home/user/dobot_ws/install/cr7_moveit:/home/user/dobot_ws/install/dobot_rviz:/home/user/dobot_ws/install/cr_robot_ros2:/home/user/dobot_ws/install/dobot_msgs_v4:/home/user/dobot_ws/install/dobot_gazebo:/home/user/dobot_ws/install/dobot_demo_cpp:/home/user/dobot_ws/install/cra_description:/home/user/dobot_ws/install/servo_action:/home/user/dobot_ws/install/dobot_moveit:/home/user/dobot_ws/install/dobot_demo:/opt/ros/humble')]), 'shell': False}
+[3.338082] (linkattacher_msgs) StdoutLine: {'line': b'-- Install configuration: ""\n'}
+[3.338214] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/srv\n'}
+[3.338286] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/srv/AttachLink.srv\n'}
+[3.338338] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/srv/DetachLink.srv\n'}
+[3.338437] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/ament_index/resource_index/rosidl_interfaces/linkattacher_msgs\n'}
+[3.338506] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs\n'}
+[3.338586] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/msg\n'}
+[3.338646] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/msg/rosidl_generator_c__visibility_control.h\n'}
+[3.338717] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv\n'}
+[3.338799] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detach_link.h\n'}
+[3.338859] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail\n'}
+[3.338920] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/detach_link__functions.h\n'}
+[3.338985] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/detach_link__functions.c\n'}
+[3.339068] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/attach_link__functions.c\n'}
+[3.339154] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/attach_link__type_support.h\n'}
+[3.339242] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/detach_link__struct.h\n'}
+[3.339317] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/attach_link__functions.h\n'}
+[3.339492] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/attach_link__struct.h\n'}
+[3.339543] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/detach_link__type_support.h\n'}
+[3.339615] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/attach_link.h\n'}
+[3.339684] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/environment/library_path.sh\n'}
+[3.339772] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/environment/library_path.dsv\n'}
+[3.339908] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/lib/liblinkattacher_msgs__rosidl_generator_c.so\n'}
+[3.340204] (linkattacher_msgs) StdoutLine: {'line': b'-- Set runtime path of "/home/user/dobot_ws/install/linkattacher_msgs/lib/liblinkattacher_msgs__rosidl_generator_c.so" to ""\n'}
+[3.340289] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs\n'}
+[3.340344] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/msg\n'}
+[3.340418] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/msg/rosidl_typesupport_fastrtps_c__visibility_control.h\n'}
+[3.340502] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv\n'}
+[3.340549] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail\n'}
+[3.340596] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/attach_link__rosidl_typesupport_fastrtps_c.h\n'}
+[3.340666] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/detach_link__rosidl_typesupport_fastrtps_c.h\n'}
+[3.340738] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/lib/liblinkattacher_msgs__rosidl_typesupport_fastrtps_c.so\n'}
+[3.340952] (linkattacher_msgs) StdoutLine: {'line': b'-- Set runtime path of "/home/user/dobot_ws/install/linkattacher_msgs/lib/liblinkattacher_msgs__rosidl_typesupport_fastrtps_c.so" to ""\n'}
+[3.341025] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs\n'}
+[3.341095] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/msg\n'}
+[3.341170] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/msg/rosidl_typesupport_introspection_c__visibility_control.h\n'}
+[3.341219] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv\n'}
+[3.341265] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail\n'}
+[3.341350] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/attach_link__type_support.c\n'}
+[3.341422] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/detach_link__type_support.c\n'}
+[3.341490] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/detach_link__rosidl_typesupport_introspection_c.h\n'}
+[3.341538] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/attach_link__rosidl_typesupport_introspection_c.h\n'}
+[3.341659] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/lib/liblinkattacher_msgs__rosidl_typesupport_introspection_c.so\n'}
+[3.341994] (linkattacher_msgs) StdoutLine: {'line': b'-- Set runtime path of "/home/user/dobot_ws/install/linkattacher_msgs/lib/liblinkattacher_msgs__rosidl_typesupport_introspection_c.so" to ""\n'}
+[3.342074] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/lib/liblinkattacher_msgs__rosidl_typesupport_c.so\n'}
+[3.342450] (linkattacher_msgs) StdoutLine: {'line': b'-- Set runtime path of "/home/user/dobot_ws/install/linkattacher_msgs/lib/liblinkattacher_msgs__rosidl_typesupport_c.so" to ""\n'}
+[3.342628] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs\n'}
+[3.342705] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/msg\n'}
+[3.342765] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/msg/rosidl_generator_cpp__visibility_control.hpp\n'}
+[3.342810] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv\n'}
+[3.342853] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/attach_link.hpp\n'}
+[3.342898] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detach_link.hpp\n'}
+[3.342966] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail\n'}
+[3.343010] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/attach_link__traits.hpp\n'}
+[3.343089] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/attach_link__builder.hpp\n'}
+[3.343163] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/detach_link__type_support.hpp\n'}
+[3.343272] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/detach_link__struct.hpp\n'}
+[3.343364] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/detach_link__traits.hpp\n'}
+[3.343495] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/attach_link__struct.hpp\n'}
+[3.343642] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/detach_link__builder.hpp\n'}
+[3.343757] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/attach_link__type_support.hpp\n'}
+[3.343915] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs\n'}
+[3.344004] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/msg\n'}
+[3.344076] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h\n'}
+[3.344200] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv\n'}
+[3.344274] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail\n'}
+[3.344323] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/dds_fastrtps\n'}
+[3.344378] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/detach_link__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[3.344439] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/attach_link__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[3.344483] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/lib/liblinkattacher_msgs__rosidl_typesupport_fastrtps_cpp.so\n'}
+[3.344827] (linkattacher_msgs) StdoutLine: {'line': b'-- Set runtime path of "/home/user/dobot_ws/install/linkattacher_msgs/lib/liblinkattacher_msgs__rosidl_typesupport_fastrtps_cpp.so" to ""\n'}
+[3.344897] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs\n'}
+[3.344956] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv\n'}
+[3.345024] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail\n'}
+[3.345069] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/attach_link__rosidl_typesupport_introspection_cpp.hpp\n'}
+[3.345137] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/detach_link__type_support.cpp\n'}
+[3.345237] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/detach_link__rosidl_typesupport_introspection_cpp.hpp\n'}
+[3.345343] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/include/linkattacher_msgs/linkattacher_msgs/srv/detail/attach_link__type_support.cpp\n'}
+[3.345509] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/lib/liblinkattacher_msgs__rosidl_typesupport_introspection_cpp.so\n'}
+[3.345879] (linkattacher_msgs) StdoutLine: {'line': b'-- Set runtime path of "/home/user/dobot_ws/install/linkattacher_msgs/lib/liblinkattacher_msgs__rosidl_typesupport_introspection_cpp.so" to ""\n'}
+[3.346088] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/lib/liblinkattacher_msgs__rosidl_typesupport_cpp.so\n'}
+[3.346338] (linkattacher_msgs) StdoutLine: {'line': b'-- Set runtime path of "/home/user/dobot_ws/install/linkattacher_msgs/lib/liblinkattacher_msgs__rosidl_typesupport_cpp.so" to ""\n'}
+[3.346642] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/environment/pythonpath.sh\n'}
+[3.346790] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/environment/pythonpath.dsv\n'}
+[3.346889] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs-0.0.0-py3.10.egg-info\n'}
+[3.346971] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs-0.0.0-py3.10.egg-info/SOURCES.txt\n'}
+[3.347056] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs-0.0.0-py3.10.egg-info/top_level.txt\n'}
+[3.347161] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs-0.0.0-py3.10.egg-info/PKG-INFO\n'}
+[3.347302] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs-0.0.0-py3.10.egg-info/dependency_links.txt\n'}
+[3.347474] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs\n'}
+[3.347596] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/linkattacher_msgs_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so\n'}
+[3.347693] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/linkattacher_msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-x86_64-linux-gnu.so\n'}
+[3.347786] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/_linkattacher_msgs_s.ep.rosidl_typesupport_introspection_c.c\n'}
+[3.347890] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/__init__.py\n'}
+[3.347987] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/_linkattacher_msgs_s.ep.rosidl_typesupport_fastrtps_c.c\n'}
+[3.348144] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/linkattacher_msgs_s__rosidl_typesupport_c.cpython-310-x86_64-linux-gnu.so\n'}
+[3.348235] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/srv\n'}
+[3.348344] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/srv/_detach_link.py\n'}
+[3.348442] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/srv/_detach_link_s.c\n'}
+[3.348530] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/srv/_attach_link_s.c\n'}
+[3.348642] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/srv/__init__.py\n'}
+[3.348748] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/srv/_attach_link.py\n'}
+[3.348891] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/liblinkattacher_msgs__rosidl_generator_py.so\n'}
+[3.349017] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/_linkattacher_msgs_s.ep.rosidl_typesupport_c.c\n'}
+[3.378475] (linkattacher_msgs) StdoutLine: {'line': b"Listing '/home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs'...\n"}
+[3.378593] (linkattacher_msgs) StdoutLine: {'line': b"Compiling '/home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/__init__.py'...\n"}
+[3.378646] (linkattacher_msgs) StdoutLine: {'line': b"Listing '/home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/srv'...\n"}
+[3.378694] (linkattacher_msgs) StdoutLine: {'line': b"Compiling '/home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/srv/__init__.py'...\n"}
+[3.378739] (linkattacher_msgs) StdoutLine: {'line': b"Compiling '/home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/srv/_attach_link.py'...\n"}
+[3.378782] (linkattacher_msgs) StdoutLine: {'line': b"Compiling '/home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/srv/_detach_link.py'...\n"}
+[3.381945] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/linkattacher_msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-x86_64-linux-gnu.so\n'}
+[3.382241] (linkattacher_msgs) StdoutLine: {'line': b'-- Set runtime path of "/home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/linkattacher_msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-x86_64-linux-gnu.so" to ""\n'}
+[3.382418] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/linkattacher_msgs_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so\n'}
+[3.382713] (linkattacher_msgs) StdoutLine: {'line': b'-- Set runtime path of "/home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/linkattacher_msgs_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so" to ""\n'}
+[3.382897] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/linkattacher_msgs_s__rosidl_typesupport_c.cpython-310-x86_64-linux-gnu.so\n'}
+[3.383163] (linkattacher_msgs) StdoutLine: {'line': b'-- Set runtime path of "/home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages/linkattacher_msgs/linkattacher_msgs_s__rosidl_typesupport_c.cpython-310-x86_64-linux-gnu.so" to ""\n'}
+[3.383244] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/lib/liblinkattacher_msgs__rosidl_generator_py.so\n'}
+[3.383585] (linkattacher_msgs) StdoutLine: {'line': b'-- Set runtime path of "/home/user/dobot_ws/install/linkattacher_msgs/lib/liblinkattacher_msgs__rosidl_generator_py.so" to ""\n'}
+[3.383726] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/ament_index/resource_index/rust_packages/linkattacher_msgs\n'}
+[3.383878] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/rust\n'}
+[3.383962] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/rust/src\n'}
+[3.384028] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/rust/src/srv\n'}
+[3.384076] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/rust/src/srv/rmw.rs\n'}
+[3.384138] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/rust/src/lib.rs\n'}
+[3.384200] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/rust/src/srv.rs\n'}
+[3.384301] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/rust/build.rs\n'}
+[3.384442] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/rust/Cargo.toml\n'}
+[3.384570] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/srv/AttachLink.idl\n'}
+[3.384690] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/srv/DetachLink.idl\n'}
+[3.384813] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/srv/AttachLink.srv\n'}
+[3.384884] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/srv/AttachLink_Request.msg\n'}
+[3.384999] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/srv/AttachLink_Response.msg\n'}
+[3.385090] (linkattacher_msgs) StdoutLine: {'line': b'-- Up-to-date: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/srv/DetachLink.srv\n'}
+[3.385244] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/srv/DetachLink_Request.msg\n'}
+[3.385351] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/srv/DetachLink_Response.msg\n'}
+[3.385463] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/ament_index/resource_index/package_run_dependencies/linkattacher_msgs\n'}
+[3.385622] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/ament_index/resource_index/parent_prefix_path/linkattacher_msgs\n'}
+[3.385746] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/environment/ament_prefix_path.sh\n'}
+[3.385868] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/environment/ament_prefix_path.dsv\n'}
+[3.385951] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/environment/path.sh\n'}
+[3.386080] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/environment/path.dsv\n'}
+[3.386245] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/local_setup.bash\n'}
+[3.386341] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/local_setup.sh\n'}
+[3.386481] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/local_setup.zsh\n'}
+[3.386629] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/local_setup.dsv\n'}
+[3.386747] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/package.dsv\n'}
+[3.386908] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/ament_index/resource_index/packages/linkattacher_msgs\n'}
+[3.387087] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/export_linkattacher_msgs__rosidl_generator_cExport.cmake\n'}
+[3.387215] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/export_linkattacher_msgs__rosidl_generator_cExport-noconfig.cmake\n'}
+[3.387299] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/export_linkattacher_msgs__rosidl_typesupport_fastrtps_cExport.cmake\n'}
+[3.387476] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/export_linkattacher_msgs__rosidl_typesupport_fastrtps_cExport-noconfig.cmake\n'}
+[3.387637] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/linkattacher_msgs__rosidl_typesupport_introspection_cExport.cmake\n'}
+[3.387729] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/linkattacher_msgs__rosidl_typesupport_introspection_cExport-noconfig.cmake\n'}
+[3.387869] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/linkattacher_msgs__rosidl_typesupport_cExport.cmake\n'}
+[3.387992] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/linkattacher_msgs__rosidl_typesupport_cExport-noconfig.cmake\n'}
+[3.388149] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/export_linkattacher_msgs__rosidl_generator_cppExport.cmake\n'}
+[3.388258] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/export_linkattacher_msgs__rosidl_typesupport_fastrtps_cppExport.cmake\n'}
+[3.388412] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/export_linkattacher_msgs__rosidl_typesupport_fastrtps_cppExport-noconfig.cmake\n'}
+[3.388572] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/linkattacher_msgs__rosidl_typesupport_introspection_cppExport.cmake\n'}
+[3.388688] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/linkattacher_msgs__rosidl_typesupport_introspection_cppExport-noconfig.cmake\n'}
+[3.388831] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/linkattacher_msgs__rosidl_typesupport_cppExport.cmake\n'}
+[3.388948] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/linkattacher_msgs__rosidl_typesupport_cppExport-noconfig.cmake\n'}
+[3.389105] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/export_linkattacher_msgs__rosidl_generator_pyExport.cmake\n'}
+[3.389198] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/export_linkattacher_msgs__rosidl_generator_pyExport-noconfig.cmake\n'}
+[3.389304] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/rosidl_cmake-extras.cmake\n'}
+[3.389470] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/ament_cmake_export_include_directories-extras.cmake\n'}
+[3.389565] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/ament_cmake_export_libraries-extras.cmake\n'}
+[3.389720] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/ament_cmake_export_targets-extras.cmake\n'}
+[3.389907] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake\n'}
+[3.390051] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/ament_cmake_export_dependencies-extras.cmake\n'}
+[3.390145] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake\n'}
+[3.390213] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/linkattacher_msgsConfig.cmake\n'}
+[3.390295] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake/linkattacher_msgsConfig-version.cmake\n'}
+[3.390507] (linkattacher_msgs) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/package.xml\n'}
+[3.392300] (linkattacher_msgs) CommandEnded: {'returncode': 0}
+[3.404229] (-) TimerEvent: {}
+[3.407230] (linkattacher_msgs) JobEnded: {'identifier': 'linkattacher_msgs', 'rc': 0}
+[3.407919] (ros2_linkattacher) JobStarted: {'identifier': 'ros2_linkattacher'}
+[3.413453] (ros2_linkattacher) JobProgress: {'identifier': 'ros2_linkattacher', 'progress': 'cmake'}
+[3.414192] (ros2_linkattacher) Command: {'cmd': ['/usr/bin/cmake', '/home/user/dobot_ws/src/IFRA_LinkAttacher/ros2_LinkAttacher', '-DCMAKE_INSTALL_PREFIX=/home/user/dobot_ws/install/ros2_linkattacher'], 'cwd': '/home/user/dobot_ws/build/ros2_linkattacher', 'env': OrderedDict([('PYTHON_BASIC_REPL', '1'), ('LESSOPEN', '| /usr/bin/lesspipe %s'), ('USER', 'user'), ('SSH_CLIENT', '192.168.3.136 7902 22'), ('LC_TIME', 'ko_KR.UTF-8'), ('XDG_SESSION_TYPE', 'tty'), ('GIT_ASKPASS', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/extensions/git/dist/askpass.sh'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/home/user/dobot_ws/install/linkattacher_msgs/lib:/home/user/dobot_ws/install/dobot_msgs_v4/lib:/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib'), ('BROWSER', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/bin/helpers/browser.sh'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/user'), ('OLDPWD', '/home/user/dobot_ws/src'), ('TERM_PROGRAM_VERSION', '1.119.0'), ('VSCODE_IPC_HOOK_CLI', '/run/user/1000/vscode-ipc-372f516e-2455-44b6-883f-1fcdc5e7de97.sock'), ('ROS_PYTHON_VERSION', '3'), ('DOBOT_TYPE', 'cr7'), ('VSCODE_GIT_ASKPASS_MAIN', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/extensions/git/dist/askpass-main.js'), ('LC_MONETARY', 'ko_KR.UTF-8'), ('VSCODE_GIT_ASKPASS_NODE', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/node'), ('PYDEVD_DISABLE_FILE_VALIDATION', '1'), ('BUNDLED_DEBUGPY_PATH', '/home/user/.vscode-server/extensions/ms-python.debugpy-2026.6.0-linux-x64/bundled/libs/debugpy'), ('VSCODE_PYTHON_AUTOACTIVATE_GUARD', '1'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('COLORTERM', 'truecolor'), ('COLCON_PREFIX_PATH', '/home/user/dobot_ws/install'), ('ROS_DISTRO', 'humble'), ('LOGNAME', 'user'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('CLAUDE_CODE_SSE_PORT', '55914'), ('XDG_SESSION_CLASS', 'user'), ('TERM', 'xterm-256color'), ('XDG_SESSION_ID', '3'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/home/user/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand:/home/user/.vscode-server/data/User/globalStorage/github.copilot-chat/copilotCli:/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/bin/remote-cli:/home/user/.local/bin:/opt/ros/humble/bin:/home/user/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/user/.vscode-server/extensions/ms-python.debugpy-2026.6.0-linux-x64/bundled/scripts/noConfigScripts'), ('LC_ADDRESS', 'ko_KR.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('DISPLAY', ':0'), ('VSCODE_DEBUGPY_ADAPTER_ENDPOINTS', '/home/user/.vscode-server/extensions/ms-python.debugpy-2026.6.0-linux-x64/.noConfigDebugAdapterEndpoints/endpoint-3d9a2d9b6dbd1d91.txt'), ('LANG', 'en_US.UTF-8'), ('PYTHONSTARTUP', '/home/user/.vscode-server/data/User/workspaceStorage/99d34d3c4bebf8f89e15d79b7cf7d49c/ms-python.python/pythonrc.py'), ('LC_TELEPHONE', 'ko_KR.UTF-8'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('VSCODE_GIT_IPC_HANDLE', '/run/user/1000/vscode-git-506c1b93b6.sock'), ('TERM_PROGRAM', 'vscode'), ('AMENT_PREFIX_PATH', '/home/user/dobot_ws/install/linkattacher_msgs:/home/user/dobot_ws/install/onrobot_2fg7_description:/home/user/dobot_ws/install/servo_action:/home/user/dobot_ws/install/cr7_moveit:/home/user/dobot_ws/install/dobot_rviz:/home/user/dobot_ws/install/cr_robot_ros2:/home/user/dobot_ws/install/dobot_msgs_v4:/home/user/dobot_ws/install/dobot_moveit:/home/user/dobot_ws/install/dobot_gazebo:/home/user/dobot_ws/install/dobot_demo_cpp:/home/user/dobot_ws/install/dobot_demo:/home/user/dobot_ws/install/cra_description:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'ko_KR.UTF-8'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('LC_MEASUREMENT', 'ko_KR.UTF-8'), ('LC_IDENTIFICATION', 'ko_KR.UTF-8'), ('VSCODE_GIT_ASKPASS_EXTRA_ARGS', ''), ('PWD', '/home/user/dobot_ws/build/ros2_linkattacher'), ('LC_ALL', 'en_US.UTF-8'), ('SSH_CONNECTION', '192.168.3.136 7902 192.168.2.251 22'), ('XDG_DATA_DIRS', '/usr/share/gnome:/usr/local/share:/usr/share:/var/lib/snapd/desktop'), ('PYTHONPATH', '/home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages:/home/user/dobot_ws/build/servo_action:/home/user/dobot_ws/install/servo_action/lib/python3.10/site-packages:/home/user/dobot_ws/install/dobot_msgs_v4/local/lib/python3.10/dist-packages:/home/user/dobot_ws/build/dobot_moveit:/home/user/dobot_ws/install/dobot_moveit/lib/python3.10/site-packages:/home/user/dobot_ws/build/dobot_demo:/home/user/dobot_ws/install/dobot_demo/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'ko_KR.UTF-8'), ('LC_PAPER', 'ko_KR.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/home/user/dobot_ws/install/linkattacher_msgs:/home/user/dobot_ws/install/onrobot_2fg7_description:/home/user/dobot_ws/install/cr7_moveit:/home/user/dobot_ws/install/dobot_rviz:/home/user/dobot_ws/install/cr_robot_ros2:/home/user/dobot_ws/install/dobot_msgs_v4:/home/user/dobot_ws/install/dobot_gazebo:/home/user/dobot_ws/install/dobot_demo_cpp:/home/user/dobot_ws/install/cra_description:/home/user/dobot_ws/install/servo_action:/home/user/dobot_ws/install/dobot_moveit:/home/user/dobot_ws/install/dobot_demo:/opt/ros/humble')]), 'shell': False}
+[3.456049] (ros2_linkattacher) StdoutLine: {'line': b'-- The C compiler identification is GNU 12.3.0\n'}
+[3.500813] (ros2_linkattacher) StdoutLine: {'line': b'-- The CXX compiler identification is GNU 12.3.0\n'}
+[3.504327] (-) TimerEvent: {}
+[3.506203] (ros2_linkattacher) StdoutLine: {'line': b'-- Detecting C compiler ABI info\n'}
+[3.562768] (ros2_linkattacher) StdoutLine: {'line': b'-- Detecting C compiler ABI info - done\n'}
+[3.570858] (ros2_linkattacher) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc - skipped\n'}
+[3.571060] (ros2_linkattacher) StdoutLine: {'line': b'-- Detecting C compile features\n'}
+[3.571574] (ros2_linkattacher) StdoutLine: {'line': b'-- Detecting C compile features - done\n'}
+[3.574216] (ros2_linkattacher) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info\n'}
+[3.604386] (-) TimerEvent: {}
+[3.650681] (ros2_linkattacher) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info - done\n'}
+[3.657308] (ros2_linkattacher) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++ - skipped\n'}
+[3.657619] (ros2_linkattacher) StdoutLine: {'line': b'-- Detecting CXX compile features\n'}
+[3.658057] (ros2_linkattacher) StdoutLine: {'line': b'-- Detecting CXX compile features - done\n'}
+[3.660834] (ros2_linkattacher) StdoutLine: {'line': b'-- Found ament_cmake: 1.3.14 (/opt/ros/humble/share/ament_cmake/cmake)\n'}
+[3.704432] (-) TimerEvent: {}
+[3.770378] (ros2_linkattacher) StdoutLine: {'line': b'-- Found Python3: /usr/bin/python3 (found version "3.10.12") found components: Interpreter \n'}
+[3.804513] (-) TimerEvent: {}
+[3.850000] (ros2_linkattacher) StdoutLine: {'line': b'-- Found ament_lint_auto: 0.12.15 (/opt/ros/humble/share/ament_lint_auto/cmake)\n'}
+[3.904602] (-) TimerEvent: {}
+[3.922023] (ros2_linkattacher) StdoutLine: {'line': b'-- Found gazebo_ros: 3.9.0 (/opt/ros/humble/share/gazebo_ros/cmake)\n'}
+[3.965304] (ros2_linkattacher) StdoutLine: {'line': b'-- Found rosidl_generator_c: 3.1.8 (/opt/ros/humble/share/rosidl_generator_c/cmake)\n'}
+[3.970705] (ros2_linkattacher) StdoutLine: {'line': b'-- Found rosidl_adapter: 3.1.8 (/opt/ros/humble/share/rosidl_adapter/cmake)\n'}
+[3.978894] (ros2_linkattacher) StdoutLine: {'line': b'-- Found rosidl_generator_cpp: 3.1.8 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)\n'}
+[3.989885] (ros2_linkattacher) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[4.004679] (-) TimerEvent: {}
+[4.005951] (ros2_linkattacher) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[4.048195] (ros2_linkattacher) StdoutLine: {'line': b'-- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)\n'}
+[4.051126] (ros2_linkattacher) StdoutLine: {'line': b'-- Found rmw_fastrtps_cpp: 6.2.10 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)\n'}
+[4.104797] (-) TimerEvent: {}
+[4.118940] (ros2_linkattacher) StdoutLine: {'line': b'-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.0.2")  \n'}
+[4.138362] (ros2_linkattacher) StdoutLine: {'line': b'-- Found FastRTPS: /opt/ros/humble/include  \n'}
+[4.169313] (ros2_linkattacher) StdoutLine: {'line': b"-- Using RMW implementation 'rmw_fastrtps_cpp' as default\n"}
+[4.178030] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for pthread.h\n'}
+[4.204914] (-) TimerEvent: {}
+[4.233957] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for pthread.h - found\n'}
+[4.234149] (ros2_linkattacher) StdoutLine: {'line': b'-- Performing Test CMAKE_HAVE_LIBC_PTHREAD\n'}
+[4.289331] (ros2_linkattacher) StdoutLine: {'line': b'-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success\n'}
+[4.290171] (ros2_linkattacher) StdoutLine: {'line': b'-- Found Threads: TRUE  \n'}
+[4.304998] (-) TimerEvent: {}
+[4.342751] (ros2_linkattacher) StdoutLine: {'line': b'-- Found PkgConfig: /usr/bin/pkg-config (found version "0.29.2") \n'}
+[4.343509] (ros2_linkattacher) StdoutLine: {'line': b"-- Checking for module 'bullet>=2.82'\n"}
+[4.352956] (ros2_linkattacher) StdoutLine: {'line': b'--   Found bullet, version 3.05\n'}
+[4.405126] (-) TimerEvent: {}
+[4.431861] (ros2_linkattacher) StdoutLine: {'line': b'-- Found fcl: /usr/include (found suitable version "0.7.0", minimum required is "0.5.0") \n'}
+[4.467682] (ros2_linkattacher) StdoutLine: {'line': b'-- Found assimp: /usr/include (found version "5.2.0") \n'}
+[4.488145] (ros2_linkattacher) StdoutLine: {'line': b'-- Found DART: /usr/include (Required is at least version "6.6") found components: dart \n'}
+[4.505233] (-) TimerEvent: {}
+[4.517260] (ros2_linkattacher) StdoutLine: {'line': b'-- Found Boost: /usr/lib/x86_64-linux-gnu/cmake/Boost-1.74.0/BoostConfig.cmake (found suitable version "1.74.0", minimum required is "1.40.0") found components: thread system filesystem program_options regex iostreams date_time \n'}
+[4.535008] (ros2_linkattacher) StdoutLine: {'line': b'-- Found Protobuf: /usr/lib/x86_64-linux-gnu/libprotobuf.so (found version "3.12.4") \n'}
+[4.541283] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for ignition-math6 -- found version 6.15.1\n'}
+[4.549053] (ros2_linkattacher) StdoutLine: {'line': b'-- Searching for dependencies of ignition-math6\n'}
+[4.550824] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for OGRE...\n'}
+[4.551132] (ros2_linkattacher) StdoutLine: {'line': b'-- OGRE_PREFIX_WATCH changed.\n'}
+[4.555011] (ros2_linkattacher) StdoutLine: {'line': b"-- Checking for module 'OGRE'\n"}
+[4.563982] (ros2_linkattacher) StdoutLine: {'line': b'--   Found OGRE, version 1.9.0\n'}
+[4.586561] (ros2_linkattacher) StdoutLine: {'line': b'-- Found Ogre Ghadamon (1.9.0)\n'}
+[4.592463] (ros2_linkattacher) StdoutLine: {'line': b'-- Found OGRE: optimized;/usr/lib/x86_64-linux-gnu/libOgreMain.so;debug;/usr/lib/x86_64-linux-gnu/libOgreMain.so\n'}
+[4.599946] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for OGRE_Paging...\n'}
+[4.604695] (ros2_linkattacher) StdoutLine: {'line': b'-- Found OGRE_Paging: optimized;/usr/lib/x86_64-linux-gnu/libOgrePaging.so;debug;/usr/lib/x86_64-linux-gnu/libOgrePaging.so\n'}
+[4.604781] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for OGRE_Terrain...\n'}
+[4.605325] (-) TimerEvent: {}
+[4.608890] (ros2_linkattacher) StdoutLine: {'line': b'-- Found OGRE_Terrain: optimized;/usr/lib/x86_64-linux-gnu/libOgreTerrain.so;debug;/usr/lib/x86_64-linux-gnu/libOgreTerrain.so\n'}
+[4.609009] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for OGRE_Property...\n'}
+[4.612868] (ros2_linkattacher) StdoutLine: {'line': b'-- Found OGRE_Property: optimized;/usr/lib/x86_64-linux-gnu/libOgreProperty.so;debug;/usr/lib/x86_64-linux-gnu/libOgreProperty.so\n'}
+[4.612946] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for OGRE_RTShaderSystem...\n'}
+[4.617070] (ros2_linkattacher) StdoutLine: {'line': b'-- Found OGRE_RTShaderSystem: optimized;/usr/lib/x86_64-linux-gnu/libOgreRTShaderSystem.so;debug;/usr/lib/x86_64-linux-gnu/libOgreRTShaderSystem.so\n'}
+[4.617208] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for OGRE_Volume...\n'}
+[4.621034] (ros2_linkattacher) StdoutLine: {'line': b'-- Found OGRE_Volume: optimized;/usr/lib/x86_64-linux-gnu/libOgreVolume.so;debug;/usr/lib/x86_64-linux-gnu/libOgreVolume.so\n'}
+[4.621111] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for OGRE_Overlay...\n'}
+[4.625106] (ros2_linkattacher) StdoutLine: {'line': b'-- Found OGRE_Overlay: optimized;/usr/lib/x86_64-linux-gnu/libOgreOverlay.so;debug;/usr/lib/x86_64-linux-gnu/libOgreOverlay.so\n'}
+[4.705411] (-) TimerEvent: {}
+[4.724268] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for ignition-math6 -- found version 6.15.1\n'}
+[4.727200] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for ignition-transport8 -- found version 8.2.1\n'}
+[4.727617] (ros2_linkattacher) StdoutLine: {'line': b'-- Searching for dependencies of ignition-transport8\n'}
+[4.740902] (ros2_linkattacher) StdoutLine: {'line': b'-- Found Protobuf: /usr/lib/x86_64-linux-gnu/libprotobuf.so (found suitable version "3.12.4", minimum required is "3") \n'}
+[4.749313] (ros2_linkattacher) StdoutLine: {'line': b'-- Config-file not installed for ZeroMQ -- checking for pkg-config\n'}
+[4.753149] (ros2_linkattacher) StdoutLine: {'line': b"-- Checking for module 'libzmq >= 4'\n"}
+[4.764462] (ros2_linkattacher) StdoutLine: {'line': b'--   Found libzmq , version 4.3.4\n'}
+[4.789913] (ros2_linkattacher) StdoutLine: {'line': b'-- Found ZeroMQ: TRUE (Required is at least version "4") \n'}
+[4.794566] (ros2_linkattacher) StdoutLine: {'line': b"-- Checking for module 'uuid'\n"}
+[4.803800] (ros2_linkattacher) StdoutLine: {'line': b'--   Found uuid, version 2.37.2\n'}
+[4.805477] (-) TimerEvent: {}
+[4.826785] (ros2_linkattacher) StdoutLine: {'line': b'-- Found UUID: TRUE  \n'}
+[4.830074] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for ignition-msgs5 -- found version 5.8.1\n'}
+[4.830459] (ros2_linkattacher) StdoutLine: {'line': b'-- Searching for dependencies of ignition-msgs5\n'}
+[4.845247] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for ignition-math6 -- found version 6.15.1\n'}
+[4.849187] (ros2_linkattacher) StdoutLine: {'line': b"-- Checking for module 'tinyxml2'\n"}
+[4.859122] (ros2_linkattacher) StdoutLine: {'line': b'--   Found tinyxml2, version 9.0.0\n'}
+[4.885000] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for ignition-msgs5 -- found version 5.8.1\n'}
+[4.887961] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for ignition-common3 -- found version 3.14.0\n'}
+[4.888332] (ros2_linkattacher) StdoutLine: {'line': b'-- Searching for dependencies of ignition-common3\n'}
+[4.888795] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for dlfcn.h - found\n'}
+[4.889377] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for libdl - found\n'}
+[4.890424] (ros2_linkattacher) StdoutLine: {'line': b'-- Found DL: TRUE  \n'}
+[4.900731] (ros2_linkattacher) StdoutLine: {'line': b'-- Found tinyobjloader: /usr/lib/x86_64-linux-gnu/cmake/tinyobjloader/tinyobjloader-config.cmake (found version "2.0.0") \n'}
+[4.901462] (ros2_linkattacher) StdoutLine: {'line': b'-- Searching for <ignition-common3> component [graphics]\n'}
+[4.904596] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for ignition-common3-graphics -- found version 3.14.0\n'}
+[4.904975] (ros2_linkattacher) StdoutLine: {'line': b'-- Searching for dependencies of ignition-common3-graphics\n'}
+[4.905240] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for ignition-math6 -- found version 6.15.1\n'}
+[4.905536] (-) TimerEvent: {}
+[4.908809] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for ignition-fuel_tools4 -- found version 4.4.0\n'}
+[4.909149] (ros2_linkattacher) StdoutLine: {'line': b'-- Searching for dependencies of ignition-fuel_tools4\n'}
+[4.964908] (ros2_linkattacher) StdoutLine: {'line': b'-- Found CURL: /usr/lib/x86_64-linux-gnu/libcurl.so (found version "7.81.0")  \n'}
+[4.973268] (ros2_linkattacher) StdoutLine: {'line': b"-- Checking for module 'jsoncpp'\n"}
+[4.982983] (ros2_linkattacher) StdoutLine: {'line': b'--   Found jsoncpp, version 1.9.5\n'}
+[5.005652] (-) TimerEvent: {}
+[5.006651] (ros2_linkattacher) StdoutLine: {'line': b'-- Found JSONCPP: TRUE  \n'}
+[5.011357] (ros2_linkattacher) StdoutLine: {'line': b"-- Checking for module 'libzip'\n"}
+[5.021113] (ros2_linkattacher) StdoutLine: {'line': b'--   Found libzip, version 1.7.3\n'}
+[5.044261] (ros2_linkattacher) StdoutLine: {'line': b'-- Found ZIP: TRUE  \n'}
+[5.044574] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for ignition-common3 -- found version 3.14.0\n'}
+[5.044902] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for ignition-math6 -- found version 6.15.1\n'}
+[5.045211] (ros2_linkattacher) StdoutLine: {'line': b'-- Looking for ignition-msgs5 -- found version 5.8.1\n'}
+[5.049549] (ros2_linkattacher) StdoutLine: {'line': b'-- Gazebo version: 11.10\n'}
+[5.049807] (ros2_linkattacher) StdoutLine: {'line': b"-- Checking for module 'tbb'\n"}
+[5.059823] (ros2_linkattacher) StdoutLine: {'line': b'--   Found tbb, version 2021.5.0\n'}
+[5.085994] (ros2_linkattacher) StdoutLine: {'line': b'-- Found gazebo_msgs: 3.9.0 (/opt/ros/humble/share/gazebo_msgs/cmake)\n'}
+[5.105734] (-) TimerEvent: {}
+[5.137470] (ros2_linkattacher) StdoutLine: {'line': b'-- Found linkattacher_msgs: 0.0.0 (/home/user/dobot_ws/install/linkattacher_msgs/share/linkattacher_msgs/cmake)\n'}
+[5.154578] (ros2_linkattacher) StdoutLine: {'line': b"-- Added test 'copyright' to check source files copyright and LICENSE\n"}
+[5.155783] (ros2_linkattacher) StdoutLine: {'line': b"-- Added test 'cppcheck' to perform static code analysis on C / C++ code\n"}
+[5.156592] (ros2_linkattacher) StdoutLine: {'line': b'-- Configured cppcheck include dirs: /home/user/dobot_ws/src/IFRA_LinkAttacher/ros2_LinkAttacher/include\n'}
+[5.156734] (ros2_linkattacher) StdoutLine: {'line': b'-- Configured cppcheck exclude dirs and/or files: \n'}
+[5.157698] (ros2_linkattacher) StdoutLine: {'line': b"-- Added test 'cpplint' to check C / C++ code against the Google style\n"}
+[5.157829] (ros2_linkattacher) StdoutLine: {'line': b'-- Configured cpplint exclude dirs and/or files: \n'}
+[5.158560] (ros2_linkattacher) StdoutLine: {'line': b"-- Added test 'lint_cmake' to check CMake code style\n"}
+[5.159734] (ros2_linkattacher) StdoutLine: {'line': b"-- Added test 'uncrustify' to check C / C++ code style\n"}
+[5.159862] (ros2_linkattacher) StdoutLine: {'line': b'-- Configured uncrustify additional arguments: \n'}
+[5.160437] (ros2_linkattacher) StdoutLine: {'line': b"-- Added test 'xmllint' to check XML markup files\n"}
+[5.162388] (ros2_linkattacher) StdoutLine: {'line': b'-- Configuring done\n'}
+[5.195661] (ros2_linkattacher) StdoutLine: {'line': b'-- Generating done\n'}
+[5.200735] (ros2_linkattacher) StdoutLine: {'line': b'-- Build files have been written to: /home/user/dobot_ws/build/ros2_linkattacher\n'}
+[5.205817] (-) TimerEvent: {}
+[5.209626] (ros2_linkattacher) CommandEnded: {'returncode': 0}
+[5.210173] (ros2_linkattacher) JobProgress: {'identifier': 'ros2_linkattacher', 'progress': 'build'}
+[5.210835] (ros2_linkattacher) Command: {'cmd': ['/usr/bin/cmake', '--build', '/home/user/dobot_ws/build/ros2_linkattacher', '--', '-j16', '-l16'], 'cwd': '/home/user/dobot_ws/build/ros2_linkattacher', 'env': OrderedDict([('PYTHON_BASIC_REPL', '1'), ('LESSOPEN', '| /usr/bin/lesspipe %s'), ('USER', 'user'), ('SSH_CLIENT', '192.168.3.136 7902 22'), ('LC_TIME', 'ko_KR.UTF-8'), ('XDG_SESSION_TYPE', 'tty'), ('GIT_ASKPASS', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/extensions/git/dist/askpass.sh'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/home/user/dobot_ws/install/linkattacher_msgs/lib:/home/user/dobot_ws/install/dobot_msgs_v4/lib:/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib'), ('BROWSER', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/bin/helpers/browser.sh'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/user'), ('OLDPWD', '/home/user/dobot_ws/src'), ('TERM_PROGRAM_VERSION', '1.119.0'), ('VSCODE_IPC_HOOK_CLI', '/run/user/1000/vscode-ipc-372f516e-2455-44b6-883f-1fcdc5e7de97.sock'), ('ROS_PYTHON_VERSION', '3'), ('DOBOT_TYPE', 'cr7'), ('VSCODE_GIT_ASKPASS_MAIN', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/extensions/git/dist/askpass-main.js'), ('LC_MONETARY', 'ko_KR.UTF-8'), ('VSCODE_GIT_ASKPASS_NODE', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/node'), ('PYDEVD_DISABLE_FILE_VALIDATION', '1'), ('BUNDLED_DEBUGPY_PATH', '/home/user/.vscode-server/extensions/ms-python.debugpy-2026.6.0-linux-x64/bundled/libs/debugpy'), ('VSCODE_PYTHON_AUTOACTIVATE_GUARD', '1'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('COLORTERM', 'truecolor'), ('COLCON_PREFIX_PATH', '/home/user/dobot_ws/install'), ('ROS_DISTRO', 'humble'), ('LOGNAME', 'user'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('CLAUDE_CODE_SSE_PORT', '55914'), ('XDG_SESSION_CLASS', 'user'), ('TERM', 'xterm-256color'), ('XDG_SESSION_ID', '3'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/home/user/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand:/home/user/.vscode-server/data/User/globalStorage/github.copilot-chat/copilotCli:/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/bin/remote-cli:/home/user/.local/bin:/opt/ros/humble/bin:/home/user/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/user/.vscode-server/extensions/ms-python.debugpy-2026.6.0-linux-x64/bundled/scripts/noConfigScripts'), ('LC_ADDRESS', 'ko_KR.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('DISPLAY', ':0'), ('VSCODE_DEBUGPY_ADAPTER_ENDPOINTS', '/home/user/.vscode-server/extensions/ms-python.debugpy-2026.6.0-linux-x64/.noConfigDebugAdapterEndpoints/endpoint-3d9a2d9b6dbd1d91.txt'), ('LANG', 'en_US.UTF-8'), ('PYTHONSTARTUP', '/home/user/.vscode-server/data/User/workspaceStorage/99d34d3c4bebf8f89e15d79b7cf7d49c/ms-python.python/pythonrc.py'), ('LC_TELEPHONE', 'ko_KR.UTF-8'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('VSCODE_GIT_IPC_HANDLE', '/run/user/1000/vscode-git-506c1b93b6.sock'), ('TERM_PROGRAM', 'vscode'), ('AMENT_PREFIX_PATH', '/home/user/dobot_ws/install/linkattacher_msgs:/home/user/dobot_ws/install/onrobot_2fg7_description:/home/user/dobot_ws/install/servo_action:/home/user/dobot_ws/install/cr7_moveit:/home/user/dobot_ws/install/dobot_rviz:/home/user/dobot_ws/install/cr_robot_ros2:/home/user/dobot_ws/install/dobot_msgs_v4:/home/user/dobot_ws/install/dobot_moveit:/home/user/dobot_ws/install/dobot_gazebo:/home/user/dobot_ws/install/dobot_demo_cpp:/home/user/dobot_ws/install/dobot_demo:/home/user/dobot_ws/install/cra_description:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'ko_KR.UTF-8'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('LC_MEASUREMENT', 'ko_KR.UTF-8'), ('LC_IDENTIFICATION', 'ko_KR.UTF-8'), ('VSCODE_GIT_ASKPASS_EXTRA_ARGS', ''), ('PWD', '/home/user/dobot_ws/build/ros2_linkattacher'), ('LC_ALL', 'en_US.UTF-8'), ('SSH_CONNECTION', '192.168.3.136 7902 192.168.2.251 22'), ('XDG_DATA_DIRS', '/usr/share/gnome:/usr/local/share:/usr/share:/var/lib/snapd/desktop'), ('PYTHONPATH', '/home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages:/home/user/dobot_ws/build/servo_action:/home/user/dobot_ws/install/servo_action/lib/python3.10/site-packages:/home/user/dobot_ws/install/dobot_msgs_v4/local/lib/python3.10/dist-packages:/home/user/dobot_ws/build/dobot_moveit:/home/user/dobot_ws/install/dobot_moveit/lib/python3.10/site-packages:/home/user/dobot_ws/build/dobot_demo:/home/user/dobot_ws/install/dobot_demo/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'ko_KR.UTF-8'), ('LC_PAPER', 'ko_KR.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/home/user/dobot_ws/install/linkattacher_msgs:/home/user/dobot_ws/install/onrobot_2fg7_description:/home/user/dobot_ws/install/cr7_moveit:/home/user/dobot_ws/install/dobot_rviz:/home/user/dobot_ws/install/cr_robot_ros2:/home/user/dobot_ws/install/dobot_msgs_v4:/home/user/dobot_ws/install/dobot_gazebo:/home/user/dobot_ws/install/dobot_demo_cpp:/home/user/dobot_ws/install/cra_description:/home/user/dobot_ws/install/servo_action:/home/user/dobot_ws/install/dobot_moveit:/home/user/dobot_ws/install/dobot_demo:/opt/ros/humble')]), 'shell': False}
+[5.249022] (ros2_linkattacher) StdoutLine: {'line': b'[ 50%] \x1b[32mBuilding CXX object CMakeFiles/gazebo_link_attacher.dir/src/gazebo_link_attacher.cpp.o\x1b[0m\n'}
+[5.305925] (-) TimerEvent: {}
+[5.406141] (-) TimerEvent: {}
+[5.506368] (-) TimerEvent: {}
+[5.606551] (-) TimerEvent: {}
+[5.706746] (-) TimerEvent: {}
+[5.806968] (-) TimerEvent: {}
+[5.907242] (-) TimerEvent: {}
+[6.007442] (-) TimerEvent: {}
+[6.107704] (-) TimerEvent: {}
+[6.207934] (-) TimerEvent: {}
+[6.308176] (-) TimerEvent: {}
+[6.408498] (-) TimerEvent: {}
+[6.508714] (-) TimerEvent: {}
+[6.608943] (-) TimerEvent: {}
+[6.709166] (-) TimerEvent: {}
+[6.809436] (-) TimerEvent: {}
+[6.909646] (-) TimerEvent: {}
+[7.009861] (-) TimerEvent: {}
+[7.110076] (-) TimerEvent: {}
+[7.210265] (-) TimerEvent: {}
+[7.310492] (-) TimerEvent: {}
+[7.410715] (-) TimerEvent: {}
+[7.510928] (-) TimerEvent: {}
+[7.611133] (-) TimerEvent: {}
+[7.711406] (-) TimerEvent: {}
+[7.811626] (-) TimerEvent: {}
+[7.911844] (-) TimerEvent: {}
+[8.012071] (-) TimerEvent: {}
+[8.112304] (-) TimerEvent: {}
+[8.212510] (-) TimerEvent: {}
+[8.312701] (-) TimerEvent: {}
+[8.412928] (-) TimerEvent: {}
+[8.513151] (-) TimerEvent: {}
+[8.613388] (-) TimerEvent: {}
+[8.713599] (-) TimerEvent: {}
+[8.813824] (-) TimerEvent: {}
+[8.865135] (ros2_linkattacher) StderrLine: {'line': b'In file included from \x1b[01m\x1b[K/usr/include/gazebo-11/gazebo/sensors/SensorTypes.hh:23\x1b[m\x1b[K,\n'}
+[8.865301] (ros2_linkattacher) StderrLine: {'line': b'                 from \x1b[01m\x1b[K/usr/include/gazebo-11/gazebo/common/Plugin.hh:42\x1b[m\x1b[K,\n'}
+[8.865364] (ros2_linkattacher) StderrLine: {'line': b'                 from \x1b[01m\x1b[K/home/user/dobot_ws/src/IFRA_LinkAttacher/ros2_LinkAttacher/src/gazebo_link_attacher.cpp:31\x1b[m\x1b[K:\n'}
+[8.865416] (ros2_linkattacher) StderrLine: {'line': b'\x1b[01m\x1b[K/usr/include/gazebo-11/gazebo/common/EnumIface.hh:180:12:\x1b[m\x1b[K \x1b[01;35m\x1b[Kwarning: \x1b[m\x1b[K\xe2\x80\x98\x1b[01m\x1b[Ktemplate<class _Category, class _Tp, class _Distance, class _Pointer, class _Reference> struct std::iterator\x1b[m\x1b[K\xe2\x80\x99 is deprecated [\x1b[01;35m\x1b[K\x1b]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wdeprecated-declarations\x07-Wdeprecated-declarations\x1b]8;;\x07\x1b[m\x1b[K]\n'}
+[8.865464] (ros2_linkattacher) StderrLine: {'line': b'  180 |     : std::\x1b[01;35m\x1b[Kiterator\x1b[m\x1b[K<std::bidirectional_iterator_tag, Enum>\n'}
+[8.865513] (ros2_linkattacher) StderrLine: {'line': b'      |            \x1b[01;35m\x1b[K^~~~~~~~\x1b[m\x1b[K\n'}
+[8.865557] (ros2_linkattacher) StderrLine: {'line': b'In file included from \x1b[01m\x1b[K/usr/include/c++/12/bits/stl_algobase.h:65\x1b[m\x1b[K,\n'}
+[8.865600] (ros2_linkattacher) StderrLine: {'line': b'                 from \x1b[01m\x1b[K/usr/include/c++/12/list:60\x1b[m\x1b[K,\n'}
+[8.865642] (ros2_linkattacher) StderrLine: {'line': b'                 from \x1b[01m\x1b[K/usr/include/gazebo-11/gazebo/common/Plugin.hh:30\x1b[m\x1b[K:\n'}
+[8.865685] (ros2_linkattacher) StderrLine: {'line': b'\x1b[01m\x1b[K/usr/include/c++/12/bits/stl_iterator_base_types.h:127:34:\x1b[m\x1b[K \x1b[01;36m\x1b[Knote: \x1b[m\x1b[Kdeclared here\n'}
+[8.865727] (ros2_linkattacher) StderrLine: {'line': b'  127 |     struct _GLIBCXX17_DEPRECATED \x1b[01;36m\x1b[Kiterator\x1b[m\x1b[K\n'}
+[8.865774] (ros2_linkattacher) StderrLine: {'line': b'      |                                  \x1b[01;36m\x1b[K^~~~~~~~\x1b[m\x1b[K\n'}
+[8.913906] (-) TimerEvent: {}
+[9.014149] (-) TimerEvent: {}
+[9.114368] (-) TimerEvent: {}
+[9.214567] (-) TimerEvent: {}
+[9.314793] (-) TimerEvent: {}
+[9.415037] (-) TimerEvent: {}
+[9.515222] (-) TimerEvent: {}
+[9.615432] (-) TimerEvent: {}
+[9.715645] (-) TimerEvent: {}
+[9.815857] (-) TimerEvent: {}
+[9.916075] (-) TimerEvent: {}
+[10.016293] (-) TimerEvent: {}
+[10.116491] (-) TimerEvent: {}
+[10.216708] (-) TimerEvent: {}
+[10.316921] (-) TimerEvent: {}
+[10.417136] (-) TimerEvent: {}
+[10.517368] (-) TimerEvent: {}
+[10.617558] (-) TimerEvent: {}
+[10.717770] (-) TimerEvent: {}
+[10.817987] (-) TimerEvent: {}
+[10.918208] (-) TimerEvent: {}
+[11.018423] (-) TimerEvent: {}
+[11.118647] (-) TimerEvent: {}
+[11.218867] (-) TimerEvent: {}
+[11.319056] (-) TimerEvent: {}
+[11.419281] (-) TimerEvent: {}
+[11.519482] (-) TimerEvent: {}
+[11.619683] (-) TimerEvent: {}
+[11.719898] (-) TimerEvent: {}
+[11.820115] (-) TimerEvent: {}
+[11.920347] (-) TimerEvent: {}
+[12.020545] (-) TimerEvent: {}
+[12.120741] (-) TimerEvent: {}
+[12.220986] (-) TimerEvent: {}
+[12.321223] (-) TimerEvent: {}
+[12.421427] (-) TimerEvent: {}
+[12.521661] (-) TimerEvent: {}
+[12.621895] (-) TimerEvent: {}
+[12.722118] (-) TimerEvent: {}
+[12.822366] (-) TimerEvent: {}
+[12.922597] (-) TimerEvent: {}
+[13.022840] (-) TimerEvent: {}
+[13.123070] (-) TimerEvent: {}
+[13.223299] (-) TimerEvent: {}
+[13.323508] (-) TimerEvent: {}
+[13.423737] (-) TimerEvent: {}
+[13.523975] (-) TimerEvent: {}
+[13.624213] (-) TimerEvent: {}
+[13.724444] (-) TimerEvent: {}
+[13.824680] (-) TimerEvent: {}
+[13.924886] (-) TimerEvent: {}
+[14.025117] (-) TimerEvent: {}
+[14.125358] (-) TimerEvent: {}
+[14.225578] (-) TimerEvent: {}
+[14.325798] (-) TimerEvent: {}
+[14.426018] (-) TimerEvent: {}
+[14.526236] (-) TimerEvent: {}
+[14.626439] (-) TimerEvent: {}
+[14.726668] (-) TimerEvent: {}
+[14.826901] (-) TimerEvent: {}
+[14.927100] (-) TimerEvent: {}
+[15.027340] (-) TimerEvent: {}
+[15.127542] (-) TimerEvent: {}
+[15.227768] (-) TimerEvent: {}
+[15.328005] (-) TimerEvent: {}
+[15.428242] (-) TimerEvent: {}
+[15.528437] (-) TimerEvent: {}
+[15.628650] (-) TimerEvent: {}
+[15.728885] (-) TimerEvent: {}
+[15.829124] (-) TimerEvent: {}
+[15.929373] (-) TimerEvent: {}
+[16.029583] (-) TimerEvent: {}
+[16.129831] (-) TimerEvent: {}
+[16.230085] (-) TimerEvent: {}
+[16.240102] (ros2_linkattacher) StdoutLine: {'line': b'[100%] \x1b[32m\x1b[1mLinking CXX shared library libgazebo_link_attacher.so\x1b[0m\n'}
+[16.330165] (-) TimerEvent: {}
+[16.430381] (-) TimerEvent: {}
+[16.530642] (-) TimerEvent: {}
+[16.623155] (ros2_linkattacher) StdoutLine: {'line': b'[100%] Built target gazebo_link_attacher\n'}
+[16.630725] (-) TimerEvent: {}
+[16.631722] (ros2_linkattacher) CommandEnded: {'returncode': 0}
+[16.632301] (ros2_linkattacher) JobProgress: {'identifier': 'ros2_linkattacher', 'progress': 'install'}
+[16.632820] (ros2_linkattacher) Command: {'cmd': ['/usr/bin/cmake', '--install', '/home/user/dobot_ws/build/ros2_linkattacher'], 'cwd': '/home/user/dobot_ws/build/ros2_linkattacher', 'env': OrderedDict([('PYTHON_BASIC_REPL', '1'), ('LESSOPEN', '| /usr/bin/lesspipe %s'), ('USER', 'user'), ('SSH_CLIENT', '192.168.3.136 7902 22'), ('LC_TIME', 'ko_KR.UTF-8'), ('XDG_SESSION_TYPE', 'tty'), ('GIT_ASKPASS', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/extensions/git/dist/askpass.sh'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/home/user/dobot_ws/install/linkattacher_msgs/lib:/home/user/dobot_ws/install/dobot_msgs_v4/lib:/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib'), ('BROWSER', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/bin/helpers/browser.sh'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/user'), ('OLDPWD', '/home/user/dobot_ws/src'), ('TERM_PROGRAM_VERSION', '1.119.0'), ('VSCODE_IPC_HOOK_CLI', '/run/user/1000/vscode-ipc-372f516e-2455-44b6-883f-1fcdc5e7de97.sock'), ('ROS_PYTHON_VERSION', '3'), ('DOBOT_TYPE', 'cr7'), ('VSCODE_GIT_ASKPASS_MAIN', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/extensions/git/dist/askpass-main.js'), ('LC_MONETARY', 'ko_KR.UTF-8'), ('VSCODE_GIT_ASKPASS_NODE', '/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/node'), ('PYDEVD_DISABLE_FILE_VALIDATION', '1'), ('BUNDLED_DEBUGPY_PATH', '/home/user/.vscode-server/extensions/ms-python.debugpy-2026.6.0-linux-x64/bundled/libs/debugpy'), ('VSCODE_PYTHON_AUTOACTIVATE_GUARD', '1'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('COLORTERM', 'truecolor'), ('COLCON_PREFIX_PATH', '/home/user/dobot_ws/install'), ('ROS_DISTRO', 'humble'), ('LOGNAME', 'user'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('CLAUDE_CODE_SSE_PORT', '55914'), ('XDG_SESSION_CLASS', 'user'), ('TERM', 'xterm-256color'), ('XDG_SESSION_ID', '3'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/home/user/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand:/home/user/.vscode-server/data/User/globalStorage/github.copilot-chat/copilotCli:/home/user/.vscode-server/cli/servers/Stable-8b640eef5a6c6089c029249d48efa5c99adf7d51/server/bin/remote-cli:/home/user/.local/bin:/opt/ros/humble/bin:/home/user/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/user/.vscode-server/extensions/ms-python.debugpy-2026.6.0-linux-x64/bundled/scripts/noConfigScripts'), ('LC_ADDRESS', 'ko_KR.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('DISPLAY', ':0'), ('VSCODE_DEBUGPY_ADAPTER_ENDPOINTS', '/home/user/.vscode-server/extensions/ms-python.debugpy-2026.6.0-linux-x64/.noConfigDebugAdapterEndpoints/endpoint-3d9a2d9b6dbd1d91.txt'), ('LANG', 'en_US.UTF-8'), ('PYTHONSTARTUP', '/home/user/.vscode-server/data/User/workspaceStorage/99d34d3c4bebf8f89e15d79b7cf7d49c/ms-python.python/pythonrc.py'), ('LC_TELEPHONE', 'ko_KR.UTF-8'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('VSCODE_GIT_IPC_HANDLE', '/run/user/1000/vscode-git-506c1b93b6.sock'), ('TERM_PROGRAM', 'vscode'), ('AMENT_PREFIX_PATH', '/home/user/dobot_ws/install/linkattacher_msgs:/home/user/dobot_ws/install/onrobot_2fg7_description:/home/user/dobot_ws/install/servo_action:/home/user/dobot_ws/install/cr7_moveit:/home/user/dobot_ws/install/dobot_rviz:/home/user/dobot_ws/install/cr_robot_ros2:/home/user/dobot_ws/install/dobot_msgs_v4:/home/user/dobot_ws/install/dobot_moveit:/home/user/dobot_ws/install/dobot_gazebo:/home/user/dobot_ws/install/dobot_demo_cpp:/home/user/dobot_ws/install/dobot_demo:/home/user/dobot_ws/install/cra_description:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'ko_KR.UTF-8'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('LC_MEASUREMENT', 'ko_KR.UTF-8'), ('LC_IDENTIFICATION', 'ko_KR.UTF-8'), ('VSCODE_GIT_ASKPASS_EXTRA_ARGS', ''), ('PWD', '/home/user/dobot_ws/build/ros2_linkattacher'), ('LC_ALL', 'en_US.UTF-8'), ('SSH_CONNECTION', '192.168.3.136 7902 192.168.2.251 22'), ('XDG_DATA_DIRS', '/usr/share/gnome:/usr/local/share:/usr/share:/var/lib/snapd/desktop'), ('PYTHONPATH', '/home/user/dobot_ws/install/linkattacher_msgs/local/lib/python3.10/dist-packages:/home/user/dobot_ws/build/servo_action:/home/user/dobot_ws/install/servo_action/lib/python3.10/site-packages:/home/user/dobot_ws/install/dobot_msgs_v4/local/lib/python3.10/dist-packages:/home/user/dobot_ws/build/dobot_moveit:/home/user/dobot_ws/install/dobot_moveit/lib/python3.10/site-packages:/home/user/dobot_ws/build/dobot_demo:/home/user/dobot_ws/install/dobot_demo/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'ko_KR.UTF-8'), ('LC_PAPER', 'ko_KR.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/home/user/dobot_ws/install/linkattacher_msgs:/home/user/dobot_ws/install/onrobot_2fg7_description:/home/user/dobot_ws/install/cr7_moveit:/home/user/dobot_ws/install/dobot_rviz:/home/user/dobot_ws/install/cr_robot_ros2:/home/user/dobot_ws/install/dobot_msgs_v4:/home/user/dobot_ws/install/dobot_gazebo:/home/user/dobot_ws/install/dobot_demo_cpp:/home/user/dobot_ws/install/cra_description:/home/user/dobot_ws/install/servo_action:/home/user/dobot_ws/install/dobot_moveit:/home/user/dobot_ws/install/dobot_demo:/opt/ros/humble')]), 'shell': False}
+[16.638619] (ros2_linkattacher) StdoutLine: {'line': b'-- Install configuration: ""\n'}
+[16.638747] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/share/ros2_linkattacher/environment/library_path.sh\n'}
+[16.638893] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/share/ros2_linkattacher/environment/library_path.dsv\n'}
+[16.639022] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/lib/libgazebo_link_attacher.so\n'}
+[16.641351] (ros2_linkattacher) StdoutLine: {'line': b'-- Set runtime path of "/home/user/dobot_ws/install/ros2_linkattacher/lib/libgazebo_link_attacher.so" to ""\n'}
+[16.641471] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/share/ament_index/resource_index/package_run_dependencies/ros2_linkattacher\n'}
+[16.641639] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/share/ament_index/resource_index/parent_prefix_path/ros2_linkattacher\n'}
+[16.641760] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/share/ros2_linkattacher/environment/ament_prefix_path.sh\n'}
+[16.641852] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/share/ros2_linkattacher/environment/ament_prefix_path.dsv\n'}
+[16.641964] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/share/ros2_linkattacher/environment/path.sh\n'}
+[16.642056] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/share/ros2_linkattacher/environment/path.dsv\n'}
+[16.642162] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/share/ros2_linkattacher/local_setup.bash\n'}
+[16.642268] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/share/ros2_linkattacher/local_setup.sh\n'}
+[16.642373] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/share/ros2_linkattacher/local_setup.zsh\n'}
+[16.642459] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/share/ros2_linkattacher/local_setup.dsv\n'}
+[16.642565] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/share/ros2_linkattacher/package.dsv\n'}
+[16.642731] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/share/ament_index/resource_index/packages/ros2_linkattacher\n'}
+[16.642855] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/share/ros2_linkattacher/cmake/ament_cmake_export_libraries-extras.cmake\n'}
+[16.642958] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/share/ros2_linkattacher/cmake/ros2_linkattacherConfig.cmake\n'}
+[16.643058] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/share/ros2_linkattacher/cmake/ros2_linkattacherConfig-version.cmake\n'}
+[16.643163] (ros2_linkattacher) StdoutLine: {'line': b'-- Installing: /home/user/dobot_ws/install/ros2_linkattacher/share/ros2_linkattacher/package.xml\n'}
+[16.644443] (ros2_linkattacher) CommandEnded: {'returncode': 0}
+[16.655527] (ros2_linkattacher) JobEnded: {'identifier': 'ros2_linkattacher', 'rc': 0}
+[16.655809] (-) EventReactorShutdown: {}

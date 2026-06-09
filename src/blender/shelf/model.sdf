@@ -1,0 +1,31 @@
+<?xml version='1.0'?>
+<sdf version='1.7'>
+  <model name='shelf'>
+    <pose>0 0 0 0 0 0</pose>
+    <static>true</static>
+    <!-- 3-tier shelf, real-world scale (meters), Z-up.
+         Board top surfaces at z = 0.30 / 0.60 / 0.90 m (30 cm spacing).
+         Frame = 4 corner posts. Footprint 2.0 x 0.30 m, total height 0.95 m.
+         Mesh URIs use model:// for Gazebo Classic 11 compatibility
+         (needs GAZEBO_MODEL_PATH to contain the design_gz directory). -->
+    <link name='shelf_link'>
+      <pose>0 0 0 0 0 0</pose>
+      <visual name='shelf_visual'>
+        <geometry>
+          <mesh>
+            <uri>model://shelf/meshes/shelf.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <!-- Collision follows the boards + posts (not a solid block), so a
+           robot arm can reach into the open gaps between the shelves. -->
+      <collision name='shelf_collision'>
+        <geometry>
+          <mesh>
+            <uri>model://shelf/meshes/shelf_collision.dae</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>

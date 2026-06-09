@@ -1,0 +1,21 @@
+[0.012s] Invoking command in '/home/user/dobot_ws/build/ariac_gz': AMENT_PREFIX_PATH=/home/user/dobot_ws/install/ariac_setup:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/user/dobot_ws/install/servo_action:/home/user/dobot_ws/install/dobot_moveit:/home/user/dobot_ws/install/dobot_demo:/opt/ros/humble PYTHONPATH=/home/user/dobot_ws/install/ariac_setup/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/cmake /home/user/dobot_ws/src/ARIAC/ariac_gz -DCMAKE_INSTALL_PREFIX=/home/user/dobot_ws/install/ariac_gz
+[0.020s] -- Found ament_cmake: 1.3.14 (/opt/ros/humble/share/ament_cmake/cmake)
+[0.139s] [31mCMake Error at CMakeLists.txt:16 (find_package):
+[0.139s]   By not providing "Findros_gz.cmake" in CMAKE_MODULE_PATH this project has
+[0.139s]   asked CMake to find a package configuration file provided by "ros_gz", but
+[0.139s]   CMake did not find one.
+[0.139s] 
+[0.140s]   Could not find a package configuration file provided by "ros_gz" with any
+[0.140s]   of the following names:
+[0.140s] 
+[0.140s]     ros_gzConfig.cmake
+[0.140s]     ros_gz-config.cmake
+[0.140s] 
+[0.141s]   Add the installation prefix of "ros_gz" to CMAKE_PREFIX_PATH or set
+[0.141s]   "ros_gz_DIR" to a directory containing one of the above files.  If "ros_gz"
+[0.141s]   provides a separate development package or SDK, be sure it has been
+[0.141s]   installed.
+[0.141s] 
+[0.141s] [0m
+[0.141s] -- Configuring incomplete, errors occurred!
+[0.141s] See also "/home/user/dobot_ws/build/ariac_gz/CMakeFiles/CMakeOutput.log".

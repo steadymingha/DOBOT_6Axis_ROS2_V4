@@ -1,1 +1,18 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_generator_rs/dobot_msgs_v4/rust/src/lib.rs
+#![allow(non_camel_case_types)]
+#![allow(clippy::derive_partial_eq_without_eq)]
+#![allow(clippy::upper_case_acronyms)]
+
+#[path = "msg.rs"]
+mod msg_idiomatic;
+pub mod msg {
+    pub use super::msg_idiomatic::*;
+    pub mod rmw;
+}
+
+#[path = "srv.rs"]
+mod srv_idiomatic;
+pub mod srv {
+    pub use super::srv_idiomatic::*;
+    pub mod rmw;
+}
+

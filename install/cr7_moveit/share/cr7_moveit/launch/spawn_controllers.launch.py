@@ -1,1 +1,1 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/cr7_moveit/launch/spawn_controllers.launch.py
+/home/user/dobot_ws/src/DOBOT_6Axis_ROS2_V4/cr7_moveit/launch/spawn_controllers.launch.py

@@ -1,0 +1,25 @@
+In file included from /usr/include/gazebo-11/gazebo/common/common.hh:16,
+                 from /home/user/dobot_ws/src/gazebo_ros2_control_patched/include/gazebo_ros2_control/gazebo_ros2_control_plugin.hpp:44,
+                 from /home/user/dobot_ws/src/gazebo_ros2_control_patched/src/gazebo_ros2_control_plugin.cpp:47:
+/usr/include/gazebo-11/gazebo/common/EnumIface.hh:180:12: warning: ‘template<class _Category, class _Tp, class _Distance, class _Pointer, class _Reference> struct std::iterator’ is deprecated [-Wdeprecated-declarations]
+  180 |     : std::iterator<std::bidirectional_iterator_tag, Enum>
+      |            ^~~~~~~~
+In file included from /usr/include/c++/12/string:45,
+                 from /home/user/dobot_ws/src/gazebo_ros2_control_patched/src/gazebo_ros2_control_plugin.cpp:35:
+/usr/include/c++/12/bits/stl_iterator_base_types.h:127:34: note: declared here
+  127 |     struct _GLIBCXX17_DEPRECATED iterator
+      |                                  ^~~~~~~~
+In file included from /usr/include/gazebo-11/gazebo/sensors/SensorTypes.hh:23,
+                 from /usr/include/gazebo-11/gazebo/sensors/Sensor.hh:31,
+                 from /usr/include/gazebo-11/gazebo/sensors/ImuSensor.hh:25,
+                 from /home/user/dobot_ws/src/gazebo_ros2_control_patched/src/gazebo_system.cpp:25:
+/usr/include/gazebo-11/gazebo/common/EnumIface.hh:180:12: warning: ‘template<class _Category, class _Tp, class _Distance, class _Pointer, class _Reference> struct std::iterator’ is deprecated [-Wdeprecated-declarations]
+  180 |     : std::iterator<std::bidirectional_iterator_tag, Enum>
+      |            ^~~~~~~~
+In file included from /usr/include/c++/12/bits/stl_algobase.h:65,
+                 from /usr/include/c++/12/bits/specfun.h:45,
+                 from /usr/include/c++/12/cmath:1935,
+                 from /home/user/dobot_ws/src/gazebo_ros2_control_patched/src/gazebo_system.cpp:15:
+/usr/include/c++/12/bits/stl_iterator_base_types.h:127:34: note: declared here
+  127 |     struct _GLIBCXX17_DEPRECATED iterator
+      |                                  ^~~~~~~~

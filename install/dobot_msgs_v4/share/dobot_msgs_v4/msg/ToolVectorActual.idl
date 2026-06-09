@@ -1,1 +1,22 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_adapter/dobot_msgs_v4/msg/ToolVectorActual.idl
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from dobot_msgs_v4/msg/ToolVectorActual.msg
+// generated code does not contain a copyright notice
+
+
+module dobot_msgs_v4 {
+  module msg {
+    struct ToolVectorActual {
+      double x;
+
+      double y;
+
+      double z;
+
+      double rx;
+
+      double ry;
+
+      double rz;
+    };
+  };
+};

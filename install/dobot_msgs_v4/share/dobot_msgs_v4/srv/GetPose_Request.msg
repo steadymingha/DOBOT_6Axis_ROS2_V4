@@ -1,1 +1,2 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_cmake/srv/GetPose_Request.msg
+int32 user
+int32 tool

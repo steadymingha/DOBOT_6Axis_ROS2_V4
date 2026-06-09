@@ -1,1 +1,4 @@
-/home/user/workspace/DOBOT_6Axis_ROS2_V4/build/dobot_msgs_v4/rosidl_cmake/srv/AO_Request.msg
+# index --> 1 - 2
+# value --> 0 - 10
+int32 index
+int32 value
