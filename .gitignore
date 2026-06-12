@@ -117,3 +117,7 @@ src/DOBOT_6Axis_ROS2_V4/test.py
 src/DOBOT_6Axis_ROS2_V4/wc_demo.py
 src/DOBOT_6Axis_ROS2_V4/__pycache__/
 
+install/cr7_moveit/share/cr7_moveit/launch/__pycache__/moveit_gazebo.launch.cpython-310.pyc
+install/dobot_gazebo/share/dobot_gazebo/launch/__pycache__/gazebo_mpo700_cr7.launch.cpython-310.pyc
+log/latest_build
+log/latest_build

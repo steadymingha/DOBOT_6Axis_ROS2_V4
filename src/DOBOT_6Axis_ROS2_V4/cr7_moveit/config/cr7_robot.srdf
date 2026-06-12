@@ -21,6 +21,9 @@
         <joint name="joint5" value="-1.5613"/>
         <joint name="joint6" value="0"/>
     </group_state>
+    <!--PASSIVE JOINT: the gripper finger is driven by the Gazebo gripper_controller,
+        not planned by MoveIt (no planning group contains it). -->
+    <passive_joint name="gripper_finger_joint"/>
     <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
     <disable_collisions link1="Link1" link2="Link2" reason="Adjacent"/>
     <disable_collisions link1="Link1" link2="Link4" reason="Never"/>

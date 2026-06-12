@@ -5,6 +5,61 @@
     <!-- Import cr7_robot urdf file -->
     <xacro:include filename="$(find dobot_rviz)/urdf/cr7_robot.urdf" />
 
+    <!-- Blender fixed-jaw gripper (kinematics/collision only, no gazebo tags).
+         The dobot_rviz URDF above is the bare arm, but the Gazebo
+         joint_state_broadcaster publishes gripper_finger_joint on /joint_states;
+         without these links move_group logs "Joint 'gripper_finger_joint' not
+         found in model 'cr7_robot'" for every incoming message. Geometry copied
+         from cra_description/urdf/cr7_on_mpo700.urdf.xacro; keep in sync. -->
+    <link name="gripper_base_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="file:///home/user/dobot_ws/src/blender/gripper/meshes/base.dae"/>
+        </geometry>
+      </visual>
+      <collision>  <!-- fixed-jaw top beam: X[0.009,0.107] Y[+-0.046] Z[0.105,0.115] -->
+        <origin xyz="0.0581 0 0.110" rpy="0 0 0"/>
+        <geometry><box size="0.098 0.0912 0.010"/></geometry>
+      </collision>
+      <collision>  <!-- fixed-jaw column + pad: X[0.0894,0.1071] Y[+-0.046] Z[0.055,0.105] -->
+        <origin xyz="0.0983 0 0.080" rpy="0 0 0"/>
+        <geometry><box size="0.0177 0.0912 0.050"/></geometry>
+      </collision>
+      <collision>  <!-- top plate (Cube_071): X[+-0.061] Y[+-0.046] Z[0.115,0.127] -->
+        <origin xyz="0 0 0.121" rpy="0 0 0"/>
+        <geometry><box size="0.121 0.091 0.012"/></geometry>
+      </collision>
+      <collision>  <!-- mount boss (Cylinder_004): r0.041 at Z[0.127,0.140] -->
+        <origin xyz="0 0 0.134" rpy="0 0 0"/>
+        <geometry><cylinder radius="0.041" length="0.013"/></geometry>
+      </collision>
+    </link>
+    <joint name="gripper_attach_joint" type="fixed">
+      <origin xyz="0 0 0.1401" rpy="3.14159265359 0 0"/>
+      <parent link="Link6"/>
+      <child link="gripper_base_link"/>
+    </joint>
+    <link name="gripper_finger_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="file:///home/user/dobot_ws/src/blender/gripper/meshes/finger.dae"/>
+        </geometry>
+      </visual>
+      <collision>  <!-- moving jaw + pad: X[-0.011,0.016] Y[+-0.035] Z[0.056,0.127] -->
+        <origin xyz="0.0025 0 0.0915" rpy="0 0 0"/>
+        <geometry><box size="0.027 0.070 0.071"/></geometry>
+      </collision>
+    </link>
+    <joint name="gripper_finger_joint" type="prismatic">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <parent link="gripper_base_link"/>
+      <child link="gripper_finger_link"/>
+      <axis xyz="-1 0 0"/>
+      <limit lower="-0.07" upper="0.10" effort="60" velocity="0.1"/>
+    </joint>
+
     <!-- Import control_xacro -->
     <xacro:include filename="cr7_robot.ros2_control.xacro" />
 

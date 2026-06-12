@@ -387,9 +387,18 @@
          Old primitives were phantom jaws reaching down to z=-0.116 where the visual
          has nothing, pushing the shelf box without visual contact. The small side
          tab (Cube_099) lies fully inside the body block, so it is omitted. -->
-    <collision>  <!-- body block (Cube_088): X[0.009,0.107] Y[+-0.046] Z[0.055,0.115] -->
-      <origin xyz="0.058 0 0.085" rpy="0 0 0"/>
-      <geometry><box size="0.098 0.092 0.060"/></geometry>
+    <!-- Fixed jaw (jaw_fixed + pad_fixed meshes) is C-shaped: a top beam plus
+         an outer column carrying the pad on its inner face. Two boxes that hug
+         those parts, leaving the grasp gap between the pads OPEN. The previous
+         single box was the whole jaw AABB: it filled the grasp gap with solid
+         collision, so the box was ejected on descend without visual contact. -->
+    <collision>  <!-- fixed-jaw top beam: X[0.009,0.107] Y[+-0.046] Z[0.105,0.115] -->
+      <origin xyz="0.0581 0 0.110" rpy="0 0 0"/>
+      <geometry><box size="0.098 0.0912 0.010"/></geometry>
+    </collision>
+    <collision>  <!-- fixed-jaw column + pad: X[0.0894,0.1071] Y[+-0.046] Z[0.055,0.105] -->
+      <origin xyz="0.0983 0 0.080" rpy="0 0 0"/>
+      <geometry><box size="0.0177 0.0912 0.050"/></geometry>
     </collision>
     <collision>  <!-- top plate (Cube_071): X[+-0.061] Y[+-0.046] Z[0.115,0.127] -->
       <origin xyz="0 0 0.121" rpy="0 0 0"/>
@@ -442,6 +451,16 @@
   <gazebo reference="gripper_base_link">
     <material>Gazebo/DarkGrey</material>
     <gravity>false</gravity>
+    <!-- Soft contact like the finger below. Without these the fixed jaw uses
+         the Gazebo defaults (kp=1e12, maxVel=100): the moment the squeeze
+         presses the box into the fixed pad, the near-rigid contact fires a
+         huge impulse and shoots the box out of the grip. -->
+    <mu1>1.2</mu1>
+    <mu2>1.2</mu2>
+    <kp>1000000.0</kp>
+    <kd>1.0</kd>
+    <minDepth>0.001</minDepth>
+    <maxVel>0.1</maxVel>
     <selfCollide>true</selfCollide>
   </gazebo>
   <gazebo reference="gripper_finger_link">

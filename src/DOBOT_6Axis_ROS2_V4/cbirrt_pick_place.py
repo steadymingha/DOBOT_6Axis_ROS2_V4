@@ -5,7 +5,10 @@ straight down) is held through every segment after the grasp.
 Segments:
   1. Approach        -> free joint-space RRT to a pre-grasp pose above the object
                         (CR7RRTPlanner.move_to_pose). No constraint needed yet.
-  2. Descend->grasp  -> vertical straight-line Cartesian servo down onto the box
+  2. Descend->grasp  -> after the in-gap J6 twist, a horizontal jaw-align servo
+                        (the grasp centre between the pads sits ~53 mm off the
+                        flange axis toward the fixed jaw), then a vertical
+                        straight-line Cartesian servo down onto the box
                         (pinocchio Jacobian, no RRT), then close gripper + attach.
   3. Lift            -> vertical straight-line Cartesian servo up to carry height.
   4. Carry           -> CBiRRT at constant carry height to above the place marker,
@@ -127,6 +130,13 @@ class CBiRRTPickPlace(CR7RRTPlanner):
     """CR7 node + helpers to run CBiRRT-planned, orientation-constrained motions."""
 
     def setup_planner(self):
+        # Attach the box to Link6, not gripper_base_link: gripper_attach_joint is
+        # FIXED, so the URDF->SDF conversion lumps gripper_base_link into Link6
+        # and the Gazebo model has no link by that name -- ATTACHLINK then fails
+        # with "Failed to find link". Link6 exists (child of revolute joint6) and
+        # is rigid with the gripper, so the attachment is equivalent.
+        self.gripper_link = 'Link6'
+
         # Loosen J1 only (J2..J6 keep the base-class limits). The shelf sits
         # roughly opposite the magazine in base_link, so reaching it needs J1 well
         # past the default -101 deg lower bound; the URDF hardware limit is +-6.27
@@ -428,9 +438,10 @@ class CBiRRTPickPlace(CR7RRTPlanner):
         # (origin xyz, full size). Mirrors gripper_base_link / gripper_finger_link.
         prims = {
             'gripper_base_link': [
-                ((0.058, 0.0, 0.085), (0.098, 0.092, 0.060)),   # body block
-                ((0.0, 0.0, 0.121), (0.121, 0.091, 0.012)),     # top plate
-                ((0.0, 0.0, 0.134), (0.082, 0.082, 0.013)),     # mount boss (cyl AABB)
+                ((0.0581, 0.0, 0.110), (0.098, 0.0912, 0.010)),  # fixed-jaw top beam
+                ((0.0983, 0.0, 0.080), (0.0177, 0.0912, 0.050)), # fixed-jaw column+pad
+                ((0.0, 0.0, 0.121), (0.121, 0.091, 0.012)),      # top plate
+                ((0.0, 0.0, 0.134), (0.082, 0.082, 0.013)),      # mount boss (cyl AABB)
             ],
             'gripper_finger_link': [
                 ((0.0025, 0.0, 0.0915), (0.027, 0.070, 0.071)),
@@ -498,6 +509,28 @@ class CBiRRTPickPlace(CR7RRTPlanner):
         except Exception as e:
             self.get_logger().warn(f"[{label}] jaw-alignment check failed: {e}")
 
+    def gripper_x_in_base(self, timeout=3.0):
+        """Live gripper +X axis (fixed-jaw direction) expressed in base_link,
+        projected onto the horizontal plane and normalised. Looked up via TF so
+        it is correct whichever way rotate_j6 actually twisted. Returns a unit
+        np.array, or None if the TF is unavailable or the axis is (near-)vertical
+        (gripper not pointing down -- no meaningful lateral direction)."""
+        try:
+            tf = self.tf_buffer.lookup_transform(
+                'base_link', 'gripper_base_link', rclpy.time.Time(),
+                timeout=Duration(seconds=timeout))
+        except Exception as e:
+            self.get_logger().error(f"[TF] gripper_base_link lookup failed: {e}")
+            return None
+        q = tf.transform.rotation
+        jaw_x = quat_to_R(q.x, q.y, q.z, q.w)[:, 0]
+        jaw_x[2] = 0.0                      # keep the lateral shift horizontal
+        n = np.linalg.norm(jaw_x)
+        if n < 0.5:
+            self.get_logger().error("[TF] gripper X is near-vertical; not pointing down?")
+            return None
+        return jaw_x / n
+
     def rotate_j6(self, angle, speed=0.8, label="yaw"):
         """Twist the gripper yaw by rotating J6 (wrist roll) in place by `angle`
         rad -- a pure single-joint move, NO IK. The other five joints are held, so
@@ -528,11 +561,34 @@ class CBiRRTPickPlace(CR7RRTPlanner):
 # noted. Many heights/clearances are first guesses to be tuned in the simulator.
 # ----------------------------------------------------------------------------
 
-# Gripper (Task 4): grip the 81 mm box WITHOUT hitting the neighbouring magazine.
-# We do not open symmetrically wide -- the fixed jaw goes into the ~10 cm gap
-# between the two magazines and only the moving finger closes from the open side.
-GRIPPER_OPEN = [0.07]     # finger retracted wide; clears the 81 mm box (joint limit 0.10)
-GRIPPER_CLOSE = [-0.036]  # light grip on the 81 mm box (do NOT fully close)
+# Gripper jaw geometry, MEASURED from the Blender meshes (base.dae/finger.dae),
+# in the gripper_base_link frame (flange face at z=0.1401, mounted flipped on
+# Link6, fixed jaw on +X). The grasp centre between the pads is ~53 mm off the
+# flange/tool-z axis, so the flange must NOT be centred over the box -- see the
+# jaw-align step (2c) in the cycle.
+#   finger joint axis -X: q > 0 opens;  pad gap = JAW_GAP_AT_ZERO + q
+JAW_FIXED_PAD_X = 0.0894     # fixed pad inner face (gripper x)
+JAW_MOVING_PAD_X0 = 0.0161   # moving pad inner face at finger joint q=0
+JAW_GAP_AT_ZERO = JAW_FIXED_PAD_X - JAW_MOVING_PAD_X0   # 73.3 mm
+PAD_BOTTOM_BELOW_FLANGE = 0.0821   # pad lower edge, metres below the flange face
+
+BOX_SHORT = 0.081            # box graspable width (short side)
+
+# Clearance between the fixed pad and the box face during the descend; closing
+# then pushes the box this far sideways until it rests against the fixed pad.
+FIXED_PAD_CLEARANCE = 0.003  # TUNE IN SIM (smaller = less push at close)
+
+GRIPPER_OPEN = [0.03]        # gap 103 mm; after jaw-align the moving pad still
+                             # clears the box face by ~19 mm on the descend, and
+                             # the shorter close sweep hits the box at ~12 mm/s
+                             # instead of ~32 mm/s (0.07), which the contact
+                             # solver tolerates much better
+CLOSE_SQUEEZE = 0.002        # close this much past the box width: real pad pressure,
+                             # so friction holds the box even if the link attacher
+                             # misses (gap == box width has ZERO grip force)
+GRIPPER_CLOSE = [BOX_SHORT - JAW_GAP_AT_ZERO - CLOSE_SQUEEZE]   # +0.0057
+                             # (the old -0.036 was for the pre-refit URDF with the
+                             # opposite joint axis; here it would crush 44 mm in)
 
 # Shelf pick target (Task 5): WORLD frame (from cr.world). Picked the box on the
 # 2nd shelf board (top z=0.90) because its centre (0.97) is the closest to the arm
@@ -560,17 +616,33 @@ PLACE_YAW = 0.0          # rad about base z for the place orientation, TUNE IN S
 # -90 (negate) if the jaw twists the wrong way in sim.
 GRIPPER_YAW_TWIST = math.radians(90)   # rad, J6 in-place rotation; sign TUNE IN SIM
 
-# Heights / clearances. These are GRIPPER-TIP (TCP) heights, matching the IK
-# target convention -- keep them low so Link6 stays inside the arm's reach.
-# (TUNE IN SIM.)
-GRASP_TCP_ABOVE = 0.05     # gripper-tip height above the box centre at grasp
-INSERT_LIFT = 0.10         # extra tip height while moving horizontally in the gap
+# Heights / clearances. These are TCP heights (Link6 + 0.12005 along tool z),
+# matching the IK-target convention -- keep them low so Link6 stays inside the
+# arm's reach. NOTE: 0.12005 is the OnRobot 2FG7 value; the Blender gripper's
+# pads bottom out only 0.0821 m below the flange, i.e. 38 mm ABOVE the TCP. So
+# the pad wrap depth below the box top is (0.07 = box half height):
+#   wrap = 0.07 - (0.12005 - PAD_BOTTOM_BELOW_FLANGE) - GRASP_TCP_ABOVE
+#        = 0.032 - GRASP_TCP_ABOVE
+# (TUNE IN SIM: raise GRASP_TCP_ABOVE to descend less.)
+GRASP_TCP_ABOVE = 0.015    # TCP above box centre at grasp -> pads wrap ~17 mm
+                           # (0.005/27 mm clipped the box and ejected it)
+INSERT_TCP_ABOVE = 0.105   # TCP above box centre while travelling inside the gap.
+                           # ABSOLUTE (relative to the BOX, not to GRASP_TCP_ABOVE)
+                           # so tuning the grasp depth does not shift the insert
+                           # corridor: it is tight against both the shelf gap and
+                           # the arm's reach (10 mm higher already went singular at
+                           # the end of the 250 mm insert). The descend/ascend
+                           # distance is derived: INSERT_TCP_ABOVE - GRASP_TCP_ABOVE.
 PREGRASP_BACK = 0.25       # start this far in front of the shelf (along -insertion);
                            # keep it large enough that the pre-grasp (RRT goal) is
                            # OUTSIDE the shelf, so the RRT never routes through the
                            # shelf -- only the straight insert servo enters it
 POCKET_HOVER = 0.18        # tip height above the pocket surface to hover before placing
-PLACE_TCP_ABOVE = 0.06     # tip height above the pocket surface at release
+PLACE_TCP_ABOVE = 0.08     # TCP above the pocket surface at release. The box
+                           # bottom hangs 0.075 below the TCP (centre = TCP -
+                           # GRASP_TCP_ABOVE, half height 0.07), so 0.08 drops
+                           # the box from 5 mm; 0.06 would press it 15 mm into
+                           # the surface while still attached.
 # Folded standby pose: used both at startup and after each cycle, so the arm
 # stays tucked low until a trigger moves it out to the shelf. J3 kept at -105
 # (not -115): past ~-112 the gripper folds into the magazine (cube rear block)
@@ -613,13 +685,8 @@ def shelf_to_base_cycle(node, box_world, pocket_y):
     grasp_quat = quat_mul(quat_about_z(phi), DOWN)
     place_quat = quat_mul(quat_about_z(PLACE_YAW), DOWN)
 
-    grasp_xyz = box + np.array([0.0, 0.0, GRASP_TCP_ABOVE])
-    pregrasp_xyz = grasp_xyz - insert_dir * PREGRASP_BACK + np.array([0, 0, INSERT_LIFT])
-    ## MH DEBUG start##
-    pregrasp_xyz[0] = pregrasp_xyz[0] + 0.005
-    pregrasp_xyz[2] = pregrasp_xyz[2] - 0.045
-
-    ## MH DEBUG end##
+    pregrasp_xyz = box - insert_dir * PREGRASP_BACK + np.array([0, 0, INSERT_TCP_ABOVE])
+    descend_dist = INSERT_TCP_ABOVE - GRASP_TCP_ABOVE   # gap height -> grasp height
     pocket_hover_xyz = np.array([POCKET_X, pocket_y, POCKET_SURFACE_Z + POCKET_HOVER])
 
     # Show exactly what we are aiming at (box/pre-grasp in base_link + the shelf
@@ -647,24 +714,45 @@ def shelf_to_base_cycle(node, box_world, pocket_y):
     if not node.rotate_j6(GRIPPER_YAW_TWIST, label="yaw-twist"):
         node.get_logger().error("[cycle] step 2b yaw twist failed"); return False
 
+    # 2c. Jaw-align: the grasp centre between the pads is ~53 mm toward the fixed
+    # jaw (+gripper X) from the flange axis, so shift the flange AWAY from the
+    # fixed-jaw side until the fixed pad is FIXED_PAD_CLEARANCE from the box
+    # face. Done AFTER the twist, along the live (TF) jaw axis, so it stays
+    # correct even when rotate_j6 had to flip the twist direction.
+    print("===== [2c/10] Jaw-align (fixed pad to box face) =====")
+    time.sleep(0.3)   # let TF catch up with the finished J6 move
+    jaw_x = node.gripper_x_in_base()
+    if jaw_x is None:
+        node.get_logger().error("[cycle] step 2c jaw axis unavailable"); return False
+    lateral = JAW_FIXED_PAD_X - FIXED_PAD_CLEARANCE - BOX_SHORT / 2.0   # ~46 mm
+    if not node.linear_servo(-lateral * jaw_x, label="jaw-align"):
+        node.get_logger().error("[cycle] step 2c jaw align failed"); return False
+
     # 3. Linear descend onto the box.
     print("===== [3/10] Linear descend onto box =====")
     # Diagnostic: which gripper/wrist link (if any) sits below the box top now,
     # and is the jaw azimuth aligned to the box's graspable (short) side?
     node.log_gripper_box_clearance(box, row_dir, insert_dir, label="pre-descend")
-    if not node.linear_servo([0.0, 0.0, -INSERT_LIFT], label="descend"):
+    if not node.linear_servo([0.0, 0.0, -descend_dist], label="descend"):
         node.get_logger().error("[cycle] step 3 descend failed"); return False
 
-    # 4. Close gripper + attach.
+    # 4. Close gripper + attach. The attach result is the load-bearing part:
+    # without the attacher joint the squeeze-only grip slips during the carry,
+    # so a failed attach aborts the cycle instead of dropping the box later.
     print("===== [4/10] Grip + attach =====")
     node.control_gripper(GRIPPER_CLOSE)
     node.object_model, node.object_link = SHELF_BOX_MODEL, SHELF_BOX_LINK
-    node.attach_box()
+    if not node.attach_box():
+        node.get_logger().error(
+            "[cycle] step 4 ATTACHLINK failed (check model/link names and the "
+            "link-attacher plugin); releasing and aborting")
+        node.control_gripper(GRIPPER_OPEN)
+        return False
     time.sleep(0.5)
 
     # 5. Linear ascend back to gap height.
     print("===== [5/10] Linear ascend =====")
-    if not node.linear_servo([0.0, 0.0, INSERT_LIFT], label="ascend"):
+    if not node.linear_servo([0.0, 0.0, descend_dist], label="ascend"):
         node.get_logger().error("[cycle] step 5 ascend failed"); return False
 
     # 6. Linear retreat out of the shelf.
