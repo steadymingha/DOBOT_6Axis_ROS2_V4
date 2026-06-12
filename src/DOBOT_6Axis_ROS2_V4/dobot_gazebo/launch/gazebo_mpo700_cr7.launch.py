@@ -52,7 +52,12 @@ def generate_launch_description():
     spawn_entity = Node(package='gazebo_ros', executable='spawn_entity.py',
                         arguments=['-topic', 'robot_description',
                                    '-entity', robot_name_in_model,
-                                   '-x', '0', '-y', '0', '-z', '0.0'],
+                                   # AGV "sweet spot" in front of the shelf where the
+                                   # arm can fully insert into the gap. Measured from
+                                   # Gazebo world pose (gz model -m cr7_on_mpo700 -p)
+                                   # after teleoping to the working position. yaw ~ 0.
+                                   # To revert to origin, restore -x '0' -y '0'.
+                                   '-x', '0.849', '-y', '-0.072', '-z', '0.0'],
                         output='screen')
 
     # Joint state broadcaster

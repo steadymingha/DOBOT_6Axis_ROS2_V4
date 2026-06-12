@@ -29,56 +29,98 @@
        Heights are initial estimates (mpo_base_link frame) to be fine-tuned
        visually in Gazebo after the first run. -->
   <link name="cube_link">
+    <!-- Base anchor (cube_link). The real instability is NOT weight: gravity is
+         already off on the base and all arm links, so there is no restoring force.
+         When a position-controlled arm joint accelerates a link, Newton's 3rd law
+         feeds an equal-and-opposite REACTION torque back into the base. The
+         planar-move plugin only fixes x/y/yaw kinematically, leaving roll/pitch/z
+         to physics, so a small base roll/pitch inertia lets that reaction torque
+         tip the AGV (alpha = tau / I). Fix: give the base a HUGE rotational
+         inertia so the same reaction torque produces negligible angular
+         acceleration -> the base stays level while the arm moves. The low CoM and
+         large mass keep it planted as ballast. NONE of this affects the pinocchio
+         IK/collision solver (cube_link is a fixed, locked link, so its inertia
+         never enters the purely kinematic IK or collision checks); it only
+         changes Gazebo physics. -->
     <inertial>
-      <mass value="2.0"/>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <inertia ixx="0.04693" ixy="0" ixz="0" iyy="0.09526" iyz="0" izz="0.13469"/>
+      <mass value="500.0"/>
+      <origin xyz="0 0 -0.35" rpy="0 0 0"/>
+      <inertia ixx="2000.0" ixy="0" ixz="0" iyy="2000.0" iyz="0" izz="2000.0"/>
     </inertial>
-    <!-- Rear half (-X): robot mounting area, 0.3705 x 0.509 x 0.15 m -->
+    <!-- Front half (+X): robot mounting area, 0.3705 x 0.509 x 0.34 m
+         (raised to put base_link 680 mm above the floor) -->
     <visual>
-      <origin xyz="-0.18525 0 0" rpy="0 0 0"/>
+      <origin xyz="0.18525 0 0" rpy="0 0 0"/>
       <geometry>
-        <box size="0.3705 0.509 0.15"/>
+        <box size="0.3705 0.509 0.34"/>
       </geometry>
       <material name="cube_gray">
         <color rgba="0.25 0.25 0.25 1"/>
       </material>
     </visual>
     <collision>
-      <origin xyz="-0.18525 0 0" rpy="0 0 0"/>
+      <origin xyz="0.18525 0 0" rpy="0 0 0"/>
       <geometry>
-        <box size="0.3705 0.509 0.15"/>
+        <box size="0.3705 0.509 0.34"/>
       </geometry>
     </collision>
-    <!-- Front half (+X): magazine pocket, 0.3705 x 0.509 x 0.10 m, recessed 5 cm from top -->
+    <!-- Rear half (-X): magazine pocket, 0.3705 x 0.509 x 0.29 m, recessed 5 cm from top -->
     <visual>
-      <origin xyz="0.18525 0 -0.025" rpy="0 0 0"/>
+      <origin xyz="-0.18525 0 -0.025" rpy="0 0 0"/>
       <geometry>
-        <box size="0.3705 0.509 0.10"/>
+        <box size="0.3705 0.509 0.29"/>
       </geometry>
       <material name="cube_gray"/>
     </visual>
     <collision>
-      <origin xyz="0.18525 0 -0.025" rpy="0 0 0"/>
+      <origin xyz="-0.18525 0 -0.025" rpy="0 0 0"/>
       <geometry>
-        <box size="0.3705 0.509 0.10"/>
+        <box size="0.3705 0.509 0.29"/>
       </geometry>
     </collision>
+    <!-- Magazine pocket markers: 4 visual-only rectangles (0.236 x 0.081 m,
+         the box bottom face) on the rear-half top surface (cube z=0.120),
+         arrayed along Y with 11.8 cm pitch (8.1 cm pocket + 3.7 cm gap),
+         centered on the rear half (cube x=-0.18525). No collision, so
+         planning/physics are unaffected. These mark place target 2, which is
+         constant in base_link: x=0.3705, y in {+-0.177,+-0.059}, z=-0.05. -->
+    <visual>
+      <origin xyz="-0.18525 0.177 0.1215" rpy="0 0 0"/>
+      <geometry><box size="0.236 0.081 0.003"/></geometry>
+      <material name="pocket_marker"><color rgba="0.1 0.9 0.2 0.6"/></material>
+    </visual>
+    <visual>
+      <origin xyz="-0.18525 0.059 0.1215" rpy="0 0 0"/>
+      <geometry><box size="0.236 0.081 0.003"/></geometry>
+      <material name="pocket_marker"/>
+    </visual>
+    <visual>
+      <origin xyz="-0.18525 -0.059 0.1215" rpy="0 0 0"/>
+      <geometry><box size="0.236 0.081 0.003"/></geometry>
+      <material name="pocket_marker"/>
+    </visual>
+    <visual>
+      <origin xyz="-0.18525 -0.177 0.1215" rpy="0 0 0"/>
+      <geometry><box size="0.236 0.081 0.003"/></geometry>
+      <material name="pocket_marker"/>
+    </visual>
   </link>
 
   <!-- AGV body top -> cube center.
-       MPO-700 body mesh top = mpo_base_link + 0.348 m.
-       z = body_top(0.348 rounded to 0.35) + cube_half(0.075) = 0.425
-       => cube bottom rests on the body top, CR7 base_link lands at world z=0.50. -->
+       MPO-700 body mesh top = mpo_base_link + 0.35 m (cube bottom rests here).
+       Robot section height 0.34 m (half 0.17) => cube center z = 0.35 + 0.17 = 0.520.
+       CR7 base_link lands at mpo z = 0.520 + 0.17 = 0.690; floor sits at mpo z = +0.01,
+       so floor -> base_link = 0.680 m (target). -->
   <joint name="cube_joint" type="fixed">
-    <origin xyz="0 0 0.425" rpy="0 0 0"/>
+    <origin xyz="0 0 0.520" rpy="0 0 0"/>
     <parent link="mpo_base_link"/>
     <child link="cube_link"/>
   </joint>
 
-  <!-- Cube top -> CR7 base_link; arm on rear half (-X), rotated 180 deg to face magazine pocket (+X). -->
+  <!-- Cube top -> CR7 base_link; arm on front half (+X), current posture preserved.
+       z = robot-section half height = 0.17 (cube top surface). -->
   <joint name="arm_mount_joint" type="fixed">
-    <origin xyz="-0.18525 0 0.075" rpy="0 0 3.14159"/>
+    <origin xyz="0.18525 0 0.17" rpy="0 0 3.14159"/>
     <parent link="cube_link"/>
     <child link="base_link"/>
   </joint>
@@ -283,6 +325,19 @@
     <limit lower="-6.27" upper="6.27" effort="300" velocity="100" />
   </joint>
 
+  <!-- Base + cube: no gravity. The AGV is velocity-controlled by the planar-move
+       plugin (it does not rely on weight/wheel friction) and the arm is
+       position-controlled, so gravity on these heavy bodies only adds tipping /
+       contact-instability with nothing holding roll-pitch. Turning it off makes
+       the robot unable to tip while driving or folding the arm. -->
+  <gazebo reference="mpo_base_link">
+    <gravity>false</gravity>
+  </gazebo>
+  <gazebo reference="cube_link">
+    <gravity>false</gravity>
+    <selfCollide>true</selfCollide>
+  </gazebo>
+
   <!-- CR7 links: no gravity (arm is position-controlled), self collision on -->
   <gazebo reference="base_link">
     <gravity>false</gravity>
@@ -328,25 +383,21 @@
         <mesh filename="file:///home/user/dobot_ws/src/blender/gripper/meshes/base.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin xyz="0 0 0.1336" rpy="0 0 0"/>
-      <geometry><cylinder radius="0.0675" length="0.0214"/></geometry>
+    <!-- Collision refit to hug base.dae visual parts (link frame, node tf applied).
+         Old primitives were phantom jaws reaching down to z=-0.116 where the visual
+         has nothing, pushing the shelf box without visual contact. The small side
+         tab (Cube_099) lies fully inside the body block, so it is omitted. -->
+    <collision>  <!-- body block (Cube_088): X[0.009,0.107] Y[+-0.046] Z[0.055,0.115] -->
+      <origin xyz="0.058 0 0.085" rpy="0 0 0"/>
+      <geometry><box size="0.098 0.092 0.060"/></geometry>
     </collision>
-    <collision>
-      <origin xyz="0 0 0.1129" rpy="0 0 0"/>
-      <geometry><box size="0.20 0.15 0.020"/></geometry>
+    <collision>  <!-- top plate (Cube_071): X[+-0.061] Y[+-0.046] Z[0.115,0.127] -->
+      <origin xyz="0 0 0.121" rpy="0 0 0"/>
+      <geometry><box size="0.121 0.091 0.012"/></geometry>
     </collision>
-    <collision>
-      <origin xyz="0.0125 0 0.0900" rpy="0 0 0"/>
-      <geometry><box size="0.225 0.15 0.0258"/></geometry>
-    </collision>
-    <collision>
-      <origin xyz="0.0510 0 -0.0193" rpy="0 0 0"/>
-      <geometry><box size="0.021 0.15 0.1928"/></geometry>
-    </collision>
-    <collision>
-      <origin xyz="0.0362 0 0.0071" rpy="0 0 0"/>
-      <geometry><box size="0.0086 0.14 0.12"/></geometry>
+    <collision>  <!-- mount boss (Cylinder_004): r0.041 at Z[0.127,0.140] (flange face) -->
+      <origin xyz="0 0 0.134" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.041" length="0.013"/></geometry>
     </collision>
   </link>
 
@@ -368,13 +419,13 @@
         <mesh filename="file:///home/user/dobot_ws/src/blender/gripper/meshes/finger.dae"/>
       </geometry>
     </visual>
+    <!-- Collision refit to finger.dae visual (Cube_096 jaw + Cube_100 tab) union AABB:
+         X[-0.011,0.016] Y[+-0.035] Z[0.056,0.127]. Old box (0.064x0.129x0.160 at
+         x=-0.073,z=0.023) was a phantom offset ~0.07 m in both X and Z from the
+         visual finger, which is what scraped the box during the insert. -->
     <collision>
-      <origin xyz="-0.0727 0 0.0229" rpy="0 0 0"/>
-      <geometry><box size="0.0643 0.1286 0.1601"/></geometry>
-    </collision>
-    <collision>
-      <origin xyz="-0.0362 0 0.0071" rpy="0 0 0"/>
-      <geometry><box size="0.0086 0.10 0.10"/></geometry>
+      <origin xyz="0.0025 0 0.0915" rpy="0 0 0"/>
+      <geometry><box size="0.027 0.070 0.071"/></geometry>
     </collision>
   </link>
 
@@ -383,7 +434,7 @@
     <parent link="gripper_base_link"/>
     <child link="gripper_finger_link"/>
     <axis xyz="-1 0 0"/>
-    <limit lower="-0.07" upper="0.05" effort="60" velocity="0.1"/>
+    <limit lower="-0.07" upper="0.10" effort="60" velocity="0.1"/>
     <dynamics damping="5.0" friction="1.0"/>
   </joint>
 
@@ -410,13 +461,16 @@
     <hardware>
       <plugin>gazebo_ros2_control/GazeboSystem</plugin>
     </hardware>
+    <!-- Spawn in the folded standby pose (J1=-8, J2=-39, J3=-105 deg) so the arm
+         starts tucked and never has to fold from the upright spawn pose (which
+         swung it into the shelf). -->
     <joint name="joint1">
       <command_interface name="position">
         <param name="min">-1</param>
         <param name="max">1</param>
       </command_interface>
       <state_interface name="position">
-        <param name="initial_value">0.0</param>
+        <param name="initial_value">-0.13963</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>
@@ -426,7 +480,7 @@
         <param name="max">1</param>
       </command_interface>
       <state_interface name="position">
-        <param name="initial_value">0.0</param>
+        <param name="initial_value">-0.68068</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>
@@ -436,7 +490,7 @@
         <param name="max">1</param>
       </command_interface>
       <state_interface name="position">
-        <param name="initial_value">0.0</param>
+        <param name="initial_value">-1.83260</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>

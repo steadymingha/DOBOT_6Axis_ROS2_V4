@@ -18,7 +18,7 @@ GAZEBO_PID=$!
 echo "Gazebo PID: $GAZEBO_PID"
 
 echo "Gazebo initialization waiting (10 seconds)..."
-sleep 10
+sleep 1
 
 echo "=== [2/2] MoveIt + RViz starting ==="
 ros2 launch dobot_moveit moveit_gazebo.launch.py &

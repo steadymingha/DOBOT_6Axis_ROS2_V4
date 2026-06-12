@@ -3,9 +3,10 @@
   <model name='shelf'>
     <pose>0 0 0 0 0 0</pose>
     <static>true</static>
-    <!-- 3-tier shelf, real-world scale (meters), Z-up.
-         Board top surfaces at z = 0.30 / 0.60 / 0.90 m (30 cm spacing).
-         Frame = 4 corner posts. Footprint 2.0 x 0.30 m, total height 0.95 m.
+    <!-- 4-tier shelf, real-world scale (meters), Z-up.
+         Board top surfaces at z = 0.40 / 0.90 / 1.40 / 1.90 m (bottom 10 cm
+         off the floor, 50 cm spacing).
+         Frame = 4 corner posts. Footprint 2.0 x 0.30 m, total height 1.95 m.
          Mesh URIs use model:// for Gazebo Classic 11 compatibility
          (needs GAZEBO_MODEL_PATH to contain the design_gz directory). -->
     <link name='shelf_link'>

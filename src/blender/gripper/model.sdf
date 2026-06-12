@@ -1,20 +1,21 @@
 <?xml version='1.0'?>
 <sdf version='1.7'>
   <!-- Fixed-jaw parallel gripper (flange Ø82 mm).
-       Frame: tool axis = world Z (flange axis), grip centred on Z (x=y=0) so a
-       held box hangs directly under the flange (minimal wrist moment).
-       Flange mount face (top) is at z = +0.1401 m. Attach the wrist there.
+       Frame: tool axis = world Z (flange axis). Flange mount face (top) at
+       z = +0.1401 m  -> attach the robot wrist there.
+       Grip line is at x ~= +0.053 m (jaws sit forward of the flange axis).
        One actuated DOF: 'finger_joint' (prismatic +X) drives the pusher to clamp
-       the workpiece against the fixed L-jaw. 0 = clamped on the 8.1 cm box. -->
+       the workpiece against the fixed L-jaw. 0 = clamped on the 8.1 cm box
+       (gap ~83 mm); +X closes further, -X opens. -->
   <model name='fixed_jaw_gripper'>
 
     <!-- ===== Fixed part: flange + body + integral L-jaw + fixed pad ===== -->
     <link name='base_link'>
       <inertial>
-        <pose>0.01 0 0.09 0 0 0</pose>
+        <pose>0.03 0 0.09 0 0 0</pose>
         <mass>0.4</mass>
         <inertia>
-          <ixx>0.0009</ixx><iyy>0.0014</iyy><izz>0.0011</izz>
+          <ixx>0.0005</ixx><iyy>0.0012</iyy><izz>0.0012</izz>
           <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
         </inertia>
       </inertial>
@@ -32,27 +33,27 @@
         <geometry><box><size>0.1214 0.0912 0.0121</size></box></geometry>
       </collision>
       <collision name='plate_col'>
-        <pose>0.0235 0 0.1100 0 0 0</pose>
-        <geometry><box><size>0.1366 0.0912 0.010</size></box></geometry>
+        <pose>0.0581 0 0.1100 0 0 0</pose>
+        <geometry><box><size>0.0980 0.0912 0.010</size></box></geometry>
       </collision>
       <collision name='lip_col'>
-        <pose>0.0469 0 0.0550 0 0 0</pose>
-        <geometry><box><size>0.0127 0.0912 0.100</size></box></geometry>
+        <pose>0.1008 0 0.0800 0 0 0</pose>
+        <geometry><box><size>0.0127 0.0912 0.050</size></box></geometry>
       </collision>
       <collision name='pad_fixed_col'>
-        <pose>0.0380 0 0.0550 0 0 0</pose>
-        <geometry><box><size>0.005 0.090 0.100</size></box></geometry>
+        <pose>0.0919 0 0.0800 0 0 0</pose>
+        <geometry><box><size>0.005 0.080 0.044</size></box></geometry>
         <surface><friction><ode><mu>1.2</mu><mu2>1.2</mu2></ode></friction></surface>
       </collision>
     </link>
 
-    <!-- ===== Moving part: pusher + body connector + moving pad ===== -->
+    <!-- ===== Moving part: pusher (+ body connector) + moving pad ===== -->
     <link name='finger_link'>
       <inertial>
-        <pose>-0.05 0 0.085 0 0 0</pose>
+        <pose>0 0 0.085 0 0 0</pose>
         <mass>0.1</mass>
         <inertia>
-          <ixx>0.00006</ixx><iyy>0.000025</iyy><izz>0.000045</izz>
+          <ixx>0.00008</ixx><iyy>0.000046</iyy><izz>0.000045</izz>
           <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
         </inertia>
       </inertial>
@@ -61,17 +62,13 @@
         <geometry><mesh><uri>model://gripper/meshes/finger.dae</uri></mesh></geometry>
       </visual>
 
-      <collision name='pusher_col'>
-        <pose>-0.0515 0 0.0811 0 0 0</pose>
-        <geometry><box><size>0.022 0.070 0.050</size></box></geometry>
+      <collision name='finger_col'>
+        <pose>0.0001 0 0.0916 0 0 0</pose>
+        <geometry><box><size>0.022 0.070 0.071</size></box></geometry>
         <surface><friction><ode><mu>1.2</mu><mu2>1.2</mu2></ode></friction></surface>
       </collision>
-      <collision name='rod_col'>
-        <pose>-0.0503 0 0.1166 0 0 0</pose>
-        <geometry><box><size>0.0195 0.040 0.021</size></box></geometry>
-      </collision>
       <collision name='pad_moving_col'>
-        <pose>-0.0380 0 0.0810 0 0 0</pose>
+        <pose>0.0136 0 0.0810 0 0 0</pose>
         <geometry><box><size>0.005 0.060 0.038</size></box></geometry>
         <surface><friction><ode><mu>1.2</mu><mu2>1.2</mu2></ode></friction></surface>
       </collision>
@@ -79,8 +76,8 @@
 
     <!-- ===== Actuated DOF =====
          +X = closing (pusher toward the L-jaw), -X = opening.
-         0 = clamped on the 8.1 cm box; lower=-0.05 opens ~5 cm,
-         upper=+0.07 closes fully on an empty grip. -->
+         0 = clamped on the 8.1 cm box (gap ~83 mm); upper=+0.07 closes to ~13 mm
+         gap (grip force / smaller parts), lower=-0.05 opens ~50 mm more. -->
     <joint name='finger_joint' type='prismatic'>
       <parent>base_link</parent>
       <child>finger_link</child>

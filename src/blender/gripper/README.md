@@ -25,11 +25,12 @@ Editable source: `../gripper_source.blend` (Blender). Re-export `base.dae` /
   - Position `0` = clamped on the 8.1 cm box.
   - Limits: lower `−0.05` (open ~5 cm), upper `+0.07` (fully closed, empty).
   - effort 60 N, velocity 0.1 m/s.
-- **Tool frame:** grip is centred on the Z axis (x = y = 0) so a held box hangs
-  directly under the flange (minimal wrist moment). Flange **mount face** is the
-  top of the flange at **z = +0.1401 m** in the model frame.
-- **Dimensions:** flange Ø82 mm; integral L-jaw (1 cm plate + 10 cm box-contact
-  lip + camera shelf protruding +25 mm past the body front); body 121×91×12 mm.
+- **Tool frame:** Flange **mount face** is the top of the flange at
+  **z = +0.1401 m** in the model frame. The grip line sits at **x ≈ +0.053 m**
+  (jaws are forward of the flange axis), so a held box is slightly ahead of the
+  flange — keep that moment arm in mind when sizing the wrist payload.
+- **Dimensions:** flange Ø82 mm; integral L-jaw (1 cm plate + **5 cm** box-contact
+  lip + camera shelf); body 121×91×12 mm. Clamp gap at joint 0 ≈ 83 mm (8.1 cm box).
 
 ## Mounting to the arm
 Attach with a **fixed joint** between the arm's wrist/tool link and this model's
