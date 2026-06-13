@@ -1,4 +1,0 @@
-# SubmitInspectionReport.srv
-
-builtin_interfaces/Time timestamp
-ariac_interfaces/InspectionReport report

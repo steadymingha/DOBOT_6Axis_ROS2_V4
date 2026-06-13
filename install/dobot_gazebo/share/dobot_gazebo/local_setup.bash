@@ -1,1 +1,0 @@
-/home/user/dobot_ws/build/dobot_gazebo/ament_cmake_environment_hooks/local_setup.bash

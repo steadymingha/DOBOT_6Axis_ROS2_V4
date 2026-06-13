@@ -143,6 +143,15 @@ class CBiRRTPickPlace(CR7RRTPlanner):
         # rad so this stays inside it. Done here (not in test_w_gripper) so that
         # file stays unmodified.
         self.joint_limits[0] = (math.radians(-180), math.radians(90))
+        # Allow J4 to go negative. The base limit [0,120] (a software clamp; the
+        # hardware is +-6.27 rad and the original was (-pi,pi)) forbids the
+        # ELBOW-DOWN shelf-grasp branch (J4~-11), which is the only branch in the
+        # pocket's elbow/wrist family. Without it the high shelf forces elbow-UP
+        # and the low pocket elbow-DOWN, so the constrained carry must flip the
+        # elbow+wrist (J3 ~200 deg, J5 ~180 deg) -- which CBiRRT cannot do on the
+        # tool-down manifold and is what stalled the carry. Widened so the pick
+        # can grasp in the pocket-compatible branch (see move_to_pose_ref).
+        self.joint_limits[3] = (math.radians(-60), math.radians(120))
 
         self.cbirrt = ConstrainedPlanner(xacro_path=XACRO_PATH)
         # pinocchio collision model of the WHOLE robot (arm + cube + AGV +
@@ -273,7 +282,8 @@ class CBiRRTPickPlace(CR7RRTPlanner):
         return self.compute_ik_ordered(target_pose, max_retries=max_retries)
 
     def compute_ik_ordered(self, target_pose: PoseStamped, max_retries=200,
-                           want_candidates=12, near_attempts=80, near_sigma=0.25):
+                           want_candidates=12, near_attempts=80, near_sigma=0.25,
+                           return_all=False):
         """IK returning joints in joint1..joint6 order, within limits (or None).
 
         Uses the reachability map's OWN inverse_kinematics (self.ik_model) so a
@@ -282,7 +292,13 @@ class CBiRRTPickPlace(CR7RRTPlanner):
         desired gripper TCP (Link6 + TCP_OFFSET along the tool axis), matching the
         map's convention. We seed near the current pose first (nearest IK branch
         -> short motion), then random restarts, gate every solution by the
-        combined self/cube/AGV collision model, and return the nearest one."""
+        combined self/cube/AGV collision model, and return the nearest one.
+        With return_all=True, returns the whole candidate list sorted by joint
+        distance, so a caller can apply its own branch criterion. NOTE: when the
+        start faces away from the goal (shelf behind the base vs pocket in
+        front), near-seeding can make EVERY candidate the shoulder-flipped
+        branch -- do not rely on candidate diversity to pick a J1 direction;
+        the carry computes its J1 swing from the TCP azimuth instead."""
         cur = np.array(self.current_joints) if self.current_joints is not None else None
         lo = np.array([l[0] for l in self.joint_limits])
         hi = np.array([l[1] for l in self.joint_limits])
@@ -328,24 +344,70 @@ class CBiRRTPickPlace(CR7RRTPlanner):
                 f"{np.linalg.norm(np.array(candidates[0]) - cur):.3f}")
         else:
             self.get_logger().info(f"[IK] {len(candidates)} candidates")
+        if return_all:
+            return candidates
         return candidates[0]
 
-    def move_constrained(self, target_pose: PoseStamped, speed=0.6, time_limit=45.0):
-        """Move to target_pose with the end-effector orientation held fixed at the
-        target (= grasp) orientation, using CBiRRT. Blocks until execution ends."""
+    def _twist_pose_180(self, pose: PoseStamped) -> PoseStamped:
+        """Same pose rotated 180 deg about its OWN tool z-axis. A parallel jaw is
+        symmetric under this flip (the box footprint is identical), so it is an
+        equally valid place orientation -- and its tool z (down) is unchanged, so
+        it stays on the same tilt-only constraint manifold."""
+        q = pose.pose.orientation
+        R2 = quat_to_R(q.x, q.y, q.z, q.w) @ np.diag([-1.0, -1.0, 1.0])
+        quat = pin.Quaternion(R2)
+        quat.normalize()
+        p = pose.pose.position
+        return pose_at((p.x, p.y, p.z), (quat.x, quat.y, quat.z, quat.w))
+
+    def move_constrained(self, target_pose: PoseStamped, speed=0.6, time_limit=45.0,
+                         yaw_free=True):
+        """Move to target_pose holding the tool pointing DOWN (the tilt-only CBiRRT
+        constraint keeps tool z fixed the whole way; yaw about the tool axis is
+        free). Blocks until execution ends.
+
+        The carry constraint is yaw-free, so the GOAL must be too: solving a single
+        fixed-yaw IK pinned J6 and made it wind ~180 deg (grasp yaw + in-gap twist
+        vs PLACE_YAW=0), which is what stalled the planner. With yaw_free we take
+        the goal config NEAREST the current pose across both box-symmetric place
+        orientations (yaw, yaw+180), so J6 does not wind and only the unavoidable
+        J1/elbow reconfiguration (~the azimuth gap) remains for CBiRRT to bridge."""
         while self.current_joints is None:
             self.get_logger().info("Waiting for /joint_states...")
             time.sleep(0.5)
 
-        goal_q = self.compute_ik_ordered(target_pose)
-        if goal_q is None:
+        start_q = self.current_joints.tolist()
+        start = np.array(start_q)
+        poses = [target_pose]
+        if yaw_free:
+            poses.append(self._twist_pose_180(target_pose))
+        cands = []
+        for p in poses:
+            c = self.compute_ik_ordered(p, return_all=True)
+            if c:
+                cands.extend(c)
+        if not cands:
             self.get_logger().error("[CBiRRT] goal IK failed")
             return False
+        goal_q = min(cands, key=lambda q: np.linalg.norm(np.array(q) - start))
+        gq = np.array(goal_q)
+        self.get_logger().info(
+            f"[CBiRRT] goal: nearest of {len(cands)} cand(s), "
+            f"joint dist={np.linalg.norm(gq - start):.2f} rad")
+        # Diagnostic: WHERE is the gap? J1-dominated -> azimuth/deployment; J6 ->
+        # yaw winding; J2-J5 -> elbow/wrist flip (often a collision-forced branch).
+        self.get_logger().info(
+            "[CBiRRT] start(deg)= " + ",".join(f"{math.degrees(v):+.0f}" for v in start))
+        self.get_logger().info(
+            "[CBiRRT] goal (deg)= " + ",".join(f"{math.degrees(v):+.0f}" for v in gq))
+        self.get_logger().info(
+            "[CBiRRT] per-joint gap(deg)= " + ",".join(
+                f"J{i+1} {math.degrees(g - s):+.0f}" for i, (g, s) in enumerate(zip(gq, start))))
 
+        # Tilt reference = tool z (down); identical for a pose and its 180-twin, so
+        # set_reference from the target is correct regardless of which goal won.
         q = target_pose.pose.orientation
         self.cbirrt.set_reference((q.x, q.y, q.z, q.w))
-
-        start_q = self.current_joints.tolist()
         self.get_logger().info("[CBiRRT] planning (orientation held)...")
         path = self.cbirrt.plan(start_q, goal_q, self.is_state_valid, self.joint_limits,
                                 time_limit=time_limit)
@@ -359,6 +421,30 @@ class CBiRRTPickPlace(CR7RRTPlanner):
             path = [start_q] + path
         self.get_logger().info(f"[CBiRRT] path: {len(path)} waypoints")
         return self.execute_path(path, speed=speed)
+
+    def move_to_pose_ref(self, target_pose: PoseStamped, ref_q):
+        """Like move_to_pose, but choose the goal IK branch NEAREST ref_q (not the
+        branch nearest the current pose), then free-RRT to it. Used for the shelf
+        pre-grasp so the box is grasped in the SAME elbow/wrist family as the
+        pocket place (ref_q = the pocket config). The constrained carry then never
+        has to flip the elbow, which is what stalled it. Blocks."""
+        while self.current_joints is None:
+            self.get_logger().info("Waiting for /joint_states...")
+            time.sleep(0.5)
+        cands = self.compute_ik_ordered(target_pose, return_all=True)
+        if not cands:
+            self.get_logger().error("[pick] pre-grasp IK failed")
+            return False
+        ref = np.array(ref_q)
+        goal = min(cands, key=lambda q: np.linalg.norm(np.array(q) - ref))
+        self.get_logger().info(
+            f"[pick] pre-grasp branch nearest pocket (of {len(cands)}): "
+            f"J3={math.degrees(goal[2]):+.0f} J5={math.degrees(goal[4]):+.0f} deg")
+        path = self.plan_rrt(self.current_joints, goal)
+        if not path:
+            self.get_logger().error("[pick] pre-grasp RRT failed")
+            return False
+        return self.execute_trajectory(path)
 
     def execute_path(self, path, speed=0.6):
         """Send joint waypoints (joint1..joint6) as one trajectory. Time between
@@ -555,6 +641,38 @@ class CBiRRTPickPlace(CR7RRTPlanner):
         self.get_logger().error(f"[{label}] J6 twist collides both ways; aborting")
         return False
 
+    def move_single_joint(self, idx, target, speed=0.5, label="joint", n_checks=24):
+        """Move ONE joint to an absolute `target` (rad), holding the other five.
+        Validity-checks `n_checks` interpolated configs along the sweep (unlike
+        rotate_j6, which only checks the endpoint -- a long J1 swing passes near
+        the shelf/cube, so the path itself must be clear). Blocks.
+
+        Used for the carry: with the gripper pointing straight DOWN, a J1 move
+        (base z) or a J6 move (tool axis) preserves the down orientation EXACTLY,
+        so the big J1/J6 part of the shelf->pocket reconfiguration can be done by
+        deterministic single-joint moves and the constrained CBiRRT only has to
+        close the remaining small J2..J5 gap."""
+        while self.current_joints is None:
+            self.get_logger().info("Waiting for /joint_states...")
+            time.sleep(0.5)
+        start_q = self.current_joints.tolist()
+        delta = float(target) - start_q[idx]
+        if abs(delta) < 1e-3:
+            return True
+        for i in range(1, n_checks + 1):
+            q = list(start_q)
+            q[idx] = start_q[idx] + delta * i / n_checks
+            if not self.is_state_valid(q):
+                self.get_logger().error(
+                    f"[{label}] J{idx + 1} sweep collides at "
+                    f"{math.degrees(start_q[idx] + delta * i / n_checks):+.0f} deg "
+                    f"({i}/{n_checks}); aborting")
+                return False
+        target_q = list(start_q)
+        target_q[idx] = float(target)
+        self.get_logger().info(f"[{label}] J{idx + 1} {math.degrees(delta):+.0f} deg")
+        return self.execute_path([start_q, target_q], speed=speed)
+
 
 # ----------------------------------------------------------------------------
 # Workspace constants for the shelf-to-base sequence. base_link metres unless
@@ -583,7 +701,7 @@ GRIPPER_OPEN = [0.03]        # gap 103 mm; after jaw-align the moving pad still
                              # the shorter close sweep hits the box at ~12 mm/s
                              # instead of ~32 mm/s (0.07), which the contact
                              # solver tolerates much better
-CLOSE_SQUEEZE = 0.002        # close this much past the box width: real pad pressure,
+CLOSE_SQUEEZE = 0.00 #0.002        # close this much past the box width: real pad pressure,
                              # so friction holds the box even if the link attacher
                              # misses (gap == box width has ZERO grip force)
 GRIPPER_CLOSE = [BOX_SHORT - JAW_GAP_AT_ZERO - CLOSE_SQUEEZE]   # +0.0057
@@ -687,7 +805,8 @@ def shelf_to_base_cycle(node, box_world, pocket_y):
 
     pregrasp_xyz = box - insert_dir * PREGRASP_BACK + np.array([0, 0, INSERT_TCP_ABOVE])
     descend_dist = INSERT_TCP_ABOVE - GRASP_TCP_ABOVE   # gap height -> grasp height
-    pocket_hover_xyz = np.array([POCKET_X, pocket_y, POCKET_SURFACE_Z + POCKET_HOVER])
+    # pocket_hover_xyz = np.array([POCKET_X, pocket_y-0.05, POCKET_SURFACE_Z + POCKET_HOVER]) # pocket no.4
+    pocket_hover_xyz = np.array([POCKET_X, pocket_y-0.17, POCKET_SURFACE_Z + POCKET_HOVER]) # pocket no.3
 
     # Show exactly what we are aiming at (box/pre-grasp in base_link + the shelf
     # axes), so an IK failure can be read against the arm's actual reach.
@@ -698,10 +817,23 @@ def shelf_to_base_cycle(node, box_world, pocket_y):
         f"insert_dir=({insert_dir[0]:+.2f},{insert_dir[1]:+.2f},{insert_dir[2]:+.2f}) "
         f"row_dir=({row_dir[0]:+.2f},{row_dir[1]:+.2f},{row_dir[2]:+.2f}) yaw={math.degrees(phi):.0f}deg")
 
-    # 1. RRT to the pre-grasp pose in front of the shelf box.
+    # Pocket place config, computed UP FRONT so the pick can grasp in the same
+    # elbow/wrist family. The high shelf (elbow-up) and low pocket (elbow-down)
+    # are opposite branches; grasping in the pocket's branch keeps the constrained
+    # carry within one family (no elbow flip for CBiRRT to bridge). Seeded from the
+    # current (standby, J3~-105) pose so this is the elbow-down pocket branch.
+    place_ref = node.compute_ik_ordered(pose_at(pocket_hover_xyz, place_quat))
+    if place_ref is None:
+        node.get_logger().error("[cycle] pocket place IK failed (pre-check)"); return False
+    node.get_logger().info(
+        f"[cycle] pocket place branch: J3={math.degrees(place_ref[2]):+.0f} "
+        f"J5={math.degrees(place_ref[4]):+.0f} deg (pick will match it)")
+
+    # 1. RRT to the pre-grasp pose in front of the shelf box, in the pocket's
+    # elbow/wrist family (move_to_pose_ref picks the branch nearest place_ref).
     print("\n===== [1/10] RRT -> pre-grasp in front of shelf =====")
     node.control_gripper(GRIPPER_OPEN)
-    if not node.move_to_pose(pose_at(pregrasp_xyz, grasp_quat)):
+    if not node.move_to_pose_ref(pose_at(pregrasp_xyz, grasp_quat), place_ref):
         node.get_logger().error("[cycle] step 1 pre-grasp failed"); return False
 
     # 2. Linear insert into the gap (over the box), fixed jaw entering the gap.
@@ -733,7 +865,7 @@ def shelf_to_base_cycle(node, box_world, pocket_y):
     # Diagnostic: which gripper/wrist link (if any) sits below the box top now,
     # and is the jaw azimuth aligned to the box's graspable (short) side?
     node.log_gripper_box_clearance(box, row_dir, insert_dir, label="pre-descend")
-    if not node.linear_servo([0.0, 0.0, -descend_dist], label="descend"):
+    if not node.linear_servo([0.0, 0.0, -descend_dist+0.01], label="descend"):
         node.get_logger().error("[cycle] step 3 descend failed"); return False
 
     # 4. Close gripper + attach. The attach result is the load-bearing part:
@@ -760,14 +892,22 @@ def shelf_to_base_cycle(node, box_world, pocket_y):
     if not node.linear_servo(-insert_dir * PREGRASP_BACK, label="retreat"):
         node.get_logger().error("[cycle] step 6 retreat failed"); return False
 
-    # 7. RRT to hover above the base pocket.
-    print("===== [7/10] RRT -> hover above pocket =====")
-    if not node.move_to_pose(pose_at(pocket_hover_xyz, place_quat)):
-        node.get_logger().error("[cycle] step 7 to-pocket failed"); return False
+    # 7. Carry to hover above the base pocket, gripper held DOWN the whole way.
+    # Carry on the tilt-only (tool-down) CBiRRT manifold straight to the hover
+    # pose. The earlier 5-rad stall was NOT the azimuth/elbow gap (that is only
+    # ~126 deg, which CBiRRT bridges easily) but J6 winding from a fixed-yaw goal:
+    # the grasp yaw + in-gap twist left J6 ~180 deg from a PLACE_YAW=0 goal.
+    # move_constrained(yaw_free=True) now picks the goal NEAREST the current pose
+    # across both box-symmetric place yaws, so the wrist does not unwind and the
+    # tool stays pointing down the whole way (verified: 206 deg -> 126 deg carry).
+    print("===== [7/10] Carry (gripper held down) -> hover above pocket =====")
+    hover_pose = pose_at(pocket_hover_xyz, place_quat)
+    if not node.move_constrained(hover_pose):
+        node.get_logger().error("[cycle] step 7 carry to pocket failed"); return False
 
     # 8. Linear descend toward the pocket surface.
     print("===== [8/10] Linear descend into pocket =====")
-    if not node.linear_servo([0.0, 0.0, PLACE_TCP_ABOVE - POCKET_HOVER],
+    if not node.linear_servo([0.0, 0.0, PLACE_TCP_ABOVE - POCKET_HOVER+0.01],
                              label="place-descend"):
         node.get_logger().error("[cycle] step 8 place descend failed"); return False
 

@@ -144,13 +144,15 @@ SRDF에는 그리퍼 disable_collisions가 이미 있었음(반쯤 하다 만 �
 
 ## 미해결 (다음 작업)
 
-- [ ] **close 시 미세 진동·박스 살짝 이탈**: 잡을 때 부들거리며 박스가 약간 튀어나와
-      중심이 어긋남. 후보: CLOSE_SQUEEZE 2.0 → 1.5 mm, close 시간 연장(현재 2 s 고정,
-      test_w_gripper.control_gripper 하드코딩), 물리 솔버 iters 증가, 박스 쪽
-      kp/minDepth 연화. attach가 잡아주므로 운반은 성공하지만 박스가 비뚤게 물림.
-- [ ] **carry(step 7)가 자세 비유지 RRT**: `move_to_pose`(자유 RRT)를 쓰므로 운반 중
-      그리퍼가 아래를 향한다는 보장이 없음. orientation-constrained CBiRRT
-      (`move_constrained` — 현재 dead code, TODO 리팩토링에서 삭제 예정이었음)를
-      carry에 적용할지 결정 필요. 적용 시 TODO.md의 "delete move_constrained" 항목과
-      상충하므로 먼저 정리할 것.
+- [x] **close 시 미세 진동·박스 살짝 이탈** (06-13 해결): CLOSE_SQUEEZE 2 → 0 mm.
+      스퀴즈 접촉 진동이 원인이었음. attach(Link6 강체 조인트)가 잡아주므로 마찰
+      그립이 필요 없고, gap=박스 폭으로 닿기만 하는 게 가장 부드러움. 단 attach가
+      실패하는 환경에서는 스퀴즈(>minDepth 1 mm)가 다시 필요해짐 — 문제 6 참고.
+- [ ] **carry 시작 시 CBiRRT 정체**: 목표 IK 분기가 관절공간에서 ~5 rad 멀어
+      (J6 와인드업 + J1 스윙) 제약 플래닝이 느림/실패. 06-13 해결 시도: 7a/7b
+      단일관절 정렬(J6→J1, 둘 다 "아래 향함"을 정확히 보존) 후 7c CBiRRT는
+      J2~J5 잔여 갭만. 검증 대기.
+- [x] **carry(step 7)가 자세 비유지 RRT** (06-13 해결): `move_to_pose`(자유 RRT) 대신
+      `move_constrained`(tilt 고정·yaw 자유 CBiRRT)로 교체 — 적재 상태에서는 그리퍼가
+      항상 아래를 향함. TODO.md의 "delete move_constrained" 항목은 KEEP으로 정정됨.
 - [ ] 그리퍼 URDF 3중 복붙 통일 (TODO.md Follow-up 참조).
