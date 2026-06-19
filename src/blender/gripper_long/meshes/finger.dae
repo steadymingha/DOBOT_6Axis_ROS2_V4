@@ -5,8 +5,8 @@
       <author>Blender User</author>
       <authoring_tool>Blender 3.6.23 commit date:2025-06-16, commit time:11:52, hash:e467db79ca8c</authoring_tool>
     </contributor>
-    <created>2026-06-12T11:35:30</created>
-    <modified>2026-06-12T11:35:30</modified>
+    <created>2026-06-18T15:52:56</created>
+    <modified>2026-06-18T15:52:56</modified>
     <unit name="meter" meter="1"/>
     <up_axis>Z_UP</up_axis>
   </asset>
@@ -176,7 +176,7 @@
   <library_visual_scenes>
     <visual_scene id="Scene" name="Scene">
       <node id="pad_moving" name="pad_moving" type="NODE">
-        <matrix sid="transform">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+        <matrix sid="transform">1 0 0 0.0661 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
         <instance_geometry url="#Cube_100-mesh" name="pad_moving">
           <bind_material>
             <technique_common>
@@ -188,7 +188,7 @@
         </instance_geometry>
       </node>
       <node id="jaw_moving" name="jaw_moving" type="NODE">
-        <matrix sid="transform">1 0 0 0.05162007 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+        <matrix sid="transform">1 0 0 0.1177 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
         <instance_geometry url="#Cube_096-mesh" name="jaw_moving">
           <bind_material>
             <technique_common>

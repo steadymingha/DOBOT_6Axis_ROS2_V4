@@ -137,21 +137,17 @@ class CBiRRTPickPlace(CR7RRTPlanner):
         # is rigid with the gripper, so the attachment is equivalent.
         self.gripper_link = 'Link6'
 
-        # Loosen J1 only (J2..J6 keep the base-class limits). The shelf sits
-        # roughly opposite the magazine in base_link, so reaching it needs J1 well
-        # past the default -101 deg lower bound; the URDF hardware limit is +-6.27
-        # rad so this stays inside it. Done here (not in test_w_gripper) so that
-        # file stays unmodified.
-        self.joint_limits[0] = (math.radians(-180), math.radians(90))
-        # Allow J4 to go negative. The base limit [0,120] (a software clamp; the
-        # hardware is +-6.27 rad and the original was (-pi,pi)) forbids the
-        # ELBOW-DOWN shelf-grasp branch (J4~-11), which is the only branch in the
-        # pocket's elbow/wrist family. Without it the high shelf forces elbow-UP
-        # and the low pocket elbow-DOWN, so the constrained carry must flip the
-        # elbow+wrist (J3 ~200 deg, J5 ~180 deg) -- which CBiRRT cannot do on the
-        # tool-down manifold and is what stalled the carry. Widened so the pick
-        # can grasp in the pocket-compatible branch (see move_to_pose_ref).
-        self.joint_limits[3] = (math.radians(-60), math.radians(120))
+        # Open every joint to the URDF hardware limit (+-6.27 rad). The base-class
+        # values (J1 -101..10, J2 -70..60, J4 0..120, J5 -120..120, J3/J6 +-pi)
+        # are conservative SOFTWARE clamps that block otherwise-valid elbow/wrist
+        # branches -- e.g. the ELBOW-DOWN shelf grasp (J4 negative) that lives in
+        # the pocket's family, and the wide J1 needed because the shelf sits
+        # roughly opposite the magazine. Self/scene collision is still enforced by
+        # the pinocchio model below, so widening to hardware cannot fold the arm
+        # into itself or the AGV/cube undetected. Done here (not in test_w_gripper)
+        # so that file stays unmodified.
+        HW = 6.27   # URDF hardware joint limit, radians (~359 deg)
+        self.joint_limits = [(-HW, HW)] * len(self.joint_limits)
 
         self.cbirrt = ConstrainedPlanner(xacro_path=XACRO_PATH)
         # pinocchio collision model of the WHOLE robot (arm + cube + AGV +
@@ -524,13 +520,13 @@ class CBiRRTPickPlace(CR7RRTPlanner):
         # (origin xyz, full size). Mirrors gripper_base_link / gripper_finger_link.
         prims = {
             'gripper_base_link': [
-                ((0.0581, 0.0, 0.110), (0.098, 0.0912, 0.010)),  # fixed-jaw top beam
-                ((0.0983, 0.0, 0.080), (0.0177, 0.0912, 0.050)), # fixed-jaw column+pad
-                ((0.0, 0.0, 0.121), (0.121, 0.091, 0.012)),      # top plate
-                ((0.0, 0.0, 0.134), (0.082, 0.082, 0.013)),      # mount boss (cyl AABB)
+                ((0.0801, 0.0, 0.110), (0.2016, 0.0912, 0.010)),  # fixed-jaw top beam
+                ((0.17205, 0.0, 0.080), (0.0177, 0.0912, 0.050)),  # fixed-jaw column+pad
+                ((0.00505, 0.0, 0.12105), (0.1315, 0.0912, 0.0121)), # top plate
+                ((0.0, 0.0, 0.13355), (0.082, 0.082, 0.013)),     # mount boss (cyl AABB)
             ],
             'gripper_finger_link': [
-                ((0.0025, 0.0, 0.0915), (0.027, 0.070, 0.071)),
+                ((0.0687, 0.0, 0.0916), (0.027, 0.070, 0.071)),
             ],
         }
         box_top = box[2] + 0.07   # box half-height 0.14/2
@@ -681,13 +677,13 @@ class CBiRRTPickPlace(CR7RRTPlanner):
 
 # Gripper jaw geometry, MEASURED from the Blender meshes (base.dae/finger.dae),
 # in the gripper_base_link frame (flange face at z=0.1401, mounted flipped on
-# Link6, fixed jaw on +X). The grasp centre between the pads is ~53 mm off the
-# flange/tool-z axis, so the flange must NOT be centred over the box -- see the
+# Link6, fixed jaw on +X). The grasp centre between the pads is ~123 mm off the
+# flange/tool-z axis (longer jaw), so the flange must NOT be centred over the box -- see the
 # jaw-align step (2c) in the cycle.
 #   finger joint axis -X: q > 0 opens;  pad gap = JAW_GAP_AT_ZERO + q
-JAW_FIXED_PAD_X = 0.0894     # fixed pad inner face (gripper x)
-JAW_MOVING_PAD_X0 = 0.0161   # moving pad inner face at finger joint q=0
-JAW_GAP_AT_ZERO = JAW_FIXED_PAD_X - JAW_MOVING_PAD_X0   # 73.3 mm
+JAW_FIXED_PAD_X = 0.1632     # fixed pad inner face (gripper x), measured from base.dae pad_fixed (Xmin)
+JAW_MOVING_PAD_X0 = 0.0822   # moving pad inner face at q=0, measured from finger.dae pad_moving (Xmax)
+JAW_GAP_AT_ZERO = JAW_FIXED_PAD_X - JAW_MOVING_PAD_X0   # 81.0 mm (== BOX_SHORT -> close q=0)
 PAD_BOTTOM_BELOW_FLANGE = 0.0821   # pad lower edge, metres below the flange face
 
 BOX_SHORT = 0.081            # box graspable width (short side)
@@ -696,7 +692,7 @@ BOX_SHORT = 0.081            # box graspable width (short side)
 # then pushes the box this far sideways until it rests against the fixed pad.
 FIXED_PAD_CLEARANCE = 0.003  # TUNE IN SIM (smaller = less push at close)
 
-GRIPPER_OPEN = [0.03]        # gap 103 mm; after jaw-align the moving pad still
+GRIPPER_OPEN = [0.03]        # gap 111 mm; after jaw-align the moving pad still
                              # clears the box face by ~19 mm on the descend, and
                              # the shorter close sweep hits the box at ~12 mm/s
                              # instead of ~32 mm/s (0.07), which the contact
@@ -704,7 +700,7 @@ GRIPPER_OPEN = [0.03]        # gap 103 mm; after jaw-align the moving pad still
 CLOSE_SQUEEZE = 0.00 #0.002        # close this much past the box width: real pad pressure,
                              # so friction holds the box even if the link attacher
                              # misses (gap == box width has ZERO grip force)
-GRIPPER_CLOSE = [BOX_SHORT - JAW_GAP_AT_ZERO - CLOSE_SQUEEZE]   # +0.0057
+GRIPPER_CLOSE = [BOX_SHORT - JAW_GAP_AT_ZERO - CLOSE_SQUEEZE]   # 0.0 (gap == box width at q=0)
                              # (the old -0.036 was for the pre-refit URDF with the
                              # opposite joint axis; here it would crush 44 mm in)
 
@@ -805,8 +801,8 @@ def shelf_to_base_cycle(node, box_world, pocket_y):
 
     pregrasp_xyz = box - insert_dir * PREGRASP_BACK + np.array([0, 0, INSERT_TCP_ABOVE])
     descend_dist = INSERT_TCP_ABOVE - GRASP_TCP_ABOVE   # gap height -> grasp height
-    # pocket_hover_xyz = np.array([POCKET_X, pocket_y-0.05, POCKET_SURFACE_Z + POCKET_HOVER]) # pocket no.4
-    pocket_hover_xyz = np.array([POCKET_X, pocket_y-0.17, POCKET_SURFACE_Z + POCKET_HOVER]) # pocket no.3
+    pocket_hover_xyz = np.array([POCKET_X, pocket_y-0.05, POCKET_SURFACE_Z + POCKET_HOVER]) # pocket no.4
+    # pocket_hover_xyz = np.array([POCKET_X, pocket_y-0.17, POCKET_SURFACE_Z + POCKET_HOVER]) # pocket no.3
 
     # Show exactly what we are aiming at (box/pre-grasp in base_link + the shelf
     # axes), so an IK failure can be read against the arm's actual reach.

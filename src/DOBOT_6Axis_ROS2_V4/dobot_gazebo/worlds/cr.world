@@ -31,6 +31,17 @@
       <pose>0.8905 0.5 0.97 0 0 1.5708</pose>
       <uri>model://box</uri>
     </include>
+    <!-- Flanking boxes: one box-pitch (0.181) left and right of the existing pair -->
+    <include>
+      <name>box_l1c</name>
+      <pose>0.5285 0.5 0.97 0 0 1.5708</pose>
+      <uri>model://box</uri>
+    </include>
+    <include>
+      <name>box_l1d</name>
+      <pose>1.0715 0.5 0.97 0 0 1.5708</pose>
+      <uri>model://box</uri>
+    </include>
 
     <!-- Shelf tier 2 boxes: rest on board top 1.40 + half box height 0.07 = 1.47 -->
     <include>
@@ -41,6 +52,17 @@
     <include>
       <name>box_l2b</name>
       <pose>0.8905 0.5 1.47 0 0 1.5708</pose>
+      <uri>model://box</uri>
+    </include>
+    <!-- Flanking boxes: one box-pitch (0.181) left and right of the existing pair -->
+    <include>
+      <name>box_l2c</name>
+      <pose>0.5285 0.5 1.47 0 0 1.5708</pose>
+      <uri>model://box</uri>
+    </include>
+    <include>
+      <name>box_l2d</name>
+      <pose>1.0715 0.5 1.47 0 0 1.5708</pose>
       <uri>model://box</uri>
     </include>
 
@@ -56,7 +78,9 @@
     <gui>
       <camera name="user_camera">
         <!-- <pose>2.1 -1.8 1.8 0 0.42 2.36</pose> -->
-        <pose>0.73 0.04 1.11 0.0 0.3 1.55</pose>
+        <!-- <pose>0.73 0.04 1.11 0.0 0.3 1.55</pose> -->
+        <!-- <pose>0.48 -3.15 1.95 0.0 0.34 1.48</pose> -->
+        <pose>-0.89 0.001 1.04 0.0 0.24 0.1</pose>
       </camera>
     </gui>
 

@@ -229,14 +229,26 @@ class ConstrainedPlanner:
             return len(tree) - 1, q_new
 
         def connect(tree, q_target):
+            # Greedily extend toward q_target. Bail out if (a) the time budget is
+            # spent or (b) a step stops making progress -- on the constraint
+            # manifold the projection can snap each step back without getting
+            # closer, which would otherwise spin here forever and never let the
+            # outer loop re-check the time limit.
             idx = None
+            prev_dist = np.inf
             while True:
+                if _time.time() - t_start > time_limit:
+                    return None
                 new_idx, q_new = extend(tree, q_target)
                 if new_idx is None:
                     return None
                 idx = new_idx
-                if np.linalg.norm(q_new - q_target) < step:
+                dist = np.linalg.norm(q_new - q_target)
+                if dist < step:
                     return idx
+                if dist > prev_dist - 1e-3:   # no meaningful progress -> give up
+                    return None
+                prev_dist = dist
 
         def trace(tree, idx):
             path = []

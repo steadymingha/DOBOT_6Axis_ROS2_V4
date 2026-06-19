@@ -75,13 +75,16 @@ DEFAULT_SRDF = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                             'cr7_moveit', 'config', 'cr7_robot.srdf')
 
 ARM_JOINTS = ('joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6')
-GRIPPER_JOINTS = ('gripper_gripper_joint', 'gripper_right_finger_joint')
+# Movable joints of the Blender fixed-jaw gripper now mounted on Link6 (the same
+# gripper cbirrt_pick_place.py drives). gripper_attach_joint is FIXED (merged into
+# Link6 by pinocchio), so only the single prismatic finger joint needs locking.
+GRIPPER_JOINTS = ('gripper_finger_joint',)
 EE_FRAME = 'Link6'
 
 # Default joint limits (radians) = the limits used by test_w_gripper.py.
 # (lower, upper) per joint J1..J6. These are the parameters to vary.
 DEFAULT_LIMITS_DEG = [
-    (-101.0, 90.0),    # J1
+    (-180.0, 180.0),    # J1
     (-70.0, 60.0),     # J2
     (-180.0, 180.0),   # J3
     (0.0, 120.0),      # J4
@@ -91,10 +94,13 @@ DEFAULT_LIMITS_DEG = [
 
 DOWN_WORLD = np.array([0.0, 0.0, -1.0])  # world -Z; gripper "down" approach axis
 
-# Offset from Link6 origin to TCP along the tool z-axis (gripper body length).
-# OnRobot 2FG7: gripper_2fg7_attach_joint has xyz="0 0 0", finger attachment
-# joints are at z=0.12005 from gripper_base_link -> TCP ~= 0.12 m from Link6.
-# Change this value when swapping grippers.
+# Offset from Link6 origin to the IK-target TCP along the tool z-axis. Kept at
+# 0.12005 (the legacy OnRobot 2FG7 value) as the SHARED IK-target convention with
+# cbirrt_pick_place.py: it is an abstract target point, not the physical pad. The
+# Blender fixed-jaw gripper now on Link6 (gripper_attach_joint / gripper_finger_joint)
+# actually bottoms out ~0.0821 m below the flange, i.e. ~38 mm ABOVE this TCP;
+# cbirrt compensates for that with its GRASP_TCP_ABOVE offsets. Keep this value in
+# sync with cbirrt_pick_place.py if the convention ever changes.
 TCP_OFFSET_M = 0.12005
 
 

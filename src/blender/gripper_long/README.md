@@ -11,12 +11,14 @@ the body front).
 |------|---------|
 | `model.sdf` | The model: 2 links + 1 prismatic joint + collisions + inertials |
 | `model.config` | Gazebo model metadata (so it shows up as `model://gripper`) |
-| `meshes/base.dae` | Visual mesh of the fixed part (flange + body + L-jaw + pad) |
-| `meshes/finger.dae` | Visual mesh of the moving pusher + pad |
+| `meshes/base.dae` | Mesh of the fixed part (flange + body + L-jaw + pad) — used for both visual and collision |
+| `meshes/finger.dae` | Mesh of the moving pusher + pad — visual and collision |
 | `README.md` | This file |
 
-Editable source: `../gripper_source.blend` (Blender). Re-export `base.dae` /
-`finger.dae` from there if you change the shape.
+Editable source: `../gripper_long_source.blend` (Blender). Re-export the two
+meshes from there (select the link's parts, **exclude `held_box`**) if you
+change the shape. Collision reuses the same mesh (concave C per link), so the
+box-side pocket stays open.
 
 ## Kinematics
 - **Links:** `base_link` (fixed, bolts to the wrist) and `finger_link` (the pusher).

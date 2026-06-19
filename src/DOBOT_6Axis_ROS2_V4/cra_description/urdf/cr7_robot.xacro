@@ -428,97 +428,9 @@
         <gravity>false</gravity>
         <selfCollide>true</selfCollide>
     </gazebo> 
-    <!-- Blender fixed-jaw parallel gripper attached to Link6.
-         Flange mount face at z=+0.1443 in gripper frame; offset z=-0.1443 puts
-         that face at Link6's origin. finger_joint axis +X: positive = closing. -->
-    <link name="gripper_base_link">
-      <inertial>
-        <origin xyz="0 0 0.05" rpy="0 0 0"/>
-        <mass value="0.8"/>
-        <inertia ixx="0.0060" ixy="0" ixz="0" iyy="0.0079" iyz="0" izz="0.0049"/>
-      </inertial>
-      <visual>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-        <geometry>
-          <mesh filename="file:///home/user/dobot_ws/src/blender/gripper/meshes/base.dae"/>
-        </geometry>
-      </visual>
-      <collision>
-        <origin xyz="0 0 0.1336" rpy="0 0 0"/>
-        <geometry><cylinder radius="0.0675" length="0.0214"/></geometry>
-      </collision>
-      <collision>
-        <origin xyz="0 0 0.1129" rpy="0 0 0"/>
-        <geometry><box size="0.20 0.15 0.020"/></geometry>
-      </collision>
-      <collision>
-        <origin xyz="0.0125 0 0.0900" rpy="0 0 0"/>
-        <geometry><box size="0.225 0.15 0.0258"/></geometry>
-      </collision>
-      <collision>
-        <origin xyz="0.0510 0 -0.0193" rpy="0 0 0"/>
-        <geometry><box size="0.021 0.15 0.1928"/></geometry>
-      </collision>
-      <collision>
-        <origin xyz="0.0362 0 0.0071" rpy="0 0 0"/>
-        <geometry><box size="0.0086 0.14 0.12"/></geometry>
-      </collision>
-    </link>
-
-    <joint name="gripper_attach_joint" type="fixed">
-      <origin xyz="0 0 0.1443" rpy="3.14159265359 0 0"/>
-      <parent link="Link6"/>
-      <child link="gripper_base_link"/>
-    </joint>
-
-    <link name="gripper_finger_link">
-      <inertial>
-        <origin xyz="-0.073 0 0.023" rpy="0 0 0"/>
-        <mass value="0.2"/>
-        <inertia ixx="0.0007" ixy="0" ixz="0" iyy="0.0005" iyz="0" izz="0.00035"/>
-      </inertial>
-      <visual>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-        <geometry>
-          <mesh filename="file:///home/user/dobot_ws/src/blender/gripper/meshes/finger.dae"/>
-        </geometry>
-      </visual>
-      <collision>
-        <origin xyz="-0.0727 0 0.0229" rpy="0 0 0"/>
-        <geometry><box size="0.0643 0.1286 0.1601"/></geometry>
-      </collision>
-      <collision>
-        <origin xyz="-0.0362 0 0.0071" rpy="0 0 0"/>
-        <geometry><box size="0.0086 0.10 0.10"/></geometry>
-      </collision>
-    </link>
-
-    <joint name="gripper_finger_joint" type="prismatic">
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <parent link="gripper_base_link"/>
-      <child link="gripper_finger_link"/>
-      <axis xyz="1 0 0"/>
-      <limit lower="-0.05" upper="0.07" effort="60" velocity="0.1"/>
-      <dynamics damping="5.0" friction="1.0"/>
-    </joint>
-
-    <!-- Gazebo properties for the Blender gripper links -->
-    <gazebo reference="gripper_base_link">
-        <material>Gazebo/DarkGrey</material>
-        <gravity>false</gravity>
-        <selfCollide>true</selfCollide>
-    </gazebo>
-    <gazebo reference="gripper_finger_link">
-        <material>Gazebo/Orange</material>
-        <gravity>false</gravity>
-        <mu1>1.2</mu1>
-        <mu2>1.2</mu2>
-        <kp>1000000.0</kp>
-        <kd>1.0</kd>
-        <minDepth>0.001</minDepth>
-        <maxVel>0.1</maxVel>
-        <selfCollide>true</selfCollide>
-    </gazebo>
+    <!-- Gripper: single source of truth in gripper.xacro (Gazebo sim -> gazebo_props on) -->
+    <xacro:include filename="$(find cra_description)/urdf/gripper.xacro"/>
+    <xacro:cr7_gripper/>
 
     <ros2_control name="GazeboSystem" type="system">
         <hardware>
@@ -586,11 +498,11 @@
         </joint>
         <joint name="gripper_finger_joint">
             <command_interface name="position">
-                <param name="min">-0.05</param>
-                <param name="max">0.07</param>
+                <param name="min">-0.07</param>
+                <param name="max">0.05</param>
             </command_interface>
             <state_interface name="position">
-                <param name="initial_value">-0.04</param>
+                <param name="initial_value">0.04</param>
             </state_interface>
             <state_interface name="velocity"/>
             <state_interface name="effort"/>
