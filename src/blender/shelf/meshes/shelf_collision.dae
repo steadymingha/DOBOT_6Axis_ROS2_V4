@@ -420,7 +420,7 @@
         </instance_geometry>
       </node>
       <node id="board_2" name="board_2" type="NODE">
-        <matrix sid="transform">1 0 0 0 0 1 0 0 0 0 1 0.891 0 0 0 1</matrix>
+        <matrix sid="transform">1 0 0 0 0 1 0 0 0 0 1 0.676 0 0 0 1</matrix>
         <instance_geometry url="#Cube_030-mesh" name="board_2">
           <bind_material>
             <technique_common>
@@ -432,7 +432,7 @@
         </instance_geometry>
       </node>
       <node id="board_3" name="board_3" type="NODE">
-        <matrix sid="transform">1 0 0 0 0 1 0 0 0 0 1 1.391 0 0 0 1</matrix>
+        <matrix sid="transform">1 0 0 0 0 1 0 0 0 0 1 1.291 0 0 0 1</matrix>
         <instance_geometry url="#Cube_029-mesh" name="board_3">
           <bind_material>
             <technique_common>

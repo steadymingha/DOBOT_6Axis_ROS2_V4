@@ -97,6 +97,6 @@ node = Node('reachability_map', parameter_overrides=[
 ```bash
 pkill -f reachability_map.py
 cd /home/user/dobot_ws/src/DOBOT_6Axis_ROS2_V4
-/home/user/dobot_ws/.venv/bin/python reachability_map.py --load latest
+/home/user/dobot_ws/.venv/bin/python tools/reachability_map.py --load latest
 # RViz: Fixed Frame = base_link, 4개 토픽을 Add → By topic 으로 추가해 비교
 ```

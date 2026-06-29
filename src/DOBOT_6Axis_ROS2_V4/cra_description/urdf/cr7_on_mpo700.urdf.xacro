@@ -47,70 +47,73 @@
       <origin xyz="0 0 -0.35" rpy="0 0 0"/>
       <inertia ixx="2000.0" ixy="0" ixz="0" iyy="2000.0" iyz="0" izz="2000.0"/>
     </inertial>
-    <!-- Front half (+X): robot mounting area, 0.3705 x 0.509 x 0.34 m
-         (raised to put base_link 680 mm above the floor) -->
+    <!-- Front half (+X): robot mounting area, 0.3705 x 0.509 x 0.66 m
+         (grown upward to put base_link 1000 mm above the floor; bottom still
+         rests on the AGV top) -->
     <visual>
-      <origin xyz="0.18525 0 0" rpy="0 0 0"/>
+      <origin xyz="0.18525 0 0.16" rpy="0 0 0"/>
       <geometry>
-        <box size="0.3705 0.509 0.34"/>
+        <box size="0.3705 0.509 0.66"/>
       </geometry>
       <material name="cube_gray">
         <color rgba="0.25 0.25 0.25 1"/>
       </material>
     </visual>
     <collision>
-      <origin xyz="0.18525 0 0" rpy="0 0 0"/>
+      <origin xyz="0.18525 0 0.16" rpy="0 0 0"/>
       <geometry>
-        <box size="0.3705 0.509 0.34"/>
+        <box size="0.3705 0.509 0.66"/>
       </geometry>
     </collision>
-    <!-- Rear half (-X): magazine pocket, 0.3705 x 0.509 x 0.29 m, recessed 5 cm from top -->
+    <!-- Rear half (-X): magazine pocket, 0.3705 x 0.509 x 0.61 m, top recessed
+         5 cm below the front half (raised in lockstep with it) -->
     <visual>
-      <origin xyz="-0.18525 0 -0.025" rpy="0 0 0"/>
+      <origin xyz="-0.18525 0 0.135" rpy="0 0 0"/>
       <geometry>
-        <box size="0.3705 0.509 0.29"/>
+        <box size="0.3705 0.509 0.61"/>
       </geometry>
       <material name="cube_gray"/>
     </visual>
     <collision>
-      <origin xyz="-0.18525 0 -0.025" rpy="0 0 0"/>
+      <origin xyz="-0.18525 0 0.135" rpy="0 0 0"/>
       <geometry>
-        <box size="0.3705 0.509 0.29"/>
+        <box size="0.3705 0.509 0.61"/>
       </geometry>
     </collision>
     <!-- Magazine pocket markers: 4 visual-only rectangles (0.236 x 0.081 m,
-         the box bottom face) on the rear-half top surface (cube z=0.120),
+         the box bottom face) on the rear-half top surface (cube z=0.440),
          arrayed along Y with 11.8 cm pitch (8.1 cm pocket + 3.7 cm gap),
          centered on the rear half (cube x=-0.18525). No collision, so
          planning/physics are unaffected. These mark place target 2, which is
          constant in base_link: x=0.3705, y in {+-0.177,+-0.059}, z=-0.05. -->
     <visual>
-      <origin xyz="-0.18525 0.177 0.1215" rpy="0 0 0"/>
+      <origin xyz="-0.18525 0.177 0.4415" rpy="0 0 0"/>
       <geometry><box size="0.236 0.081 0.003"/></geometry>
       <material name="pocket_marker"><color rgba="0.1 0.9 0.2 0.6"/></material>
     </visual>
     <visual>
-      <origin xyz="-0.18525 0.059 0.1215" rpy="0 0 0"/>
+      <origin xyz="-0.18525 0.059 0.4415" rpy="0 0 0"/>
       <geometry><box size="0.236 0.081 0.003"/></geometry>
       <material name="pocket_marker"/>
     </visual>
     <visual>
-      <origin xyz="-0.18525 -0.059 0.1215" rpy="0 0 0"/>
+      <origin xyz="-0.18525 -0.059 0.4415" rpy="0 0 0"/>
       <geometry><box size="0.236 0.081 0.003"/></geometry>
       <material name="pocket_marker"/>
     </visual>
     <visual>
-      <origin xyz="-0.18525 -0.177 0.1215" rpy="0 0 0"/>
+      <origin xyz="-0.18525 -0.177 0.4415" rpy="0 0 0"/>
       <geometry><box size="0.236 0.081 0.003"/></geometry>
       <material name="pocket_marker"/>
     </visual>
   </link>
 
-  <!-- AGV body top -> cube center.
-       MPO-700 body mesh top = mpo_base_link + 0.35 m (cube bottom rests here).
-       Robot section height 0.34 m (half 0.17) => cube center z = 0.35 + 0.17 = 0.520.
-       CR7 base_link lands at mpo z = 0.520 + 0.17 = 0.690; floor sits at mpo z = +0.01,
-       so floor -> base_link = 0.680 m (target). -->
+  <!-- AGV body top -> cube_link frame origin.
+       MPO-700 body mesh top = mpo_base_link + 0.35 m (box bottoms rest here).
+       cube_link origin kept at mpo z = 0.520; box bottoms sit at cube z = -0.17
+       (mpo 0.35). Front section is 0.66 m tall => top at cube z = 0.49.
+       CR7 base_link lands at mpo z = 0.520 + 0.49 = 1.010; floor sits at mpo z = +0.01,
+       so floor -> base_link = 1.000 m (target). -->
   <joint name="cube_joint" type="fixed">
     <origin xyz="0 0 0.520" rpy="0 0 0"/>
     <parent link="mpo_base_link"/>
@@ -118,9 +121,9 @@
   </joint>
 
   <!-- Cube top -> CR7 base_link; arm on front half (+X), current posture preserved.
-       z = robot-section half height = 0.17 (cube top surface). -->
+       z = front-section top in cube frame = 0.49. -->
   <joint name="arm_mount_joint" type="fixed">
-    <origin xyz="0.18525 0 0.17" rpy="0 0 3.14159"/>
+    <origin xyz="0.18525 0 0.49" rpy="0 0 3.14159"/>
     <parent link="cube_link"/>
     <child link="base_link"/>
   </joint>
@@ -372,21 +375,99 @@
   <xacro:include filename="$(find cra_description)/urdf/gripper.xacro"/>
   <xacro:cr7_gripper/>
 
+  <!-- ===================== Eye-in-hand RealSense D405 ===================== -->
+  <!-- Self-contained D405 (no realsense2_description macro): d405.stl is the
+       visual AND collision mesh so the camera body shows in Gazebo. Absolute
+       file:// path (NOT $(find ...)) so the planner's xacro processing under
+       `uv run` works without realsense2_description on AMENT_PREFIX_PATH.
+       Mounted on the FRONT edge of the top plate (gripper_base_link frame:
+       top plate X[-0.061,0.071] Z[0.115,0.127]), looking FORWARD along the
+       gripper reach axis (link +X) toward the jaws/grasp, body upright (+Z up).
+       Lens = link +X, so joint rpy=0 aims it straight forward. Mesh rpy
+       "pi/2 0 pi/2" faces the lens along +X (leave it).
+       === TUNING KNOBS (d405_joint origin) ===
+         xyz  = position. X = reach axis (lower X = set back over the plate for a
+                wider view; plate spans X[-0.061,0.071]), Y = sideways,
+                Z = height (0.165 lifts the 42mm body clear of the gripper top
+                ~0.140; body spans ~0.144..0.186).
+         rpy  = aim. "0 0 0" = straight forward; 2nd (pitch) tilts down(+)/up(-);
+                1st (roll) spins the image. -->
+  <link name="d405_link">
+    <inertial>
+      <mass value="0.05"/>
+      <inertia ixx="1e-5" ixy="0" ixz="0" iyy="1e-5" iyz="0" izz="1e-5"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="1.5707963 0 1.5707963"/>
+      <geometry>
+        <mesh filename="file:///home/user/dobot_ws/src/realsense-ros/realsense2_description/meshes/d405.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="d405_alu"><color rgba="0.7 0.72 0.75 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.5707963 0 1.5707963"/>
+      <geometry>
+        <mesh filename="file:///home/user/dobot_ws/src/realsense-ros/realsense2_description/meshes/d405.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="d405_joint" type="fixed">
+    <origin xyz="0.071 0 0.147" rpy="0 0 0"/>
+    <parent link="gripper_base_link"/>
+    <child link="d405_link"/>
+  </joint>
+
+  <!-- Optical frame: ROS image convention (z forward, x right, y down). -->
+  <link name="d405_optical_frame"/>
+  <joint name="d405_optical_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="-1.5707963 0 -1.5707963"/>
+    <parent link="d405_link"/>
+    <child link="d405_optical_frame"/>
+  </joint>
+
+  <gazebo reference="d405_link">
+    <material>Gazebo/Grey</material>
+    <sensor type="camera" name="d405_color">
+      <!-- ponytail: 848x480@15 + visualize off keeps Gazebo bring-up fast.
+           A camera sensor blocks world load until Ogre renders its first frames;
+           1280x720@30 stalled it. 848x480 is a native D405 mode (same 87 deg FOV)
+           and is plenty to frame the grasp. Bump back up only if you need detail. -->
+      <update_rate>15</update_rate>
+      <always_on>true</always_on>
+      <visualize>false</visualize>
+      <!-- Real D405: 87 deg H FOV, 848x480 (16:9 -> ~56 deg V, datasheet 58),
+           ideal Min-Z ~0.07 m. far kept large so the whole scene still renders.
+           Distortion/depth-noise are NOT modelled (Gazebo Classic pinhole only). -->
+      <camera name="d405">
+        <horizontal_fov>1.5184</horizontal_fov> <!-- 87 deg -->
+        <image><width>848</width><height>480</height><format>R8G8B8</format></image>
+        <clip><near>0.07</near><far>5.0</far></clip>
+      </camera>
+      <plugin name="d405_camera_controller" filename="libgazebo_ros_camera.so">
+        <ros><namespace>/d405</namespace></ros>
+        <camera_name>color</camera_name>
+        <frame_name>d405_optical_frame</frame_name>
+      </plugin>
+    </sensor>
+  </gazebo>
+
   <!-- ===================== CR7 ros2_control ===================== -->
   <ros2_control name="GazeboSystem" type="system">
     <hardware>
       <plugin>gazebo_ros2_control/GazeboSystem</plugin>
     </hardware>
-    <!-- Spawn in the folded standby pose (J1=-8, J2=-39, J3=-105 deg) so the arm
-         starts tucked and never has to fold from the upright spawn pose (which
-         swung it into the shelf). -->
+    <!-- Spawn AT the hub (tool-down standby, TCP=(0.33,0,0.32)): the same pose
+         wirebonder_pick_place.py drives to with go_to_hub() at startup. Spawning
+         here means the arm never has to swing from a folded/upright pose into the
+         hub on bring-up. Joints (rad) from _calc_hub_q.py (project IK, collision-
+         gated): J1..J6 deg = -26.0,+19.7,-107.9,0,-87.4,-24.7. -->
     <joint name="joint1">
       <command_interface name="position">
         <param name="min">-1</param>
         <param name="max">1</param>
       </command_interface>
       <state_interface name="position">
-        <param name="initial_value">-0.13963</param>
+        <param name="initial_value">-0.45320</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>
@@ -396,7 +477,7 @@
         <param name="max">1</param>
       </command_interface>
       <state_interface name="position">
-        <param name="initial_value">-0.68068</param>
+        <param name="initial_value">0.34299</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>
@@ -406,7 +487,7 @@
         <param name="max">1</param>
       </command_interface>
       <state_interface name="position">
-        <param name="initial_value">-1.83260</param>
+        <param name="initial_value">-1.88375</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>
@@ -426,7 +507,7 @@
         <param name="max">1</param>
       </command_interface>
       <state_interface name="position">
-        <param name="initial_value">0.0</param>
+        <param name="initial_value">-1.52609</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>
@@ -436,7 +517,7 @@
         <param name="max">1</param>
       </command_interface>
       <state_interface name="position">
-        <param name="initial_value">0.0</param>
+        <param name="initial_value">-0.43032</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>

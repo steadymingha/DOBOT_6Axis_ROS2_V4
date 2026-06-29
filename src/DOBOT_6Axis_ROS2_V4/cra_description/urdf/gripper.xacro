@@ -3,42 +3,32 @@
 
   <!-- Single source of truth for the Blender fixed-jaw parallel gripper on Link6.
        Included by cr7_on_mpo700.urdf.xacro, cra_description/cr7_robot.xacro and
-       cr7_moveit/config/cr7_robot.urdf.xacro so the collision boxes stay in sync
-       (edit jaw geometry HERE only). Flange mount face at z=+0.1401; finger_joint
-       axis -X: positive = opening, negative = closing.
+       cr7_moveit/config/cr7_robot.urdf.xacro so the geometry stays in sync
+       (edit HERE only). Flange mount face at z=+0.1401; finger_joint axis -X:
+       positive = opening, negative = closing.
+       Geometry mirrors gripper_long/model.sdf: per-part .dae visual meshes and
+       per-part convex .stl collision meshes (mesh path base set below).
        gazebo_props: emit the soft-contact + gravity-off Gazebo tags (true for the
        Gazebo-sim robots; false for the MoveIt-only description, which has none). -->
   <xacro:macro name="cr7_gripper" params="gazebo_props:=true">
 
+    <xacro:property name="mesh" value="file:///home/user/dobot_ws/src/blender/gripper_long"/>
+
+    <!-- Fixed part: flange + body + integral L-jaw + fixed pad -->
     <link name="gripper_base_link">
       <inertial>
         <origin xyz="0 0 0.05" rpy="0 0 0"/>
         <mass value="0.8"/>
         <inertia ixx="0.0060" ixy="0" ixz="0" iyy="0.0079" iyz="0" izz="0.0049"/>
       </inertial>
-      <visual>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-        <geometry>
-          <mesh filename="file:///home/user/dobot_ws/src/blender/gripper_long/meshes/base.dae"/>
-        </geometry>
-      </visual>
-      <!-- Fitted to gripper_long/meshes/base.dae per-part bounds (jaw_fixed, pad_fixed, body, flange) -->
-      <collision>  <!-- fixed-jaw top beam (jaw_fixed top): X[-0.021,0.181] Y[+-0.046] Z[0.105,0.115] -->
-        <origin xyz="0.0801 0 0.110" rpy="0 0 0"/>
-        <geometry><box size="0.2016 0.0912 0.010"/></geometry>
-      </collision>
-      <collision>  <!-- fixed-jaw column + contact pad: X[0.163,0.181] Y[+-0.046] Z[0.055,0.105], inner face = pad at X=0.1632 -->
-        <origin xyz="0.17205 0 0.080" rpy="0 0 0"/>
-        <geometry><box size="0.0177 0.0912 0.050"/></geometry>
-      </collision>
-      <collision>  <!-- top plate (body): X[-0.061,0.071] Y[+-0.046] Z[0.115,0.127] -->
-        <origin xyz="0.00505 0 0.12105" rpy="0 0 0"/>
-        <geometry><box size="0.1315 0.0912 0.0121"/></geometry>
-      </collision>
-      <collision>  <!-- mount boss (flange): r0.041 at Z[0.127,0.140] (flange face) -->
-        <origin xyz="0 0 0.13355" rpy="0 0 0"/>
-        <geometry><cylinder radius="0.041" length="0.013"/></geometry>
-      </collision>
+      <visual><geometry><mesh filename="${mesh}/meshes/flange.dae"/></geometry></visual>
+      <visual><geometry><mesh filename="${mesh}/meshes/body.dae"/></geometry></visual>
+      <visual><geometry><mesh filename="${mesh}/meshes/jaw_fixed.dae"/></geometry></visual>
+      <visual><geometry><mesh filename="${mesh}/meshes/pad_fixed.dae"/></geometry></visual>
+      <collision><geometry><mesh filename="${mesh}/collision/flange.stl"/></geometry></collision>
+      <collision><geometry><mesh filename="${mesh}/collision/body.stl"/></geometry></collision>
+      <collision><geometry><mesh filename="${mesh}/collision/jaw_fixed.stl"/></geometry></collision>
+      <collision><geometry><mesh filename="${mesh}/collision/pad_fixed.stl"/></geometry></collision>
     </link>
 
     <joint name="gripper_attach_joint" type="fixed">
@@ -47,22 +37,17 @@
       <child link="gripper_base_link"/>
     </joint>
 
+    <!-- Moving part: pusher (+ body connector) + moving pad -->
     <link name="gripper_finger_link">
       <inertial>
         <origin xyz="-0.073 0 0.023" rpy="0 0 0"/>
         <mass value="0.2"/>
         <inertia ixx="0.0007" ixy="0" ixz="0" iyy="0.0005" iyz="0" izz="0.00035"/>
       </inertial>
-      <visual>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-        <geometry>
-          <mesh filename="file:///home/user/dobot_ws/src/blender/gripper_long/meshes/finger.dae"/>
-        </geometry>
-      </visual>
-      <collision>  <!-- moving jaw + contact pad (jaw_moving+pad_moving): X[0.055,0.082] Y[+-0.035] Z[0.056,0.127], outer face = pad at X=0.0822 -->
-        <origin xyz="0.0687 0 0.0916" rpy="0 0 0"/>
-        <geometry><box size="0.027 0.070 0.071"/></geometry>
-      </collision>
+      <visual><geometry><mesh filename="${mesh}/meshes/jaw_moving.dae"/></geometry></visual>
+      <visual><geometry><mesh filename="${mesh}/meshes/pad_moving.dae"/></geometry></visual>
+      <collision><geometry><mesh filename="${mesh}/collision/jaw_moving.stl"/></geometry></collision>
+      <collision><geometry><mesh filename="${mesh}/collision/pad_moving.stl"/></geometry></collision>
     </link>
 
     <joint name="gripper_finger_joint" type="prismatic">

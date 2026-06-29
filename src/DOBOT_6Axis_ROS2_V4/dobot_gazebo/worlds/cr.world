@@ -13,56 +13,67 @@
          (cr7_on_mpo700.urdf.xacro: MPO-700 base + cube_link),
          so they move together with the arm. -->
 
-    <!-- Blender shelf: 4-tier, board tops at z=0.40/0.90/1.40/1.90, footprint 2.0x0.30m -->
+    <!-- Blender shelf: 4-tier, board tops at z=0.40/0.685/1.30/1.90, footprint 2.0x0.30m.
+         Tier-1 (board 2) at 0.685 (min down-grasp reach); tier-2 (board 3) at 1.30. -->
     <include>
       <name>shelf</name>
       <pose>0.8 0.5 0 0 0 0</pose>
       <uri>model://shelf</uri>
     </include>
 
-    <!-- Shelf tier 1 boxes: rest on board top 0.90 + half box height 0.07 = 0.97 -->
+    <!-- Wire-bonder beside the shelf right end (shelf spans X -0.2..1.8).
+         Wirebonder is 0.952 wide in X, base centred; placed just past the end. -->
+    <include>
+      <name>wirebonder</name>
+      <pose>2.35 0.5 0 0 0 0</pose>
+      <uri>model://wirebonder</uri>
+    </include>
+
+    <!-- Shelf tier 1 boxes: tier-1 board lowered to MIN reachable height for the
+         down-grasp reach test (board top 0.685 + half box height 0.07 = 0.755).
+         Grasp TCP = 0.755 + 0.015 = 0.770 m = floor reach 0.75 + 2 cm margin. -->
     <include>
       <name>box_l1a</name>
-      <pose>0.7095 0.5 0.97 0 0 1.5708</pose>
+      <pose>0.7095 0.5 0.755 0 0 1.5708</pose>
       <uri>model://box</uri>
     </include>
     <include>
       <name>box_l1b</name>
-      <pose>0.8905 0.5 0.97 0 0 1.5708</pose>
+      <pose>0.8905 0.5 0.755 0 0 1.5708</pose>
       <uri>model://box</uri>
     </include>
     <!-- Flanking boxes: one box-pitch (0.181) left and right of the existing pair -->
     <include>
       <name>box_l1c</name>
-      <pose>0.5285 0.5 0.97 0 0 1.5708</pose>
+      <pose>0.5285 0.5 0.755 0 0 1.5708</pose>
       <uri>model://box</uri>
     </include>
     <include>
       <name>box_l1d</name>
-      <pose>1.0715 0.5 0.97 0 0 1.5708</pose>
+      <pose>1.0715 0.5 0.755 0 0 1.5708</pose>
       <uri>model://box</uri>
     </include>
 
-    <!-- Shelf tier 2 boxes: rest on board top 1.40 + half box height 0.07 = 1.47 -->
+    <!-- Wirebonder magazines: box_l2a -> slot B (G_L), box_l2b -> slot D (H_R).
+         Place centre = rail centre +y by (rail_half 0.0075 + mag_half 0.0405 +
+         5 mm gap) = +0.053; yaw 0 so the 236 mm side runs along the rail (world x).
+         Coords from spawn_device_markers.py rail centres. -->
     <include>
       <name>box_l2a</name>
-      <pose>0.7095 0.5 1.47 0 0 1.5708</pose>
+      <pose>2.002 0.441 1.281 0 0 0</pose>
       <uri>model://box</uri>
     </include>
     <include>
       <name>box_l2b</name>
-      <pose>0.8905 0.5 1.47 0 0 1.5708</pose>
+      <pose>2.698 0.441 0.896 0 0 0</pose>
       <uri>model://box</uri>
     </include>
-    <!-- Flanking boxes: one box-pitch (0.181) left and right of the existing pair -->
-    <include>
-      <name>box_l2c</name>
-      <pose>0.5285 0.5 1.47 0 0 1.5708</pose>
-      <uri>model://box</uri>
-    </include>
+    <!-- box_l2c is spawned onto the +Y (largest-y) robot pocket by the launch
+         file (spawn_box_l2c), AFTER the robot, so it is NOT included here. -->
+    <!-- Shelf tier 2 box: tier-2 board top at 1.30 m + half box height 0.07 = 1.37. -->
     <include>
       <name>box_l2d</name>
-      <pose>1.0715 0.5 1.47 0 0 1.5708</pose>
+      <pose>1.0715 0.5 1.37 0 0 1.5708</pose>
       <uri>model://box</uri>
     </include>
 
@@ -80,7 +91,8 @@
         <!-- <pose>2.1 -1.8 1.8 0 0.42 2.36</pose> -->
         <!-- <pose>0.73 0.04 1.11 0.0 0.3 1.55</pose> -->
         <!-- <pose>0.48 -3.15 1.95 0.0 0.34 1.48</pose> -->
-        <pose>-0.89 0.001 1.04 0.0 0.24 0.1</pose>
+        <!-- <pose>-0.89 0.001 1.04 0.0 0.24 0.1</pose> -->
+        <pose>0.61 -0.285 1.51 0.0 0.24 0.1</pose>
       </camera>
     </gui>
 

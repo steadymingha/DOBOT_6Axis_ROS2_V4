@@ -6,6 +6,9 @@
 # (/compute_ik, /check_state_validity). Drive the AGV with teleop_agv.sh.
 
 export DISPLAY=:0
+# Force gzserver onto the NVIDIA GLX stack (camera sensor render). Remove if it
+# makes no difference to Gazebo load/run speed.
+export __GLX_VENDOR_LIBRARY_NAME=nvidia
 export DOBOT_TYPE=cr7
 export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/home/user/dobot_ws/src/blender
 
@@ -24,6 +27,12 @@ echo "=== [2/2] MoveIt + RViz starting ==="
 ros2 launch dobot_moveit moveit_gazebo.launch.py &
 MOVEIT_PID=$!
 echo "MoveIt PID: $MOVEIT_PID"
+
+echo "=== [3/3] D405 eye-in-hand camera view ==="
+sleep 8   # wait for Gazebo camera sensor to advertise the topic
+python3 ~/dobot_ws/src/DOBOT_6Axis_ROS2_V4/view_d405.py /d405/color/image_raw &
+VIEW_PID=$!
+echo "image viewer PID: $VIEW_PID"
 
 echo "All started. Press Ctrl+C to exit"
 wait

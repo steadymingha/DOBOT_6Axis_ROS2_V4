@@ -20,13 +20,34 @@
         </inertia>
       </inertial>
 
-      <visual name='base_visual'>
-        <geometry><mesh><uri>model://gripper_long/meshes/base.dae</uri></mesh></geometry>
+      <visual name='flange_visual'>
+        <geometry><mesh><uri>model://gripper_long/meshes/flange.dae</uri></mesh></geometry>
+      </visual>
+      <visual name='body_visual'>
+        <geometry><mesh><uri>model://gripper_long/meshes/body.dae</uri></mesh></geometry>
+      </visual>
+      <visual name='jaw_fixed_visual'>
+        <geometry><mesh><uri>model://gripper_long/meshes/jaw_fixed.dae</uri></mesh></geometry>
+      </visual>
+      <visual name='pad_fixed_visual'>
+        <geometry><mesh><uri>model://gripper_long/meshes/pad_fixed.dae</uri></mesh></geometry>
       </visual>
 
-      <!-- Concave mesh collision (C-shape): the box pocket stays open. -->
-      <collision name='base_col'>
-        <geometry><mesh><uri>model://gripper_long/meshes/base.dae</uri></mesh></geometry>
+      <!-- Per-part STL collision (convex pieces keep the C-shape pocket open). -->
+      <collision name='flange_col'>
+        <geometry><mesh><uri>model://gripper_long/collision/flange.stl</uri></mesh></geometry>
+        <surface><friction><ode><mu>1.2</mu><mu2>1.2</mu2></ode></friction></surface>
+      </collision>
+      <collision name='body_col'>
+        <geometry><mesh><uri>model://gripper_long/collision/body.stl</uri></mesh></geometry>
+        <surface><friction><ode><mu>1.2</mu><mu2>1.2</mu2></ode></friction></surface>
+      </collision>
+      <collision name='jaw_fixed_col'>
+        <geometry><mesh><uri>model://gripper_long/collision/jaw_fixed.stl</uri></mesh></geometry>
+        <surface><friction><ode><mu>1.2</mu><mu2>1.2</mu2></ode></friction></surface>
+      </collision>
+      <collision name='pad_fixed_col'>
+        <geometry><mesh><uri>model://gripper_long/collision/pad_fixed.stl</uri></mesh></geometry>
         <surface><friction><ode><mu>1.2</mu><mu2>1.2</mu2></ode></friction></surface>
       </collision>
     </link>
@@ -42,12 +63,19 @@
         </inertia>
       </inertial>
 
-      <visual name='finger_visual'>
-        <geometry><mesh><uri>model://gripper_long/meshes/finger.dae</uri></mesh></geometry>
+      <visual name='jaw_moving_visual'>
+        <geometry><mesh><uri>model://gripper_long/meshes/jaw_moving.dae</uri></mesh></geometry>
+      </visual>
+      <visual name='pad_moving_visual'>
+        <geometry><mesh><uri>model://gripper_long/meshes/pad_moving.dae</uri></mesh></geometry>
       </visual>
 
-      <collision name='finger_col'>
-        <geometry><mesh><uri>model://gripper_long/meshes/finger.dae</uri></mesh></geometry>
+      <collision name='jaw_moving_col'>
+        <geometry><mesh><uri>model://gripper_long/collision/jaw_moving.stl</uri></mesh></geometry>
+        <surface><friction><ode><mu>1.2</mu><mu2>1.2</mu2></ode></friction></surface>
+      </collision>
+      <collision name='pad_moving_col'>
+        <geometry><mesh><uri>model://gripper_long/collision/pad_moving.stl</uri></mesh></geometry>
         <surface><friction><ode><mu>1.2</mu><mu2>1.2</mu2></ode></friction></surface>
       </collision>
     </link>

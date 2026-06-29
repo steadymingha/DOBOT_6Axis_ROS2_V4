@@ -206,9 +206,9 @@ J1이 포켓 반대 방향으로 도는 증상이 반복됨. 단순히 브랜치
 ```bash
 cd ~/dobot_ws/src/DOBOT_6Axis_ROS2_V4
 # 마운트 4종 비교 (psi 전체 스윕)
-~/dobot_ws/.venv/bin/python deploy_optimizer.py --approaches down,side,wrap,pusher
+~/dobot_ws/.venv/bin/python tools/deploy_optimizer.py --approaches down,side,wrap,pusher
 # 선반 거리/높이 바꿔 재확인
-~/dobot_ws/.venv/bin/python deploy_optimizer.py --approaches down --shelf-r 0.6 --shelf-z 0.25
+~/dobot_ws/.venv/bin/python tools/deploy_optimizer.py --approaches down --shelf-r 0.6 --shelf-z 0.25
 # 출력: 콘솔 랭킹 + reachability_out/deploy_<timestamp>.csv
 ```
 

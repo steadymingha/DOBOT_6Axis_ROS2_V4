@@ -52,23 +52,23 @@ RI(voxel) = (IK가 풀린 orientation 수) / (테스트한 전체 orientation �
 
 ```bash
 cd /home/user/dobot_ws/src/DOBOT_6Axis_ROS2_V4
-/home/user/dobot_ws/.venv/bin/python reachability_map.py [옵션]
+/home/user/dobot_ws/.venv/bin/python tools/reachability_map.py [옵션]
 ```
 
 ### 예시
 ```bash
 # 전체 도달 영역 자동 계산(FK 엔벨로프로 후보 voxel 선정) + 시각화
-/home/user/dobot_ws/.venv/bin/python reachability_map.py
+/home/user/dobot_ws/.venv/bin/python tools/reachability_map.py
 
 # 특정 박스만 고해상도, 헤드리스(계산+저장만)
-/home/user/dobot_ws/.venv/bin/python reachability_map.py --no-viz \
+/home/user/dobot_ws/.venv/bin/python tools/reachability_map.py --no-viz \
   --voxel 0.025 --bounds 0,0.556,-0.8,0,-0.05,0.05
 
 # 탑다운 grasp만(그리퍼 똑바로 아래) roll 4가지
-/home/user/dobot_ws/.venv/bin/python reachability_map.py --n-dir 1 --n-roll 4
+/home/user/dobot_ws/.venv/bin/python tools/reachability_map.py --n-dir 1 --n-roll 4
 
 # 저장된 결과를 재계산 없이 다시 publish
-/home/user/dobot_ws/.venv/bin/python reachability_map.py --load latest
+/home/user/dobot_ws/.venv/bin/python tools/reachability_map.py --load latest
 ```
 
 ---

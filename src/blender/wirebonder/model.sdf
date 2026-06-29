@@ -1,0 +1,80 @@
+<?xml version='1.0'?>
+<sdf version='1.7'>
+  <!-- Static wire-bonder mock-up. Overall extent: 0.952 (X) x 0.52 (Y) x 1.775 (Z) m.
+       Origin at floor level, base cube centred in X, back face at +Y=0.26.
+       Mesh is in world coords baked at export, so link pose is identity. -->
+  <model name='wirebonder'>
+    <static>true</static>
+    <pose>0 0 0 0 0 0</pose>
+    <link name='wirebonder_link'>
+      <pose>0 0 0 0 0 0</pose>
+      <visual name='wirebonder_visual'>
+        <geometry>
+          <mesh>
+            <uri>model://wirebonder/meshes/wirebonder.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <!-- 3 cm ArUco/AprilTag markers standing vertical on Cube_C front face
+           (Y=-0.12), facing the robot (-Y). roll=pi/2 turns the plate's face
+           normal from +Z to -Y. Centred in X under Cube_G_L (-0.348, tag 0)
+           and Cube_G_R (+0.348, tag 1); Z=1.2 mid-height. 0.5 mm proud of
+           the face to avoid z-fighting. -->
+      <visual name='aruco_G_L'>
+        <pose>-0.348 -0.1205 1.2 1.5708 0 0</pose>
+        <!-- 0.0375 = 0.03 tag + 1-module white quiet zone (texture is 640px =
+             512 tag + 64 white each side); the BLACK tag stays 30 mm (TAG_SIZE_M). -->
+        <geometry><box><size>0.0375 0.0375 0.001</size></box></geometry>
+        <material><script>
+          <uri>model://wirebonder/materials/scripts</uri>
+          <uri>model://wirebonder/materials/textures</uri>
+          <name>ArucoMarker/Marker0</name>
+        </script></material>
+      </visual>
+      <visual name='aruco_G_R'>
+        <pose>0.348 -0.1205 1.2 1.5708 0 0</pose>
+        <!-- 0.0375 = 0.03 tag + 1-module white quiet zone (see aruco_G_L). -->
+        <geometry><box><size>0.0375 0.0375 0.001</size></box></geometry>
+        <material><script>
+          <uri>model://wirebonder/materials/scripts</uri>
+          <uri>model://wirebonder/materials/textures</uri>
+          <name>ArucoMarker/Marker1</name>
+        </script></material>
+      </visual>
+      <!-- per-part collision: one STL per box so the stepped recesses stay open -->
+      <collision name='Cube_A'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_A.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_B'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_B.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_C'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_C.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_D'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_D.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_E'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_E.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_F'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_F.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_G_L'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_G_L.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_G_R'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_G_R.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_H_L'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_H_L.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_H_R'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_H_R.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_I'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_I.stl</uri></mesh></geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>

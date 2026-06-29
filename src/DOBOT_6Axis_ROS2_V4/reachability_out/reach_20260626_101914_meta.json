@@ -1,0 +1,62 @@
+{
+  "timestamp": "20260626_101914",
+  "method": "IK voxel reachability (Method C + D)",
+  "xacro": "/home/user/dobot_ws/install/cra_description/share/cra_description/urdf/cr7_on_mpo700.urdf.xacro",
+  "srdf": "/home/user/dobot_ws/src/DOBOT_6Axis_ROS2_V4/cr7_moveit/config/cr7_robot.srdf",
+  "joint_limits_deg": {
+    "J1": [
+      -180.0,
+      180.0
+    ],
+    "J2": [
+      -70.0,
+      60.0
+    ],
+    "J3": [
+      -180.0,
+      180.0
+    ],
+    "J4": [
+      0.0,
+      120.0
+    ],
+    "J5": [
+      -120.0,
+      120.0
+    ],
+    "J6": [
+      -180.0,
+      180.0
+    ]
+  },
+  "voxel_m": 0.015,
+  "bounds": "-0.7,1.05,-0.9,0.0,0.3,1.9",
+  "orientations": {
+    "n_dir": 1,
+    "n_roll": 1,
+    "n_total": 1
+  },
+  "ik": {
+    "seed_restarts": 3,
+    "pos_tol_m": 0.005,
+    "rot_tol_deg": 5.0,
+    "max_iter": 60
+  },
+  "down_tol_deg": 15.0,
+  "seed": 1,
+  "frame_id": "base_link",
+  "stats": {
+    "candidate_voxels": 782812,
+    "reachable_voxels": 70777,
+    "down_voxels": 70777,
+    "dexterous_voxels": 70777,
+    "ri_mean_over_reachable": 1.0,
+    "ri_max": 1.0
+  },
+  "files": {
+    "csv": "/home/user/dobot_ws/src/DOBOT_6Axis_ROS2_V4/reachability_out/reach_20260626_101914.csv",
+    "all_pcd": "/home/user/dobot_ws/src/DOBOT_6Axis_ROS2_V4/reachability_out/reach_20260626_101914_all.pcd",
+    "down_pcd": "/home/user/dobot_ws/src/DOBOT_6Axis_ROS2_V4/reachability_out/reach_20260626_101914_down.pcd",
+    "dex_pcd": "/home/user/dobot_ws/src/DOBOT_6Axis_ROS2_V4/reachability_out/reach_20260626_101914_dex.pcd"
+  }
+}

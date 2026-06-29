@@ -52,12 +52,8 @@
                 <mesh filename="package://neo_simulation2/components/meshes/SICK-S300.dae" scale="0.001 0.001 0.001"/>
             </geometry>
         </visual>
-        <collision>
-            <origin rpy="-1.57 0 3.14" xyz="0 0 -0.12"/>
-            <geometry>
-                <mesh filename="package://neo_simulation2/components/meshes/SICK-S300.dae" scale="0.001 0.001 0.001"/>
-            </geometry>
-        </collision>
+        <!-- No collision: the corner SICK mesh sticks out to mpo +y 0.426 and would
+             block the AGV from parking close to the wirebonder (sensor, not a body). -->
     </link>
 
     <joint name="lidar_2_joint" type="fixed">
@@ -79,12 +75,8 @@
                 <mesh filename="package://neo_simulation2/components/meshes/SICK-S300.dae" scale="0.001 0.001 0.001"/>
             </geometry>
         </visual>
-        <collision>
-            <origin rpy="-1.57 0 3.14" xyz="0 0 -0.12"/>
-            <geometry>
-                <mesh filename="package://neo_simulation2/components/meshes/SICK-S300.dae" scale="0.001 0.001 0.001"/>
-            </geometry>
-        </collision>
+        <!-- No collision: the corner SICK mesh sticks out to mpo +y 0.426 and would
+             block the AGV from parking close to the wirebonder (sensor, not a body). -->
     </link>
 
     <!-- Import wheel macros -->

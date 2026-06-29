@@ -1,8 +1,11 @@
-# Architecture Overview — CBiRRT Pick-and-Place
+# Architecture Overview — CR7 Pick-and-Place
 
-> **Scope**: `cbirrt_pick_place.py` + `constrained_cbirrt.py`  
-> **Robot**: DOBOT CR7, OnRobot 2FG7 gripper  
-> **Stack**: ROS 2 Humble · pinocchio 4.0.0 · MoveIt 2 (IK / collision srv only)
+> **Scope**: `cr7_pnp/` library + sequence scripts (`shelf_pick_place.py`, `cbirrt_pick_place.py`, device sequences)
+> **Robot**: DOBOT CR7 on MPO-700 AGV, Blender fixed-jaw gripper (mounted on Link6)
+> **Stack**: ROS 2 Humble · pinocchio · coal (HPP-FCL) · Gazebo Classic + link-attacher
+>
+> **No MoveIt at runtime.** IK and collision are solved in-process with pinocchio
+> (`cr7_pnp/model.py`), so `/compute_ik` and `/check_state_validity` are not used.
 
 ---
 
@@ -10,297 +13,302 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  cbirrt_pick_place.py                                               │
-│                                                                     │
-│  CBiRRTPickPlace (ROS 2 node)                                       │
-│  ├─ inherits  CR7RRTPlanner  ◄─── test_w_gripper.py                │
-│  │   ├─ /joint_states subscriber                                    │
-│  │   ├─ /compute_ik  (MoveIt srv)                                   │
-│  │   ├─ /check_state_validity  (MoveIt srv)                         │
-│  │   ├─ FollowJointTrajectory action client                         │
-│  │   ├─ gripper controller (position cmd)                           │
-│  │   └─ link_attacher_plugin (attach / detach)                      │
-│  │                                                                  │
-│  └─ owns  ConstrainedPlanner  ◄─── constrained_cbirrt.py           │
-│      ├─ pinocchio reduced model (gripper joints locked)             │
-│      ├─ plan()        — CBiRRT in joint space                       │
-│      └─ lift_path()   — Cartesian-Jacobian straight-line servo      │
-│                                                                     │
-│  main()  — 6-segment sequencer                                      │
+│  cr7_pnp/   (self-contained motion library — no external script deps) │
+│                                                                       │
+│  node.py     CR7Node ─► CBiRRTPickPlace ─► HubPickPlace  (ROS 2 node) │
+│     ├─ /joint_states subscriber                                       │
+│     ├─ FollowJointTrajectory action client  (arm + gripper)           │
+│     ├─ /ATTACHLINK · /DETACHLINK  (link-attacher)                     │
+│     ├─ TF (odom→base_link, gripper, AGV root)                         │
+│     ├─ pinocchio IK + collision         ◄── model.py                  │
+│     └─ CBiRRT plan + Cartesian servo    ◄── cbirrt.py                 │
+│                                                                       │
+│  model.py    ReachabilityModel  — pinocchio FK / IK / self+scene coll │
+│  cbirrt.py   ConstrainedPlanner — CBiRRT plan() + linear_path() servo │
+│  geometry.py pure helpers (quat, pose_at, trigger) + tuned constants  │
 └─────────────────────────────────────────────────────────────────────┘
+        ▲ import only
+        │
+┌───────┴───────────────── sequence scripts (main + config) ───────────┐
+│  shelf_pick_place.py     shelf → base pockets (hub-and-spoke, CBiRRT)   │
+│  cbirrt_pick_place.py  segmented shelf→base DEMO (pre-hub reference)   │
+│  wirebonder_pick_place.py  base pocket → wirebonder H_L (linear+RRT) │
+│  spawn_device_markers.py  Gazebo markers at device magazine slots     │
+└──────────────────────────────────────────────────────────────────────┘
 
-External services (must be running):
-  Gazebo  ──►  /joint_states, trajectory execution, gripper, attach
-  MoveIt  ──►  /compute_ik, /check_state_validity
-  robot_state_publisher  ──►  TF (base_link)
+External processes (must be running):
+  Gazebo Classic ──► /joint_states, trajectory + gripper controllers,
+                     /ATTACHLINK, /DETACHLINK, /spawn_entity
+  robot_state_publisher ──► TF (base_link, odom, gripper_base_link)
 ```
+
+The library copied the runtime parts of the former `test_w_gripper.py`,
+`constrained_cbirrt.py` and `reachability_map.py` and now stands alone; those
+first two files were deleted, `reachability_map.py` survives only as the offline
+map builder used by `deploy_optimizer.py`.
 
 ---
 
-## 2. Class Hierarchy
+## 2. Class Hierarchy (`cr7_pnp/node.py`)
 
 ```
 rclpy.Node
-  └── CR7RRTPlanner          (test_w_gripper.py)
-        └── CBiRRTPickPlace  (cbirrt_pick_place.py)
-              │   setup_planner()          → creates ConstrainedPlanner
-              │   compute_ik_ordered()     → nearest-branch IK with multi-seed
-              │   move_constrained()       → CBiRRT carry (segment 4)
-              │   vertical_servo()         → Cartesian servo (segments 2,3,5)
-              │   execute_path()           → JointTrajectory → action client
+  └── CR7Node                      ROS plumbing: joint states, gripper,
+        │                          link-attacher, FollowJointTrajectory,
+        │                          plan_rrt() (free joint-space RRT)
+        │
+        └── CBiRRTPickPlace        pinocchio engines + motion primitives
+              │   setup_planner()        → ConstrainedPlanner + 2× ReachabilityModel
+              │   compute_ik_ordered()   → nearest-branch, collision-gated IK
+              │   is_state_valid()       → pinocchio whole-robot collision
+              │   move_constrained()     → tilt-held CBiRRT carry
+              │   move_to_pose_ref()     → free RRT to a chosen IK branch
+              │   linear_servo()         → straight Cartesian-Jacobian servo
+              │   rotate_j6() / move_single_joint()  → single-joint moves
+              │   update_shelf_collision()           → shelf boards via TF
               │
-              └── (owns) ConstrainedPlanner   (constrained_cbirrt.py)
-                    set_reference(quat)     → stores grasp orientation R0
-                    plan(start, goal, ...)  → CBiRRT path or None
-                    lift_path(start, dz,..) → straight-line Cartesian path
-                    _project(q)             → Newton projection onto manifold
-                    _err_and_jac(q)         → orientation error + Jacobian
+              └── HubPickPlace     hub routing + carrying
+                    init_hub() / go_to_hub()         → tool-down standby waypoint
+                    attach_box_collision()/detach... → carried-box phantom
+                    plan_spoke() / preflight_linear()→ CBiRRT spoke + no-motion check
+                    capture()/replay_reverse()/rev() → record & reverse-replay
+                    gripper_x_in_base_fk()           → predict jaw axis by FK
+                    attach_box_to_magazine()         → fix placed box to the AGV
 ```
+
+`HubPickPlace` is **the** reusable node; every sequence instantiates it. A
+linear-only device sequence simply uses `linear_servo` + `move_to_pose_ref` and
+skips the CBiRRT spoke helpers.
 
 ---
 
-## 3. Motion Pipeline — 6 Segments
+## 3. IK & Collision — `cr7_pnp/model.py` (`ReachabilityModel`)
+
+Two instances are built in `setup_planner()`:
+
+| Instance | URDF | Purpose |
+|----------|------|---------|
+| `self.collision` | `cr7_on_mpo700` (arm + cube platform + MPO-700 AGV + gripper) | `is_collision_free()` — self, cube/AGV, shelf boards, carried-box phantom |
+| `self.ik_model` | `cr7_robot` (arm only) | `inverse_kinematics()` — damped-least-squares CLIK at the TCP |
 
 ```
- [start: any pose]
-       │
-       ▼
- ┌─ Segment 1 ─────────────────────────────────────────────────────┐
- │  Approach (free joint-space RRT)                                │
- │  move_to_pose → pre-grasp (0.4, 0.0, z=0.30) gripper down      │
- │  → gripper OPEN                                                 │
- └─────────────────────────────────────────────────────────────────┘
-       │
-       ▼
- ┌─ Segment 2 ─────────────────────────────────────────────────────┐
- │  Vertical DESCEND  (Cartesian-Jacobian servo, no RRT)           │
- │  vertical_servo(dz = 0.24 - 0.30 = -0.06 m)                    │
- │  → gripper CLOSE + attach_box()                                 │
- └─────────────────────────────────────────────────────────────────┘
-       │
-       ▼
- ┌─ Segment 3 ─────────────────────────────────────────────────────┐
- │  Vertical LIFT  (Cartesian-Jacobian servo)                      │
- │  vertical_servo(dz = 0.30 - 0.24 = +0.06 m)                    │
- └─────────────────────────────────────────────────────────────────┘
-       │
-       ▼
- ┌─ Segment 4 ─────────────────────────────────────────────────────┐
- │  Horizontal CARRY  (CBiRRT, tilt-constrained)                   │
- │  move_constrained → above marker (0.2, 0.35, z=0.30)           │
- │  orientation held: gripper stays down, yaw free                 │
- └─────────────────────────────────────────────────────────────────┘
-       │
-       ▼
- ┌─ Segment 5 ─────────────────────────────────────────────────────┐
- │  Vertical DESCEND + release  (Cartesian-Jacobian servo)         │
- │  vertical_servo(dz = 0.25 - 0.30 = -0.05 m)                    │
- │  → detach_box() + gripper OPEN                                  │
- └─────────────────────────────────────────────────────────────────┘
-       │
-       ▼
- ┌─ Segment 6 ─────────────────────────────────────────────────────┐
- │  Retreat + overhead wait pose                                   │
- │  vertical_servo(+0.08 m) → move_to_joint_pose(overhead)        │
- └─────────────────────────────────────────────────────────────────┘
+xacro → /tmp/cr7_*_model_<pid>.urdf
+  └─ pin.buildModelFromUrdf() + buildGeomFromUrdf()
+       └─ buildReducedModel(lock non-arm joints)   → 6-DOF arm, rest frozen
+            └─ collision pairs = all − SRDF-disabled − colliding-at-neutral
+               (arm_pairs_only: drop fixed↔fixed pairs)
 ```
 
-**Why two planners for vertical vs horizontal?**
-
-| Motion | Planner | Reason |
-|--------|---------|--------|
-| Vertical (segments 2,3,5) | Cartesian-Jacobian servo (`lift_path`) | Deterministic, no branch jump, fast convergence on a straight line |
-| Horizontal carry (segment 4) | CBiRRT | Must route through joint space while holding tilt — needs a sampling planner |
-| Approach (segment 1) | Free RRT (MoveIt/CR7RRTPlanner) | No orientation constraint yet; just needs to reach pre-grasp |
+- IK targets are the **gripper TCP** = Link6 origin + `TCP_OFFSET_M` (0.12005 m)
+  along the tool z-axis. This is an abstract target convention shared with the
+  reachability map, **not** the physical Blender pad (which bottoms out ~0.0821 m
+  below the flange). Sequence constants compensate via `GRASP_TCP_ABOVE` etc.
+- `compute_ik_ordered()` wraps the solver: seed near the current pose first, then
+  random restarts, gate every candidate through the whole-robot collision model,
+  return the branch nearest the current config (or all candidates).
+- Joint limits are widened to the URDF hardware range (±6.27 rad) in
+  `setup_planner()` — collision is enforced by pinocchio, so the conservative
+  software clamps are unnecessary and blocked valid elbow/wrist branches.
 
 ---
 
-## 4. constrained_cbirrt.py — Internal Flow
+## 4. CBiRRT & Servo — `cr7_pnp/cbirrt.py` (`ConstrainedPlanner`)
 
-### 4a. Model setup
-
-```
-xacro → /tmp/cr7_cbirrt_model.urdf
-  └─ pin.buildModelFromUrdf()
-       └─ pin.buildReducedModel(lock gripper joints)
-            → 6-DOF arm model, gripper frozen at neutral
-               (same reduced-model pattern as reachability_map.py)
-```
-
-### 4b. Orientation constraint
-
-The constraint is the **orientation error** between the current EE rotation and the reference grasp rotation `R0`:
+### 4a. Orientation constraint (tilt-only by default)
 
 ```
 e = log3(R0ᵀ · R(q))        ∈ ℝ³   (SO3 log map)
 J = Jlog3(R0ᵀ · R) · Jω_local      (3×6 chain-rule Jacobian)
 ```
 
-- `lock_tilt_only=True` (default): uses only `e[0:2]` and `J[0:2]` → 2-DOF constraint, 4-DOF manifold.  
-  The approach axis (tool z) is locked; yaw about that axis is free → box stays level.
-- `lock_tilt_only=False`: uses all 3 components → full 3-DOF orientation lock.
+- `lock_tilt_only=True` (default): uses `e[0:2]`, `J[0:2]` → 2-DOF constraint,
+  4-DOF manifold. Tool z (approach axis) locked; yaw about it free → box stays
+  level while carried.
+- `lock_tilt_only=False`: full 3-DOF orientation lock.
 
-### 4c. CBiRRT algorithm
+### 4b. CBiRRT (`plan`)
 
 ```
-Ta = [start_projected]    Tb = [goal_projected]
-
+Ta = [project(start)]   Tb = [project(goal)]
 loop (max_iter or time_limit):
-  q_rand ← random sample in [lo, hi]  (or connect_bias → Tb root)
-  q_rand ← _project(q_rand)           Newton projection onto manifold
-  extend(Ta, q_rand)
-    nearest node in Ta → step toward q_rand → project → collision check
-  if extended:
-    connect(Tb, q_new)                 repeated extend until reach or stuck
-    if connected → trace both trees → full path
+  q_rand ← project(random sample)        (or connect_bias → other tree's root)
+  extend(Ta, q_rand): nearest → step → project → edge collision-check
+  if extended: connect(Tb, q_new) greedily; if joined → trace both → path
   swap Ta ↔ Tb
 ```
+`_project(q)` is Newton–Raphson: `dq = J⁺·e ; q ← q − dq` until `‖e‖ < tol`.
 
-`_project(q)` is a **Newton–Raphson** iterator:
-```
-dq = J⁺ · e    (lstsq pseudo-inverse)
-q  ← q - dq
-```
-stops when `‖e‖ < tol` or `max_iters` reached.
+### 4c. Cartesian servo (`linear_path`)
 
-### 4d. Cartesian servo (`lift_path`)
+Straight-line translate by `delta` (m, base_link) holding the current
+orientation, seeded from `start_q` (no IK branch jump):
 
 ```
-target_z_k = p0.z + step * k * sign(dz)    for k = 1..N
-  oMdes = SE3(R0_current, [p0.x, p0.y, target_z_k])
-  IK via damped Jacobian:
-    err = log6(oMf⁻¹ · oMdes)
-    J   = -Jlog6 · computeFrameJacobian
-    v   = -Jᵀ (J Jᵀ + λI)⁻¹ err        (damped least-squares)
-    q  += 0.5 · v
-  stop if: joint limit, collision, IK diverges
+for dist in steps along delta:
+  oMdes = SE3(R0_current, p0 + unit·dist)
+  damped-least-squares IK:  v = -Jᵀ(JJᵀ + λI)⁻¹·log6(oMf⁻¹·oMdes) ;  q += 0.5·v
+  stop if joint limit / collision / singular (reports σ_min)
+returns (path, reached_metres, reason)
 ```
+A short result is a **hard failure** at the sequence level: `linear_servo`/
+`preflight_linear` abort rather than grasp/place from the wrong spot.
 
 ---
 
-## 5. Data Flow Diagram
+## 5. Sequences
+
+### 5a. `shelf_pick_place.py` — shelf → base (production, hub-and-spoke)
+
+Every motion routes through a tool-down **HUB** waypoint so the arm never crosses
+shelf→pocket directly (that direct carry stalls when grasp and place fall in
+different elbow/wrist families — see `docs/CARRY_BRANCH_STALL.md`).
 
 ```
- /joint_states ──────────────────► current_joints (np.array[6])
-                                          │
-                    ┌─────────────────────▼──────────────────────┐
-                    │          CBiRRTPickPlace                    │
-                    │                                             │
- target_pose ──────►│ compute_ik_ordered()                        │
- (PoseStamped)      │   MoveIt /compute_ik (120 seeds)            │
-                    │   → goal_q (nearest IK branch)             │
-                    │                                             │
-                    │ move_constrained(target_pose)               │
-                    │   set_reference(orientation)                │
-                    │   ConstrainedPlanner.plan(start, goal)      │
-                    │   → path [[q0..q5], ...]                    │
-                    │   execute_path(path)                        │
-                    │   → FollowJointTrajectory goal ─────────────┼──► Gazebo
-                    │                                             │
-                    │ vertical_servo(dz)                          │
-                    │   ConstrainedPlanner.lift_path(start, dz)   │
-                    │   → path [[q0..q5], ...]                    │
-                    │   execute_path(path) ───────────────────────┼──► Gazebo
-                    └─────────────────────────────────────────────┘
+hub ──(CBiRRT spoke)──► pre-grasp ─► insert ─► J6 twist ─► descend ─► grip+attach
+hub ◄──(reverse-replay of the recorded forward path, twist held)──────────────┘
+hub ──(CBiRRT spoke)──► pocket hover ─► descend ─► release+attach-to-AGV
+hub ◄──(reverse-replay)───────────────────────────────────────────────────────┘
 ```
+
+Return is guaranteed two ways: spokes are **pre-flighted** under the carried-box
+collision model with no motion (infeasible → abort before moving), and forward
+joint waypoints are **recorded and replayed in reverse** (a path just executed is
+executable backwards). Four tier-1 boxes → four base pockets, one per SPACE.
+
+### 5b. `cbirrt_pick_place.py` — segmented DEMO (pre-hub reference)
+
+The original single-cycle flow: RRT approach → insert → J6 twist → jaw-align →
+descend → grip → ascend → retreat → tilt-constrained carry → place-descend →
+release. Kept as a runnable reference; the hub version supersedes it.
+
+### 5c. `wirebonder_pick_place.py` — base pocket → wirebonder slot (linear + RRT)
+
+Device sequences use **free joint-space RRT for transit and straight Cartesian
+servos for the fine moves — not CBiRRT** — and route through the hub:
+
+```
+hub → above base pocket (RRT) → descend (servo) → grasp → ascend → hub
+    → above H_L slot    (RRT) → descend (servo) → release → ascend → hub
+```
+
+The H_L target is a world-frame point on the static wirebonder, looked up in
+base_link via TF each cycle (AGV must be parked facing the device). The grasped
+box hangs ~`GRASP_LATERAL_M` (≈48 mm) off the tool axis toward the fixed jaw, so
+`grasp_tcp_pose()` offsets the TCP (via `gripper_x_in_base_fk`) to centre the box.
+
+### 5d. `spawn_device_markers.py` — slot visualisation
+
+Spawns translucent magazine-sized boxes (236×81×140 mm) in Gazebo at the four
+wirebonder magazine slots (behind rails `Cube_H_L/H_R/G_L/G_R`), `--gap`/`--up`
+to tune, `--delete` to remove. Prints the slot-centre world coordinates.
 
 ---
 
-## 6. Key Constants (cbirrt_pick_place.py `main()`)
+## 6. Trigger Decoupling (toward the BT/FSM mission node)
+
+`wait_for_spacebar()` (in `geometry.py`) is a **development stand-in** for the
+AMR/MCS state signal. Sequence functions (`pick_place_one_box`, `base_to_hl`, …)
+are trigger-agnostic: today a SPACE loop in `main()` calls them; later a BT/FSM
+mission node fed by `/amr_status` (TCP/IP bridge) and MCS (MQTT) calls the same
+functions unchanged. `cr7_pnp` is the Robot-Control layer of that architecture.
+
+---
+
+## 7. Key Constants (`cr7_pnp/geometry.py`)
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
-| `OBJECT_XY` | `(0.4, 0.0)` | Pick box XY position |
-| `MARKER_XY` | `(0.2, 0.35)` | Place marker XY position |
-| `Z_PREGRASP` | `0.30 m` | Link6 height for approach |
-| `Z_GRASP` | `0.24 m` | Link6 height to close gripper |
-| `Z_CARRY` | `0.30 m` | Transport height (max reachable at MARKER_XY with gripper-down) |
-| `Z_PLACE` | `0.25 m` | Link6 height to release |
-| `DOWN` | `(0.707, 0.707, 0, 0)` | Quaternion: gripper local z → world −Z |
-| `GRIPPER_OPEN` | `[0.09]` | Finger gap (m) |
-| `GRIPPER_CLOSE` | `[0.036]` | Finger gap at grasp |
+| `DOWN` | `(0.707, 0.707, 0, 0)` | gripper tool z → world −Z (straight down) |
+| `TCP_OFFSET_M` | `0.12005 m` | Link6 → IK-target TCP along tool z (convention) |
+| `BOX_SIZE` | `(0.081, 0.236, 0.14)` | magazine box (short, long, height) m |
+| `GRASP_LATERAL_M` | ≈ 0.046 m | box hang off tool axis (jaw geometry, computed) |
+| `GRIPPER_OPEN` / `GRIPPER_CLOSE` | `[0.03]` / `[0.0]` | finger joint command (m) |
+| `GRASP_TCP_ABOVE` | `0.015 m` | TCP above box centre at grasp |
+| `INSERT_TCP_ABOVE` | `0.105 m` | TCP above box while inside the shelf gap |
+| `PREGRASP_BACK` | `0.25 m` | stand-off in front of the shelf |
+| `POCKET_X` / `POCKET_Y` | `0.3705` / `[±0.177, ±0.059]` | base pocket centres (base_link) |
+| `STANDBY_POSE_DEG` | `[-8,-39,-105,0,0,0]` | folded rest config |
 
-> **Note on Z heights**: these are Link6 (wrist flange) positions.  
-> The OnRobot 2FG7 TCP is **0.12005 m below Link6** when in the gripper-down orientation.  
-> → Actual TCP heights: approach=0.18, grasp=0.12, carry=0.18, place=0.13 m.
+Sequence-specific tunables (e.g. `HUB_TCP`, `PLACE_ORDER_Y`, `HL_SLOT_WORLD`,
+`HOVER_ABOVE`) live in the sequence scripts, not the library.
 
 ---
 
-## 7. Directory Map
+## 8. Directory Map
 
 ```
 ~/dobot_ws/src/DOBOT_6Axis_ROS2_V4/
 │
-├── cbirrt_pick_place.py          ← Main executable: 6-segment pick-and-place
-├── cbirrt_pick_place_draft.py    ← Earlier draft (single-segment version)
-├── constrained_cbirrt.py         ← CBiRRT planner + Cartesian servo (pure Python)
-├── reachability_map.py           ← Monte-Carlo FK reachability map (pinocchio)
-├── test_w_gripper.py             ← Base node: CR7RRTPlanner (MoveIt RRT + helpers)
+├── cr7_pnp/                      ← motion library (self-contained)
+│   ├── __init__.py               ← public API re-exports
+│   ├── node.py                   ← CR7Node → CBiRRTPickPlace → HubPickPlace
+│   ├── model.py                  ← ReachabilityModel (pinocchio IK + collision)
+│   ├── cbirrt.py                 ← ConstrainedPlanner (CBiRRT + servo)
+│   └── geometry.py               ← pure helpers + tuned constants
 │
-├── cr7_moveit/
-│   └── config/
-│       ├── cr7_robot.srdf        ← Disabled collision pairs (Adjacent / Never)
-│       ├── kinematics.yaml       ← KDL IK solver config
-│       ├── joint_limits.yaml     ← Velocity / accel limits for MoveIt
-│       ├── moveit_controllers.yaml
-│       └── ros2_controllers.yaml
+├── shelf_pick_place.py             ← shelf→base, hub-and-spoke (production)
+├── cbirrt_pick_place.py          ← segmented shelf→base DEMO
+├── wirebonder_pick_place.py      ← base→wirebonder H_L (linear + RRT)
+├── spawn_device_markers.py       ← Gazebo markers at device slots
+├── reachability_map.py           ← offline reachability-map builder (CLI)
+├── deploy_optimizer.py           ← deployment-orientation study (uses ReachabilityModel)
 │
-├── cra_description/
-│   └── urdf/
-│       ├── cr7_robot.xacro       ← Top-level robot XACRO (arm + gripper)
-│       ├── gripper.xacro         ← Simple gripper geometry definition
-│       └── cr*.xacro             ← Other DOBOT arm variants
+├── cr7_moveit/config/            ← SRDF (collision pairs), kinematics/limits yaml
+├── cra_description/urdf/         ← cr7_robot.xacro, cr7_on_mpo700.urdf.xacro
+├── dobot_gazebo/worlds/cr.world  ← shelf + wirebonder + AGV spawn
+├── ../blender/wirebonder/        ← device model.sdf + per-cube collision STLs
 │
-├── onrobot_2fg7_description/
-│   └── urdf/
-│       └── onrobot_2fg7.xacro    ← OnRobot 2FG7 gripper (TCP offset: 0.12005 m)
-│
-├── TODO_log/                     ← Completed task logs (1.TODO.md, 2.TODO.md, …)
-├── reachability_out/             ← CSV / PCD / JSON outputs from reachability_map.py
-├── ARCHITECTURE.md               ← This file
-└── TODO.md                       ← Active task tracking
+├── docs/                         ← this file + CARRY_BRANCH_STALL, REACHABILITY_MAP, …
+├── reachability_out/             ← CSV / PCD / JSON from reachability_map.py
+└── TODO.md / TODO_history/       ← active + archived task tracking
 ```
 
 ---
 
-## 8. Runtime Dependencies
+## 9. Runtime Dependencies
 
 ```
-Python env: .venv  (uv-managed, ~/dobot_ws/src/DOBOT_6Axis_ROS2_V4/.venv)
-  pinocchio==4.0.0   (FK, Jacobian, SE3 log/exp, reduced model)
-  hpp-fcl            (collision geometry backend for reachability_map.py)
-  xacro              (XACRO → URDF at runtime)
-  rclpy              (ROS 2 Python client)
-  numpy
+Python env: ~/dobot_ws/.venv   (has pinocchio; ROS msgs come from the sourced overlay)
+  pinocchio   (FK, Jacobian, SE3 log/exp, reduced model, IK)
+  coal        (collision geometry backend, imported as `coal`)
+  xacro       (XACRO → URDF at runtime)
+  rclpy, numpy
 
-ROS 2 services / actions required at runtime:
-  /compute_ik               (moveit_msgs/srv/GetPositionIK)
-  /check_state_validity     (moveit_msgs/srv/GetStateValidity)
-  /cr7_joint_controller/follow_joint_trajectory  (control_msgs/action)
-  /gripper_controller/...   (position command)
-  /ATTACHERSERVICE          (link_attacher_plugin)
-  /joint_states             (sensor_msgs/msg/JointState)
+ROS 2 interfaces required at runtime (Gazebo side):
+  /joint_states                                       sensor_msgs/JointState
+  /cr7_group_controller/follow_joint_trajectory       control_msgs/action/FollowJointTrajectory
+  /gripper_controller/follow_joint_trajectory         control_msgs/action (gripper_finger_joint)
+  /ATTACHLINK · /DETACHLINK                           linkattacher_msgs/srv
+  /spawn_entity · /delete_entity                      gazebo_msgs/srv  (markers only)
+  TF: odom (world proxy) → base_link, gripper_base_link, mpo_base_link
 ```
+
+MoveIt is **not** required at runtime (IK/collision are pinocchio).
 
 ---
 
-## 9. How to Run
+## 10. How to Run
 
 ```bash
-# Terminal 1 — simulator
+# Terminal 1 — simulator (Gazebo Classic, brings up controllers + link-attacher)
 ros2 launch dobot_gazebo cr7_gazebo.launch.py
 
-# Terminal 2 — MoveIt
-ros2 launch cr7_moveit cr7_moveit.launch.py
-
-# Terminal 3 — pick-and-place
+# Terminal 2 — a sequence (always source ROS + the workspace first)
 source /opt/ros/humble/setup.bash
 source ~/dobot_ws/install/setup.bash
 cd ~/dobot_ws/src/DOBOT_6Axis_ROS2_V4
-.venv/bin/python3 cbirrt_pick_place.py
-
-# Optional: reachability map
-.venv/bin/python3 reachability_map.py --samples 300000 --seed 1
+~/dobot_ws/.venv/bin/python3 shelf_pick_place.py      # shelf → base
 # or
-uv run reachability_map.py --samples 300000 --seed 1
+~/dobot_ws/.venv/bin/python3 wirebonder_pick_place.py   # base → wirebonder H_L
+
+# Visualise the device magazine slots
+~/dobot_ws/.venv/bin/python3 tools/spawn_device_markers.py --gap 0.005
+~/dobot_ws/.venv/bin/python3 tools/spawn_device_markers.py --delete
+
+# Offline reachability / deployment study (no sim needed)
+~/dobot_ws/.venv/bin/python3 tools/reachability_map.py --bounds 0,0.8,-0.8,0,-0.05,0.05
+~/dobot_ws/.venv/bin/python3 tools/deploy_optimizer.py
+
+# Stop the sim cleanly (avoids stale gzserver)
+./kill_sim.sh
 ```

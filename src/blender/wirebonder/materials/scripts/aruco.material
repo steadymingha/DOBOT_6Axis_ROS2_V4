@@ -1,0 +1,33 @@
+material ArucoMarker/Marker0
+{
+  technique
+  {
+    pass
+    {
+      lighting off
+      texture_unit
+      {
+        texture april_36h11-0.png
+        filtering anistropic
+        max_anisotropy 16
+      }
+    }
+  }
+}
+
+material ArucoMarker/Marker1
+{
+  technique
+  {
+    pass
+    {
+      lighting off
+      texture_unit
+      {
+        texture april_36h11-1.png
+        filtering anistropic
+        max_anisotropy 16
+      }
+    }
+  }
+}
