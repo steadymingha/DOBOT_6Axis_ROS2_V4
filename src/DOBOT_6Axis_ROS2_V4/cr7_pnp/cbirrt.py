@@ -119,6 +119,7 @@ class ConstrainedPlanner:
         path = [list(q)]
         reached = 0.0
         reason = "done"
+        self.last_invalid_q = None   # colliding config, for the caller's diagnostics
         if total < 1e-9:
             return path, reached, reason
         unit = delta / total
@@ -159,6 +160,7 @@ class ConstrainedPlanner:
             if np.any(q_try < lo) or np.any(q_try > hi):
                 reason = "limit"; break    # would hit a joint limit -> stop here
             if not is_valid_fn(list(q_try)):
+                self.last_invalid_q = list(q_try)
                 reason = "collision"; break  # collision -> stop here
             q = q_try
             path.append(list(q))

@@ -26,6 +26,7 @@ from rclpy.node import Node
 from rclpy.duration import Duration
 from sensor_msgs.msg import Image, CameraInfo
 from geometry_msgs.msg import PoseStamped
+from std_msgs.msg import Int32
 from tf2_ros import Buffer, TransformListener
 
 import wirebonder_vision as wv
@@ -70,10 +71,41 @@ class Diag(Node):
         # .venv flows + dispatcher consume; the AI magazine detector publishes the
         # same shape later.
         self.pub = self.create_publisher(PoseStamped, '/vision/device_pose', 10)
+        # Two-view (motion-stereo) capture: the planner drives the arm to two camera
+        # positions and pings /vision/capture at each (data=0 resets, data=1 grabs a
+        # view). We store (T_odom_optical, corners, K) per grab and triangulate on the
+        # 2nd, then republish that ONE solved pose every tick so the planner's
+        # median-of-frames read gets a steady stream. Single-view detection stays for
+        # the throttled diagnostic print only (it is NOT published -- it can't fix range).
+        self._cap_buf = []
+        self._solved = None
+        self.create_subscription(Int32, '/vision/capture', self._capture_cb, 10)
         # Publish fast (the planner medians a burst of frames); print throttled.
         self._print_ctr = 0
         self.create_timer(0.1, self._tick)
         self.get_logger().info("waiting for image / camera_info / TF ...")
+
+    def _capture_cb(self, msg):
+        if msg.data == 0:                    # reset for a fresh two-view capture
+            self._cap_buf, self._solved = [], None
+            return
+        if self.bgr is None or self.K is None:
+            self.get_logger().warn("[capture] no image/K yet; view dropped")
+            return
+        corners = wv.detect_tag_corners(self.bgr)
+        T_odom_opt = self._lookup_T('odom', 'd405_optical_frame')
+        if corners is None or T_odom_opt is None:
+            self.get_logger().warn("[capture] tag or TF missing; view dropped")
+            return
+        self._cap_buf.append((T_odom_opt, corners, self.K.copy()))
+        self.get_logger().info(f"[capture] stored view {len(self._cap_buf)}")
+        if len(self._cap_buf) >= 2:
+            self._solved = wv.device_pose_from_two_views(
+                self._cap_buf[0], self._cap_buf[1])
+            self._cap_buf = []
+            t = self._solved[:3, 3]
+            self.get_logger().info(
+                f"[capture] two-view solve: x={t[0]:.3f} y={t[1]:.3f} z={t[2]:.3f}")
 
     def _img_cb(self, msg):
         self.bgr = _image_to_bgr(msg)
@@ -96,6 +128,12 @@ class Diag(Node):
     def _tick(self):
         if self.bgr is None or self.K is None:
             return
+        # Republish the latest two-view solved pose every tick (fresh stamp) so the
+        # planner's median read gets a steady stream regardless of live detection --
+        # after a capture the arm returns to the hub and the tag leaves the FOV.
+        if self._solved is not None:
+            self._publish_pose(self._solved)
+
         T_base_opt = self._lookup_T('base_link', 'd405_optical_frame')
         T_base_odom = self._lookup_T('base_link', 'odom')
         if T_base_opt is None or T_base_odom is None:
@@ -105,16 +143,13 @@ class Diag(Node):
         if det is None:
             self.get_logger().info(f"tag {wv.TAG_ID} not detected")
             return
-        rvec, tvec = det
 
-        T_base_model_vis = wv.device_pose_in_base(T_base_opt, rvec, tvec)
+        # Single-view estimate: diagnostic PRINT only (not published -- it can't fix
+        # range; the published pose is the two-view triangulation above).
+        T_base_model_vis = wv.device_pose_in_base(T_base_opt, det)
         slots_vis = wv.slots_in_base(T_base_model_vis)
 
-        # Publish the device pose in odom (T_odom_model = T_odom_base @ T_base_model).
-        T_odom_model_vis = wv.inv_T(T_base_odom) @ T_base_model_vis
-        self._publish_pose(T_odom_model_vis)
-
-        # Side-by-side print throttled to ~1 Hz (publish runs at the full tick rate).
+        # Side-by-side print throttled to ~1 Hz.
         self._print_ctr = (self._print_ctr + 1) % 10
         if self._print_ctr != 0:
             return

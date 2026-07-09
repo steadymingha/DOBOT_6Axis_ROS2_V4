@@ -11,6 +11,7 @@ to the failing approach, or start from the hub).
 
 Keys:
     w/s : +x / -x      a/d : +y / -y      r/f : +z / -z   (base_link, metres)
+    joystick /dev/input/js0 : axis1=x  axis0=y  axis2=z  (proportional to deflection)
     [/] : step  x0.5 / x2        space : print TCP        q/Esc : quit
     c   : toggle the carried-box phantom  (jog box-free, then check at a pose)
     v   : collision check the CURRENT pose + list any colliding geometry pairs
@@ -50,6 +51,59 @@ JOG = {
     'r': (0, 0, +1), 'f': (0, 0, -1),
 }
 
+# --- joystick (legacy /dev/input/jsN API) ---
+# jstest axes -> base_link jog direction; axis value sign sets +/- (flip the
+# direction tuple here if a stick reads inverted).
+JS_DEV = '/dev/input/js0'
+JS_EVENT_FMT = 'IhBB'   # time(ms), value(-32767..32767), type, number
+JS_EVENT_SIZE = 8
+JS_TYPE_AXIS = 0x02
+JS_DEADZONE = 0.15
+AXIS_JOG = {
+    1: (+1, 0, 0),   # x
+    0: (0, +1, 0),   # y
+    2: (0, 0, -1),   # z
+}
+
+
+def joy_thread(node, state, lock, show):
+    """Read the joystick and jog while an axis is deflected (proportional to
+    deflection). No-op if the device is absent, so keyboard control still works."""
+    import struct
+    try:
+        f = open(JS_DEV, 'rb')
+    except OSError as e:
+        print(f"\n[joy] {JS_DEV} unavailable ({e}); keyboard only.")
+        return
+    axes = {}
+
+    def reader():
+        while rclpy.ok():
+            evt = f.read(JS_EVENT_SIZE)
+            if not evt:
+                break
+            _, value, typ, number = struct.unpack(JS_EVENT_FMT, evt)
+            if typ & JS_TYPE_AXIS:
+                axes[number] = value / 32767.0
+    threading.Thread(target=reader, daemon=True).start()
+    print(f"[joy] {JS_DEV}: axis1=x axis0=y axis2=z")
+
+    while rclpy.ok():
+        moved = False
+        for num, direction in AXIS_JOG.items():
+            v = axes.get(num, 0.0)
+            if abs(v) < JS_DEADZONE:
+                continue
+            with lock:
+                node.linear_servo(state['step'] * v * np.array(direction, dtype=float),
+                                  label=f'js{num}')
+            moved = True
+        if moved:
+            with lock:
+                show()
+        else:
+            time.sleep(0.05)
+
 
 def read_key():
     import termios, tty
@@ -64,10 +118,10 @@ def read_key():
 
 
 def tcp_base(node):
-    """Current TCP position in base_link, via FK of the live joints."""
+    """Current TCP position (base_link) and tool rotation, via FK of the live joints."""
     q = node.current_joints.tolist()
-    pos, _ = node.ik_model.fk_tcp(node.ik_model.pin_q(q))
-    return np.asarray(pos)
+    pos, R = node.ik_model.fk_tcp(node.ik_model.pin_q(q))
+    return np.asarray(pos), R
 
 
 def base_to_world(node, p_base):
@@ -111,7 +165,8 @@ def main(args=None):
     threading.Thread(target=executor.spin, daemon=True).start()
     time.sleep(2)  # wait for joint states
 
-    step = 0.01
+    state = {'step': 0.01}   # shared with joy_thread
+    lock = threading.Lock()  # serialize servo calls (keyboard vs joystick)
     phantom = False
     print("\n" + "=" * 60)
     print(" TCP jogger.  w/s=x a/d=y r/f=z  [/]=step  space=print")
@@ -119,11 +174,19 @@ def main(args=None):
     print("=" * 60)
 
     def show():
-        b = tcp_base(node)
+        b, R = tcp_base(node)
         w = base_to_world(node, b)
         wt = f"x={w[0]:.3f} y={w[1]:.3f} z={w[2]:.3f}" if w is not None else "n/a"
+        qc = pin.Quaternion(R).coeffs()   # x, y, z, w -- the tool orientation
         print(f"\nTCP  base_link: x={b[0]:.3f} y={b[1]:.3f} z={b[2]:.3f}"
-              f"   world: {wt}   step={step*1000:.0f}mm")
+              f"   world: {wt}   step={state['step']*1000:.0f}mm")
+        print(f"     quat base_link (xyzw): {qc[0]:+.4f} {qc[1]:+.4f} "
+              f"{qc[2]:+.4f} {qc[3]:+.4f}")
+        j = node.current_joints
+        print("     joints (rad): (" + ", ".join(f"{v:+.5f}" for v in j) + ")")
+
+    threading.Thread(target=joy_thread, args=(node, state, lock, show),
+                     daemon=True).start()
 
     show()
     try:
@@ -132,9 +195,9 @@ def main(args=None):
             if ch in ('q', '\x1b', '\x03'):
                 break
             if ch == '[':
-                step = max(step / 2, 0.0005); show(); continue
+                state['step'] = max(state['step'] / 2, 0.0005); show(); continue
             if ch == ']':
-                step = min(step * 2, 0.2); show(); continue
+                state['step'] = min(state['step'] * 2, 0.2); show(); continue
             if ch == ' ':
                 show(); continue
             if ch == 'c':
@@ -145,7 +208,8 @@ def main(args=None):
             if ch == 'v':
                 show(); check_collision(node); continue
             if ch in JOG:
-                node.linear_servo(step * np.array(JOG[ch], dtype=float), label=ch)
+                with lock:
+                    node.linear_servo(state['step'] * np.array(JOG[ch], dtype=float), label=ch)
                 show()
     except KeyboardInterrupt:
         pass

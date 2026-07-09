@@ -142,6 +142,16 @@ class ReachabilityModel:
         """
         return not self.self_collides(self.pin_q(j1_to_j6))
 
+    def colliding_pairs(self, j1_to_j6):
+        """Geometry-pair names in collision at the config (diagnostic only)."""
+        pin.computeCollisions(self.model, self.data, self.geom, self.geom_data,
+                              self.pin_q(j1_to_j6), False)
+        objs = self.geom.geometryObjects
+        return [(objs[cp.first].name, objs[cp.second].name)
+                for cp, res in zip(self.geom.collisionPairs,
+                                   self.geom_data.collisionResults)
+                if res.isCollision()]
+
     def set_joint_limits(self, limits_rad):
         """Set the per-joint (lower, upper) limits used for IK seeds/clamping."""
         self.lo_cfg = pin.neutral(self.model).copy()

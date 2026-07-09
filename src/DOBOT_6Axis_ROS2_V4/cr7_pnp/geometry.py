@@ -14,15 +14,28 @@ from geometry_msgs.msg import PoseStamped
 
 # --- model paths --------------------------------------------------------------
 
-# Arm-only model for the orientation constraint / Cartesian servo (FK + Jacobian).
-XACRO_PATH = os.path.expanduser(
-    '~/dobot_ws/install/cra_description/share/cra_description/urdf/cr7_robot.xacro')
+# Arm selected by ARM_TYPE (default cr7 -> original CR7 paths, 100% unchanged).
+# Set ARM_TYPE=cr10 (etc.) to jog a swapped arm; see run_mpo700_cr10.sh.
+_ARM = os.getenv('ARM_TYPE', 'cr7')
 
-# Combined robot (arm + cube platform + MPO-700 AGV + gripper) for collision
-# checking: catches the arm hitting the cube/AGV, not just itself. Source the ROS
-# workspace before running so xacro can resolve the package includes.
-COMBINED_XACRO = os.path.expanduser(
-    '~/dobot_ws/src/DOBOT_6Axis_ROS2_V4/cra_description/urdf/cr7_on_mpo700.urdf.xacro')
+if _ARM == 'cr7':
+    # Arm-only model for the orientation constraint / Cartesian servo (FK + Jacobian).
+    XACRO_PATH = os.path.expanduser(
+        '~/dobot_ws/install/cra_description/share/cra_description/urdf/cr7_robot.xacro')
+    # Combined robot (arm + cube platform + MPO-700 AGV + gripper) for collision
+    # checking: catches the arm hitting the cube/AGV, not just itself. Source the ROS
+    # workspace before running so xacro can resolve the package includes.
+    COMBINED_XACRO = os.path.expanduser(
+        '~/dobot_ws/src/DOBOT_6Axis_ROS2_V4/cra_description/urdf/cr7_on_mpo700.urdf.xacro')
+else:
+    # Swapped arm: <arm>_arm.xacro is the stripped arm-only chain (base_link+Link1..6).
+    XACRO_PATH = os.path.expanduser(
+        f'~/dobot_ws/install/cra_description/share/cra_description/urdf/{_ARM}_arm.xacro')
+    # ponytail: the combined collision model uses arm_on_mpo700's default arm_type
+    # (cr10). IK/FK above is always arm-correct via <arm>_arm.xacro; for cr12/16/20
+    # the collision-combined stays cr10 unless arm_on_mpo700's default is updated.
+    COMBINED_XACRO = os.path.expanduser(
+        '~/dobot_ws/src/DOBOT_6Axis_ROS2_V4/cra_description/urdf/arm_on_mpo700.urdf.xacro')
 
 
 # --- shelf collision model ----------------------------------------------------
@@ -120,10 +133,15 @@ GRIPPER_OPEN = [0.03]        # gap 111 mm; after jaw-align the moving pad still
                              # the shorter close sweep hits the box at ~12 mm/s
                              # instead of ~32 mm/s (0.07), which the contact
                              # solver tolerates much better
-CLOSE_SQUEEZE = 0.00 #0.002        # close this much past the box width: real pad pressure,
-                             # so friction holds the box even if the link attacher
-                             # misses (gap == box width has ZERO grip force)
-GRIPPER_CLOSE = [BOX_SHORT - JAW_GAP_AT_ZERO - CLOSE_SQUEEZE]   # 0.0 (gap == box width at q=0)
+# NEGATIVE = leave CLEARANCE, do not touch the box. The box is held by the
+# ATTACHLINK fixed joint, NOT by pad pressure, so the pads need not contact it.
+# At gap == box width the position-controlled finger keeps driving into the
+# (shelf-supported / heavy) box -> the reaction feeds back through the arm and it
+# THRASHES ("요동"). A ~2 mm gap (1 mm/side) removes the pad-box contact fight.
+# Set POSITIVE only if you must fall back on friction when the attacher misses
+# (then expect the contact jitter back). TUNE IN SIM.
+CLOSE_SQUEEZE = -0.002
+GRIPPER_CLOSE = [BOX_SHORT - JAW_GAP_AT_ZERO - CLOSE_SQUEEZE]   # gap = box + 2 mm (clearance)
 
 # Shelf pick target: WORLD frame (from cr.world). box_l1a on the 2nd shelf board.
 SHELF_BOX_WORLD = (0.7095, 0.5, 0.97)   # box_l1a centre (board top 0.90 + 0.07)

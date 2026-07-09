@@ -19,10 +19,12 @@ Run (sim already up):
     source /opt/ros/humble/setup.bash
     source ~/dobot_ws/install/setup.bash
     cd ~/dobot_ws/src/DOBOT_6Axis_ROS2_V4
-    ~/dobot_ws/.venv/bin/python3 shelf_pick_place.py
+    ~/dobot_ws/.venv/bin/python3 sequences/shelf_pick_place.py
 """
 
 import math
+import os
+import sys
 import time
 import threading
 
@@ -30,7 +32,10 @@ import numpy as np
 import rclpy
 from rclpy.executors import MultiThreadedExecutor
 
-from cr7_pnp import (
+# sequences/ is one level below the package root; add the root so cr7_pnp imports
+# when this file is run standalone (python3 sequences/shelf_pick_place.py).
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from cr7_pnp import (  # noqa: E402
     HubPickPlace, pose_at, quat_mul, quat_about_z, wait_for_spacebar,
     DOWN, GRASP_YAW_OFFSET, GRIPPER_YAW_TWIST,
     GRIPPER_OPEN, GRIPPER_CLOSE,

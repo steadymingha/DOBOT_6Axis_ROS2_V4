@@ -19,27 +19,36 @@ Run (sim up, AGV parked roughly facing the device):
     source /opt/ros/humble/setup.bash
     source ~/dobot_ws/install/setup.bash
     cd ~/dobot_ws/src/DOBOT_6Axis_ROS2_V4
-    python3 wirebonder_vision_node.py                      # terminal A (system cv2)
+    python3 vision/wirebonder_vision_node.py               # terminal A (system cv2)
     ~/dobot_ws/.venv/bin/python3 main.py                   # terminal B (.venv)
 
     ~/dobot_ws/.venv/bin/python3 main.py --selftest        # registry sanity, no ROS run
 """
 
+import os
 import sys
 import time
+import json
+import queue
 import threading
 
 import rclpy
 from rclpy.executors import MultiThreadedExecutor
 from geometry_msgs.msg import PoseStamped
+from std_msgs.msg import Int32, String
 
 from cr7_pnp import (
     HubPickPlace, pose_at, quat_mul, quat_about_z, DOWN,
     GRASP_TCP_ABOVE, GRASP_LATERAL_M,
 )
 
-import wirebonder_pick_place as wb
-import shelf_pick_place as shelf
+# The two flows live in sequences/, the MCS protocol in comms/; add both to the
+# path so they import by name.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sequences'))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'comms'))
+import wirebonder_pick_place as wb  # noqa: E402
+import shelf_pick_place as shelf  # noqa: E402
+import mcs_protocol as proto  # noqa: E402
 
 # --- location registry --------------------------------------------------------
 # id -> (type, *params). One concrete job per id (re-trigger for the next unit).
@@ -47,7 +56,9 @@ import shelf_pick_place as shelf
 #   shelf:      ('shelf',)  -- walks node.box_idx across SHELF_BOXES
 # Add a line per real location; the AMR/MCS bridge will key into this by id.
 REGISTRY = {
-    'wb1':   ('wirebonder', 'wb1', wb.SEQUENCES['1']),   # base -> slot A
+    'wb1':   ('wirebonder', 'wb1', wb.SEQUENCES['1']),   # base   -> slot A
+    'wb2':   ('wirebonder', 'wb1', wb.SEQUENCES['2']),   # slot B -> slot C
+    'wb3':   ('wirebonder', 'wb1', wb.SEQUENCES['3']),   # slot D -> base pocket
     'shelf': ('shelf',),
 }
 
@@ -89,9 +100,18 @@ def run_mission(node, loc_id):
         print(f"[IDLE] unknown location '{loc_id}' (known: {', '.join(REGISTRY)})")
         return
     kind, *params = entry
+    # ponytail: coarse cooperative abort -- checked before LOCATE and before
+    # PICK/PLACE, not mid-motion. True mid-swing STOP needs hooks inside
+    # wb.transfer / shelf.pick_place_one_box; add there if the arm must halt instantly.
+    if getattr(node, 'abort', False):
+        print(f"[ABORT] {loc_id} cancelled before start")
+        return
     print(f"[LOCATE] {loc_id} ({kind})")
     if not locate(node, kind, *params):
         print(f"[REPORT] {loc_id} LOCATE failed -> abort")   # seam: MCS bridge reports
+        return
+    if getattr(node, 'abort', False):
+        print(f"[ABORT] {loc_id} cancelled after LOCATE")
         return
     print(f"[PICK/PLACE] {loc_id}")
     ok = pick_place(node, kind, *params)
@@ -119,11 +139,18 @@ def main(args=None):
     node = HubPickPlace()
     node.setup_planner()
 
+    # Register the wirebonder BODY so the free RRTs route around the device.
+    WB_STL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                              'blender', 'wirebonder', 'collision')
+    node.add_wirebonder_meshes(WB_STL_DIR)
+
     # Vision layer: device pose arrives on /vision/device_pose (odom) from
     # wirebonder_vision_node.py. Cache the latest; wb.refresh_device_pose() reads it.
     node._vision_pose = None
     node.create_subscription(PoseStamped, '/vision/device_pose',
                              lambda m: setattr(node, '_vision_pose', m), 10)
+    # Drives the two-view capture: data=0 resets, data=1 grabs a view.
+    node._cap_pub = node.create_publisher(Int32, '/vision/capture', 10)
 
     executor = MultiThreadedExecutor()
     executor.add_node(node)
@@ -144,23 +171,67 @@ def main(args=None):
         node.destroy_node(); rclpy.shutdown(); return
     node.box_idx = 0  # shelf box counter (shelf.pick_place_one_box walks it)
 
+    # ---- MCS intake ---------------------------------------------------------
+    # Command channel: ONE atomic message (target + pos + gripper + START), so the
+    # fields can't arrive half-applied. Placeholder type is std_msgs/String with a
+    # JSON body -- swap for the comms team's custom msg when ready (only this type and
+    # the field reads below change; the queue hand-off stays). The callback runs in
+    # the executor thread and only ENQUEUES; the main loop runs the blocking planner.
+    node.abort = False
+    node.last_error = proto.ErrorCode.OK   # code (category) + detail (exact message);
+    node.last_error_detail = ""            # both set by the flows on failure, report TBD
+    cmd_q = queue.Queue()
+
+    def on_command(data):
+        try:
+            d = json.loads(data)                 # spec field names: TargetID, Command, ...
+        except json.JSONDecodeError:
+            node.get_logger().warn(f"[mcs] bad command JSON: {data!r}"); return
+        if d.get('Command') != proto.Command.START:
+            node.get_logger().warn(f"[mcs] /mcs/command ignores non-START: {d.get('Command')}")
+            return
+        loc = proto.TARGET_LOCATION.get(d.get('TargetID'))
+        if loc is None:
+            node.get_logger().warn(f"[mcs] no sequence for TargetID {d.get('TargetID')!r}"); return
+        node.abort = False                       # a fresh goal clears a prior STOP
+        cmd_q.put(loc)                            # RelPos/Gripper not consumed yet
+    node.create_subscription(String, '/mcs/command', lambda m: on_command(m.data), 10)
+
+    # STOP on a SEPARATE, param-free channel so it acts immediately and never waits
+    # on command data. Sets a flag; run_mission honors it at its checkpoints.
+    def on_stop(label):
+        node.abort = True
+        node.get_logger().warn(f"[mcs] STOP ({label}) -- aborting at next checkpoint")
+    node.create_subscription(String, '/mcs/stop', lambda m: on_stop(m.data), 10)
+
+    # Keyboard seam -- DEBUG ONLY (standalone runs). Bridge-driven deployment has no
+    # TTY, and input() there would EOF immediately and quit main.py; so only feed the
+    # queue from stdin when attached to a terminal. Normal mode runs purely on topics.
+    def _stdin_feed():
+        try:
+            while True:
+                cmd_q.put(input("location id> ").strip())
+        except (EOFError, KeyboardInterrupt):
+            cmd_q.put('q')
+    if sys.stdin.isatty():
+        threading.Thread(target=_stdin_feed, daemon=True).start()
+
     print("\n" + "=" * 60)
     print(" Mission dispatcher ready (park the AGV facing the location):")
     for loc, (kind, *_) in REGISTRY.items():
         print(f"   {loc:8s} -> {kind}")
-    print(" Type a location id to run one transfer. (q / Enter to quit)")
+    print(" Type a location id or publish on /mcs/command (STOP on /mcs/stop). (q/Enter quits)")
     print("=" * 60)
 
     try:
         while rclpy.ok():
-            # Stand-in trigger: the real AMR/MCS bridge replaces this input() seam,
-            # emitting (location_id) on a "stop + location" message.
-            loc = input("location id> ").strip()
+            try:
+                loc = cmd_q.get(timeout=0.5)  # timeout so rclpy.ok() stays checked
+            except queue.Empty:
+                continue
             if loc in ('q', 'quit', ''):
                 break
             run_mission(node, loc)
-    except (KeyboardInterrupt, EOFError):
-        pass
     finally:
         node.destroy_node()
         rclpy.shutdown()

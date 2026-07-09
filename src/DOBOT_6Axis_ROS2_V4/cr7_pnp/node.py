@@ -20,7 +20,7 @@ composes these primitives; it does NOT subclass per sequence. Linear-only
 sequences simply skip the CBiRRT spoke helpers and use linear_servo.
 """
 
-import math
+import math, os
 import time
 
 import numpy as np
@@ -263,8 +263,39 @@ class CR7Node(Node):
             curr = curr.parent
         return path[::-1]
 
+    def _wait_settled(self, target, tol=0.02, timeout=4.0):
+        """Block until the REAL joints reach `target` (max abs error < tol rad).
+        The trajectory controller returns the action result on the command
+        SCHEDULE (goal position tolerances are off in ros2_controllers.yaml), while
+        the Gazebo joints trail the interpolated command by up to ~2 s -- so a
+        caller reading current_joints right after "finished" gets mid-motion
+        values. Called at the end of every executor so completion means ARRIVED."""
+        target = np.array(target, dtype=float)
+        t0 = time.time()
+        while rclpy.ok() and time.time() - t0 < timeout:
+            if (self.current_joints is not None and
+                    np.abs(self.current_joints - target).max() < tol):
+                return True
+            time.sleep(0.02)
+        err = (np.abs(self.current_joints - target).max()
+               if self.current_joints is not None else float('nan'))
+        self.get_logger().warn(
+            f"[settle] joints not at the last waypoint after {timeout}s "
+            f"(max err {err:.3f} rad); continuing")
+        return False
+
     def execute_trajectory(self, path):
         """Send the planned path to the action server and wait until execution completes."""
+        # Record joint waypoints while capturing so a forward motion (incl. RRT /
+        # go_to_config moves, which route here rather than execute_path) can be
+        # replayed in REVERSE -- retracing the proven path instead of re-planning a
+        # fresh RRT that (unaware of the base box) may sweep through it.
+        if getattr(self, '_recording', False) and path:
+            if (self._recorded and
+                    np.linalg.norm(np.array(self._recorded[-1]) - np.array(path[0])) < 1e-6):
+                self._recorded.extend([list(map(float, p)) for p in path[1:]])
+            else:
+                self._recorded.extend([list(map(float, p)) for p in path])
         self.get_logger().info("Executing Trajectory...")
         goal_msg = FollowJointTrajectory.Goal()
         goal_msg.trajectory.joint_names = self.joint_names
@@ -293,6 +324,7 @@ class CR7Node(Node):
         get_result_future = goal_handle.get_result_async()
         while rclpy.ok() and not get_result_future.done():
             time.sleep(0.01)
+        self._wait_settled(path[-1])
         self.get_logger().info("Trajectory execution finished.")
         return True
 
@@ -389,7 +421,11 @@ class CBiRRTPickPlace(CR7Node):
         import coal
         geom = self.collision.geom
         objs = geom.geometryObjects
-        arm_links = [i for i in range(len(objs)) if objs[i].parentJoint != 0]
+        # Exclude the carried-box phantom, as in add_wirebonder_meshes: its pairs
+        # must toggle with attach/detach_box_collision, not stay always-on.
+        box_idx = getattr(self, '_box_geom_idx', None)
+        arm_links = [i for i in range(len(objs))
+                     if objs[i].parentJoint != 0 and i != box_idx]
         far = pin.SE3(np.eye(3), np.array([0.0, 0.0, -100.0]))
         sx, sy = SHELF_FOOTPRINT
         self.shelf_geoms = []
@@ -399,6 +435,11 @@ class CBiRRTPickPlace(CR7Node):
             idx = geom.addGeometryObject(go)
             for i in arm_links:
                 geom.addCollisionPair(pin.CollisionPair(i, idx))
+            if box_idx is not None:
+                cp = pin.CollisionPair(box_idx, idx)
+                self._box_pairs.append(cp)
+                if self._box_attached_model:
+                    geom.addCollisionPair(cp)
             self.shelf_geoms.append((idx, ztop))
         self.collision.geom_data = geom.createData()
         self.get_logger().info(
@@ -424,6 +465,72 @@ class CBiRRTPickPlace(CR7Node):
                                   np.array([sx, sy, ztop - SHELF_BOARD_THICK / 2]))
             self.collision.geom.geometryObjects[idx].placement = (
                 T_root_world * board_world)
+        self.collision.geom_data = self.collision.geom.createData()
+        return True
+
+    def add_wirebonder_meshes(self, stl_dir):
+        """Load the wirebonder per-part collision STLs into the collision model,
+        paired against every movable arm/gripper link, so the RRT avoids the device
+        BODY. The parts are authored to keep the slot recesses OPEN, so a front-load
+        insert into a slot stays valid -- only the bulk is blocked. Parked far until
+        update_wirebonder_collision() places them at the live device pose. Call once
+        after setup_planner(); no-op-safe to call again (re-adds)."""
+        import glob
+        import coal
+        geom = self.collision.geom
+        objs = geom.geometryObjects
+        # Movable arm links EXCLUDING the carried-box phantom: pairing the phantom
+        # here makes (carried_box, wb_*) ALWAYS-ON -- attach/detach_box_collision
+        # only toggles _box_pairs, built before these geoms existed -- so an EMPTY
+        # gripper near the device false-collides on the phantom. Route the phantom
+        # pairs through _box_pairs instead, so they toggle with the carry state.
+        box_idx = getattr(self, '_box_geom_idx', None)
+        arm_links = [i for i in range(len(objs))
+                     if objs[i].parentJoint != 0 and i != box_idx]
+        far = pin.SE3(np.eye(3), np.array([0.0, 0.0, -100.0]))
+        loader = coal.MeshLoader()
+        self.wirebonder_geoms = []
+        for f in sorted(glob.glob(os.path.join(stl_dir, '*.stl'))):
+            mesh = loader.load(f, np.array([1.0, 1.0, 1.0]))
+            name = 'wb_' + os.path.splitext(os.path.basename(f))[0]
+            go = pin.GeometryObject(name, 0, far, mesh)
+            idx = geom.addGeometryObject(go)
+            for i in arm_links:
+                geom.addCollisionPair(pin.CollisionPair(i, idx))
+            if box_idx is not None:
+                cp = pin.CollisionPair(box_idx, idx)
+                self._box_pairs.append(cp)
+                if self._box_attached_model:
+                    geom.addCollisionPair(cp)
+            self.wirebonder_geoms.append(idx)
+        self.collision.geom_data = geom.createData()
+        self.get_logger().info(
+            f"[collision] added wirebonder body ({len(self.wirebonder_geoms)} parts, "
+            f"slot recesses open)")
+
+    def update_wirebonder_collision(self, device_pose):
+        """Place the wirebonder collision parts in the model root (mpo_base_link)
+        from the live device world pose (x, y, z, yaw in odom). The STL verts are
+        baked in the device MODEL frame, so mapping model->world(device)->root puts
+        the body where the arm sees it. Call once the device pose is known (after the
+        vision capture / before a transfer). Returns False if the TF is unavailable."""
+        try:
+            tf = self.tf_buffer.lookup_transform(
+                'mpo_base_link', self.world_frame, rclpy.time.Time(),
+                timeout=Duration(seconds=3.0))
+        except Exception as e:
+            self.get_logger().warn(f"[wirebonder] TF unavailable, not enforced: {e}")
+            return False
+        t, r = tf.transform.translation, tf.transform.rotation
+        T_root_world = pin.SE3(quat_to_R(r.x, r.y, r.z, r.w),
+                               np.array([t.x, t.y, t.z]))
+        x, y, z, yaw = device_pose
+        c, s = math.cos(yaw), math.sin(yaw)
+        T_world_dev = pin.SE3(np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]]),
+                              np.array([x, y, z]))
+        for idx in self.wirebonder_geoms:
+            self.collision.geom.geometryObjects[idx].placement = (
+                T_root_world * T_world_dev)
         self.collision.geom_data = self.collision.geom.createData()
         return True
 
@@ -601,6 +708,7 @@ class CBiRRTPickPlace(CR7Node):
         get_result_future = goal_handle.get_result_async()
         while rclpy.ok() and not get_result_future.done():
             time.sleep(0.01)
+        self._wait_settled(path[-1])
         self.get_logger().info("[execute_path] done")
         return True
 
@@ -621,9 +729,41 @@ class CBiRRTPickPlace(CR7Node):
             self.get_logger().error(
                 f"[servo] {label}: stopped at {reached*1000:.0f} mm of requested "
                 f"{want*1000:.0f} mm -> {reason}; aborting (no partial execution)")
+            bad = getattr(self.cbirrt, 'last_invalid_q', None)
+            if reason == "collision" and bad is not None:
+                self.get_logger().error(
+                    f"[servo] {label}: colliding pairs: "
+                    f"{self.collision.colliding_pairs(bad)}")
             return False
         self.get_logger().info(f"[servo] {label} {reached*1000:.0f} mm, {len(path)} waypoints")
         return self.execute_path(path, speed=speed)
+
+    def guarded_descend(self, max_drop, label="descend", speed=0.1):
+        """Descend straight down until the carried-box collision model meets a
+        surface -- the SIM analog of the real robot's joint-torque touch-off (see
+        place_command_guide.md). Commands an over-travel drop (max_drop m, tool-
+        down) with the box phantom ON and, UNLIKE linear_servo, executes the
+        linear_path only UP TO where it reports the collision -- so the box seats
+        at each surface's TRUE height, absorbing per-pocket height and carried-box
+        offset variance that a single fixed drop can't. The box-vs-surface pair is
+        the same one that used to false-reject place IK; here it is the sensor.
+        Requires the phantom attached. Returns the metres actually descended."""
+        while self.current_joints is None:
+            self.get_logger().info("Waiting for /joint_states...")
+            time.sleep(0.5)
+        path, reached, reason = self.cbirrt.linear_path(
+            self.current_joints.tolist(), np.array([0.0, 0.0, -abs(max_drop)]),
+            self.is_state_valid, self.joint_limits)
+        if len(path) > 1:
+            self.execute_path(path, speed=speed)
+        self.get_logger().info(
+            f"[guarded] {label}: descended {reached*1000:.0f} of {abs(max_drop)*1000:.0f} mm max, "
+            f"stop={reason} -> {'CONTACT (seated)' if reason == 'collision' else 'NO CONTACT'}")
+        bad = getattr(self.cbirrt, 'last_invalid_q', None)
+        if reason == "collision" and bad is not None:
+            self.get_logger().info(
+                f"[guarded] {label}: stopped by pairs: {self.collision.colliding_pairs(bad)}")
+        return reached
 
     def gripper_x_in_base(self, timeout=3.0):
         """Live gripper +X axis (fixed-jaw direction) in base_link, projected
@@ -971,4 +1111,38 @@ class HubPickPlace(CBiRRTPickPlace):
         if not path:
             self.get_logger().error("[hub] RRT to hub failed")
             return False
+        return self.execute_trajectory(path)
+
+    def go_to_config(self, joints, speed=0.6):
+        """Free joint-space RRT to an arbitrary joint config, then execute. Blocks.
+        Smooth and singularity-free (a long Cartesian servo jitters/aborts near a
+        singularity); use for far poses reached by jogging. True/False."""
+        while self.current_joints is None:
+            self.get_logger().info("Waiting for /joint_states...")
+            time.sleep(0.5)
+        if np.linalg.norm(self.current_joints - np.array(joints)) < 1e-2:
+            return True
+        path = self.plan_rrt(self.current_joints, list(joints))
+        if not path:
+            self.get_logger().error("[go_to_config] RRT failed")
+            return False
+        return self.execute_trajectory(path)
+
+    def joint_move(self, joints, max_step=0.5):
+        """Direct joint-space move (like a robot MoveJ): straight-line interpolation
+        from the current config to `joints`, NO RRT. Shortest joint path. Inherently
+        singularity-free -- it never inverts the Jacobian (no Cartesian IK like
+        linear_servo), so joints just sweep linearly. UNLIKE a real MoveJ, it does NO
+        collision checking. Steps match plan_rrt's resolution so timing matches an RRT
+        move. ponytail: assumes the straight joint path is collision-free -- only use
+        where that's known (e.g. the capture view-B jog). True/False."""
+        while self.current_joints is None:
+            self.get_logger().info("Waiting for /joint_states...")
+            time.sleep(0.5)
+        start = np.array(self.current_joints, float)
+        delta = np.array(joints, float) - start
+        if np.linalg.norm(delta) < 1e-2:
+            return True
+        n = max(2, int(np.ceil(np.abs(delta).max() / max_step)) + 1)
+        path = [list(start + delta * t) for t in np.linspace(0.0, 1.0, n)]
         return self.execute_trajectory(path)
