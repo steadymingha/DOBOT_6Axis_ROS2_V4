@@ -45,6 +45,7 @@ from .geometry import (
     XACRO_PATH, COMBINED_XACRO, quat_to_R, pose_at, DOWN,
     SHELF_WORLD_XY, SHELF_BOARD_TOPS, SHELF_FOOTPRINT, SHELF_BOARD_THICK,
     BOX_SIZE, BOX_IN_LINK6_XYZ, MAGAZINE_LINK, GRASP_LATERAL_M,
+    GRIPPER_OPEN, GRIPPER_CLOSE,
 )
 
 
@@ -738,6 +739,18 @@ class CBiRRTPickPlace(CR7Node):
         self.get_logger().info(f"[servo] {label} {reached*1000:.0f} mm, {len(path)} waypoints")
         return self.execute_path(path, speed=speed)
 
+    def tcp_xyz(self, config=None):
+        """TCP position (base_link) for `config`, or for the current joints."""
+        q = self.current_joints.tolist() if config is None else list(config)
+        return self.ik_model.fk_tcp(self.ik_model.pin_q(q))[0]
+
+    def servo_to(self, pose, label="move"):
+        """Straight collision-gated servo from the current TCP to pose's position,
+        holding the current orientation. Valid only when the current azimuth already
+        matches the target's. Returns True/False."""
+        p = pose.pose.position
+        return self.linear_servo(np.array([p.x, p.y, p.z]) - self.tcp_xyz(), label=label)
+
     def guarded_descend(self, max_drop, label="descend", speed=0.1):
         """Descend straight down until the carried-box collision model meets a
         surface -- the SIM analog of the real robot's joint-torque touch-off (see
@@ -928,6 +941,28 @@ class HubPickPlace(CBiRRTPickPlace):
             self.collision.geom.removeCollisionPair(cp)
         self.collision.geom_data = self.collision.geom.createData()
         self._box_attached_model = False
+
+    # --- grasp / release (the two blocks every pick and place share) ---
+
+    def grasp_object(self, model, link):
+        """Close the jaws on `model`/`link` and fix it to the gripper. On an attach
+        failure the jaws re-open, so the caller aborts with a known-empty gripper.
+        Does NOT enable the carried-box phantom -- callers toggle it where the box
+        is clear of what it was resting on. Returns True/False (the caller supplies
+        the sequence-specific error code)."""
+        self.control_gripper(GRIPPER_CLOSE)
+        self.object_model, self.object_link = model, link
+        if not self.attach_box():
+            self.control_gripper(GRIPPER_OPEN)
+            return False
+        time.sleep(0.5)          # let the attach settle before lifting
+        return True
+
+    def release_object(self):
+        """Free the carried object and open the jaws. Mirrors grasp_object."""
+        self.detach_box()
+        self.control_gripper(GRIPPER_OPEN)
+        time.sleep(0.5)          # let the release settle before retracting
 
     def attach_box_to_magazine(self):
         """Fix the just-placed box (self.object_model/object_link) to the AGV

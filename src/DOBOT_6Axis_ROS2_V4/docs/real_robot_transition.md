@@ -51,4 +51,28 @@ sim에서 검증된 것을 실제 하드웨어(D405 카메라, 실물 팔/그리
 
 ---
 
+## OLD_DEVICE_POSE 재캡처 (파이프라인/센서/capture 포즈 바뀔 때마다)
+
+`wirebonder_pick_place.py`의 waypoint(SLOT_WORLD)는 `OLD_DEVICE_POSE`에 재anchor돼,
+런타임에 vision이 읽는 device pose와 합성됨. 상쇄가 성립하려면 **OLD = 그 vision
+파이프라인이 고정 capture 포즈(`CAPTURE_A_JOINTS`)에서 읽는 값**이어야 함. 따라서:
+
+- **vision 알고리즘**(예: two-view→depth-upright), **센서**(sim→실물 D405), 또는
+  **capture 포즈**를 바꾸면 → 그 조건에서 device를 한 번 캡처해 `OLD_DEVICE_POSE`
+  (+ `DEVICES['wb1']`)를 그 read로 **재캘리**. SLOT_WORLD는 건드리지 않음.
+- 현재(sim depth-UPRIGHT, 2026-07-10 이후): 위치+yaw 모두 depth에서 직접 구성,
+  PnP 회전 미사용 (`docs/vision_viewpoint_dependence_fix.md`). read가 **뷰포인트
+  불변**(5개 config에서 spread <1 mm)이므로 캡처 포즈/AGV park가 조금 달라져도
+  read는 같은 값 — 재캡처는 파이프라인/센서 변경 때만 실질적으로 필요.
+- 실물: hand-eye cal 후 재캡처. `CAPTURE_A_JOINTS`도 실물 팔에서 태그를 잘 보는
+  (가급적 fronto-parallel) config로 재조깅 권장. 브링업 검증은
+  `tools/diag_camera_geometry.py`의 다중 뷰포인트 일관성 체크(GT 비교 제외)로.
+
+## 환경 노트 (sim/실물 공통)
+
+- **시퀀스 실행 python**: `.venv`(numpy 2.2.6)로 `wirebonder_pick_place.py`를 돌리면
+  `/opt/ros/humble`의 pinocchio(numpy 1.x 빌드)와 충돌해 **segfault**. system python3
+  (`/usr/bin/python3`, numpy 1.21)로 돌리면 정상. vision 노드도 system python3 사용.
+  (conda 활성 시 PATH에서 벗겨야 함 — `run_mpo700_cr7.sh`가 그 처리를 함.)
+
 <!-- 이후: 그리퍼 교체 시 재조정 파라미터 등 이어서 추가 -->

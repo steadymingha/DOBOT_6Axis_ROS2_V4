@@ -53,7 +53,6 @@ import numpy as np
 import rclpy
 from rclpy.executors import MultiThreadedExecutor
 from geometry_msgs.msg import PoseStamped
-from std_msgs.msg import Int32
 
 # sequences/ is one level below the package root; add the root (for cr7_pnp) and
 # comms/ (for mcs_protocol) so both import when this file is run standalone.
@@ -62,7 +61,7 @@ sys.path.insert(0, _PKG_ROOT)
 sys.path.insert(0, os.path.join(_PKG_ROOT, 'comms'))
 from cr7_pnp import (  # noqa: E402
     HubPickPlace, pose_at, quat_mul, quat_about_z,
-    DOWN, GRIPPER_OPEN, GRIPPER_CLOSE, GRASP_TCP_ABOVE, GRASP_LATERAL_M,
+    DOWN, GRIPPER_OPEN, GRASP_TCP_ABOVE, GRASP_LATERAL_M,
     POCKET_X, POCKET_Y, POCKET_SURFACE_Z, BOX_SIZE,
 )
 import mcs_protocol as proto  # noqa: E402
@@ -88,7 +87,7 @@ SLOT_OFFSET = {
 # (The earlier "true" placeholder (2.35, 0.5, 0, 0) left the anchor bias
 # UNcancelled: every waypoint shifted ~(-9,-31,-7) mm + a yaw-lever term.)
 DEVICES = {
-    'wb1': (2.359, 0.531, 0.007, 0.017),   # = OLD_DEVICE_POSE
+    'wb1': (2.3487, 0.4995, 0.000, 0.000),   # = OLD_DEVICE_POSE
 }
 
 # --- locations ----------------------------------------------------------------
@@ -153,19 +152,13 @@ CAPTURE_FLANGE = (0.373, 0.05, 0.148)
 # Orientation at view A (quat xyzw, base_link). None -> the CAPTURE_PITCH formula (the
 # original capture orientation). Set only if you jog view A to a NEW orientation.
 CAPTURE_QUAT = None
-# View B = view A + this base-frame TRANSLATION, the SECOND stereo viewpoint. Reached
-# by a pure servo that HOLDS view A's orientation. Delta to the jogged view-B spot:
-# (0.562,-0.408,0.753) - (0.373,0.05,0.148). Two views from different camera POSITIONS
-# triangulate the tag (motion stereo) -> fixes range a single small tag can't.
-# NOTE: ~0.78 m straight servo -- if it aborts "singular" (a prior 1 m diagonal did
-# at ~372 mm), either shorten it or switch view B to a joint-space move (RRT routes
-# around the singularity; needs the jogged joints).
-CAPTURE_BASELINE = (0.189, -0.458, 0.605)
-# PREFERRED for a far view B: the joint config at the jogged view-B pose (jog_tcp
-# prints "joints (rad)"). When set, view B is reached by a joint-space RRT -- smooth
-# and singularity-free -- instead of the straight CAPTURE_BASELINE servo (which
-# jitters/aborts through the singularity on a long diagonal). None -> use the servo.
-CAPTURE_B_JOINTS =  (-0.22080, -0.67615, -1.38912, +0.09719, -1.63472, -0.59292)
+# View A as a FIXED joint config: reached by joint_move so the camera viewpoint is
+# identical every run. (Historically this pin was CRITICAL: the PnP-hybrid read
+# swung x/z ~30 mm with the capture config. The depth-upright pipeline is
+# viewpoint-invariant to <1 mm -- see docs/vision_viewpoint_dependence_fix.md --
+# so the pin is now just cheap determinism, kept because a fixed config also
+# guarantees reachability and tag FOV.) None -> planned goto(CAPTURE_FLANGE).
+CAPTURE_A_JOINTS = (-0.42842, -0.13806, -1.94614, 0.19484, -1.70985, -0.39863)
 # Tilt the tool by this pitch (deg) at the capture pose so the camera views the tag
 # OFF fronto-parallel. With two-view triangulation the range no longer rides on this,
 # so it mainly helps the single-view diagnostic print; can be reduced. TUNE.
@@ -205,11 +198,24 @@ SLOT_WORLD = {
     'C': {'mode': 'top', 'box': (2.698, 0.441, 1.355)},
     # D mirrors A (symmetric device): same y/z approach/seat style as A, only x
     # differs. x = box_l2b spawn centre (cr.world 2.698); the jaw is squared to the
-    # device after staging (pick_slot_front_j1), so the TCP centres on the box.
+    # device after staging (pick_front_staged), so the TCP centres on the box.
     # NOT the high-jogged 2.576 -- that sits ON the central tower's (Cube_B, world
     # x<=2.58, z 0.90-1.13) right face and the gripper column collides with it.
     'D': {'mode': 'front', 'approach': (2.698, 0.17, 1.04), 'seat': (2.698, 0.30, 1.04)},
 }
+# Front-load PLACE approach is a HIGH TRANSIT, not a straight hub->front diagonal:
+# the carried box extends ~256 mm ahead of the TCP toward the device (GRASP_LATERAL_M
+# + half its 236 mm length), so ANY low path from the hub sweeps the box through the
+# device front (Cube_A/B faces at model y -0.26) while crossing the central-tower x
+# band -- measured ~0 mm margin (see tools/diag_seq_dryrun.py). Instead: lift to
+# PLACE_TRANSIT_Z (box bottom clears Cube_C, top 1.275, by ~40 mm; at the shallow
+# transit y the box front never reaches Cube_D/E), traverse above the slot, descend
+# PLACE_STAGE_BACKOFF in FRONT of the approach point (box front clears Cube_C's face
+# by ~23 mm on the way down), then slide in. All straight servos. CEILING: past
+# ~1.57 the tool-down lift self-collides (carried_box vs Link2), so keep <= ~1.45.
+PLACE_TRANSIT_Z = 1.40      # model z of the TCP during the high transit (TUNE)
+PLACE_STAGE_BACKOFF = 0.07  # descend this far in front of the approach y, then slide in
+
 SLOT_PLACE_DROP = 0.03      # front-load PLACE: descend from the seat to set the
                             # (already-gripped) box onto the shelf (TUNE)
 # Front-load PICK descends MORE than place: place lowers a box the pads already
@@ -236,13 +242,17 @@ STAGE_JOINTS = {'D': (-3.7, -0.33221, -2.24554, +1.01709, -1.56560, +2.28482)}
 # frame, so at runtime they compose with the LIVE device pose (DEVICES[device],
 # refreshed from /vision/device_pose) -- the AGV may park anywhere and the device
 # may sit at any yaw. ponytail: device assumed upright, so only (x,y,z,yaw) matters.
-# CRITICAL: this must be what VISION reported for the device when SLOT_WORLD was
-# jogged, NOT the true world pose. The sim's two-view read has a fixed deterministic
-# bias (~+9,+31,+7 mm, +1 deg vs the true 2.35,0.5,0,0; spread 0/0/0). Setting OLD to
-# that biased read makes the SAME bias appear at both jog-reference and runtime, so it
-# CANCELS and the waypoints reproduce SLOT_WORLD exactly. (Using the true pose leaves
-# the bias uncancelled -> the ~31 mm shift that clips the tight front-load approach.)
-OLD_DEVICE_POSE = (2.359, 0.531, 0.007, 0.017)
+# CRITICAL: this must be what VISION reports for the device from the FIXED capture
+# viewpoint (CAPTURE_A_JOINTS), NOT the true world pose. Any residual vision bias then
+# appears at both jog-reference and runtime, so it CANCELS and the waypoints reproduce
+# SLOT_WORLD exactly. RE-CAPTURE this whenever the vision pipeline or the capture pose
+# changes (see docs/real_robot_transition.md). Current value = the depth-UPRIGHT read
+# (position + yaw from depth alone; no PnP rotation -- see
+# docs/vision_viewpoint_dependence_fix.md). That read is VIEWPOINT-INVARIANT
+# (x/y/z spread 0.7/0.2/0.5 mm across 5 capture configs incl. the far view B), so
+# the residual bias vs ground truth is a constant ~1.4 mm that cancels here; the
+# old x/z sensitivity to the capture config / AGV park spot is gone.
+OLD_DEVICE_POSE = (2.3487, 0.4995, 0.000, 0.000)  # depth-upright read at view A
 
 # Capture sanity gates (TUNE). A clean single vision node republishes ONE pose, so the
 # median spread is ~0; anything large means a stale 2nd publisher or an unstable solve.
@@ -482,13 +492,36 @@ def slot_target(node, loc, key):
     return ps
 
 
-def servo_to(node, pose, label):
-    """Straight collision-gated servo from the current TCP to pose's position,
-    holding orientation. Valid only when the current azimuth already matches the
-    target's (every wb1 slot and the hub share it). Returns True/False."""
-    cur, _ = node.ik_model.fk_tcp(node.ik_model.pin_q(node.current_joints.tolist()))
-    p = pose.pose.position
-    return node.linear_servo(np.array([p.x, p.y, p.z]) - cur, label=label)
+def front_place_legs(node, loc):
+    """The high-transit approach for a front-slot place, as a list of
+    (pose, label) straight-servo legs ending AT the approach point. Shared by the
+    live place and preflight_transfer so they can never drift apart. The first
+    (lift) leg is position-dependent, so it is emitted as a base-frame z target
+    the caller reaches from wherever it starts. Returns None if TF is missing."""
+    approach = slot_target(node, loc, 'approach')
+    if approach is None:
+        return None
+    device, letter = loc.ref
+    dyaw = DEVICES[device][3]
+    ins = node.transform_world_vector([-math.sin(dyaw), math.cos(dyaw), 0.0])
+    if ins is None:
+        return None
+    ins = np.asarray(ins, dtype=float)
+    # Transit height in base_link: world dz == base dz (flat floor).
+    approach_wz = _to_odom(SLOT_LOCAL[letter]['approach'], DEVICES[device])[2]
+    dz = (DEVICES[device][2] + PLACE_TRANSIT_Z) - approach_wz
+    ap = approach.pose.position
+    o = approach.pose.orientation
+    quat = (o.x, o.y, o.z, o.w)
+    stage = np.array([ap.x, ap.y, ap.z]) - PLACE_STAGE_BACKOFF * ins
+    # First leg is a pure +z lift to the transit height: emitted as a base-frame
+    # z FLOAT (the caller lifts from wherever it starts); the rest are poses.
+    return [
+        (ap.z + dz, f"place {loc.name} lift"),
+        (pose_at([stage[0], stage[1], ap.z + dz], quat), f"place {loc.name} transit"),
+        (pose_at(stage, quat), f"place {loc.name} lower"),
+        (approach, f"place {loc.name} approach"),
+    ]
 
 
 def slot_mode(loc):
@@ -520,15 +553,42 @@ def top_grasp_pose(node, loc):
     return node.transform_world_pose(tx, ty, tz, quat)
 
 
-def pick_slot_top(node, loc, to_hub):
+def run_legs(node, legs):
+    """Execute a leg list from front_place_legs(): a float target is a base-frame z
+    (pure lift from wherever the arm is), a PoseStamped is a straight servo to its
+    position. True/False."""
+    for tgt, label in legs:
+        ok = (node.linear_servo([0.0, 0.0, tgt - node.tcp_xyz()[2]], label=label)
+              if isinstance(tgt, float) else node.servo_to(tgt, label))
+        if not ok:
+            return False
+    return True
+
+
+def grasp(node, loc):
+    """Close on the magazine at loc; fail() with ATTACH_FAILED if the attach fails."""
+    if node.grasp_object(loc.model, loc.link):
+        return True
+    return fail(node, proto.ErrorCode.ATTACH_FAILED, f"[pick {loc.name}] ATTACHLINK failed")
+
+
+# --- pick strategies (one per location style; dispatched via PICK below) -------
+
+def pick_top(node, loc, to_hub=True):
     """Top-accessible slot (upper G slots, open top): hover above the box, descend
     to the box-centred grasp, grasp, ascend, then carry to the hub (phantom on).
     Same hover->descend->grasp->ascend shape as the base pick."""
-    grasp = top_grasp_pose(node, loc)
-    if grasp is None:
+    grasp_pose = top_grasp_pose(node, loc)
+    if grasp_pose is None:
         return False
     node.control_gripper(GRIPPER_OPEN)
-    if not servo_to(node, _offset(grasp, [0.0, 0.0, HOVER_ABOVE]), f"pick {loc.name} hover"):
+    # Record the hover transit: a direct slot->slot transfer retraces it (with the
+    # place transit) to get home -- the free go_to_hub RRT swings the arm through
+    # the shelf, and a straight joint interpolation collides with the device
+    # (measured: tools/diag_seq_dryrun.py).
+    ok, node._pick_transit = node.capture(lambda: node.servo_to(
+        _offset(grasp_pose, [0.0, 0.0, HOVER_ABOVE]), f"pick {loc.name} hover"))
+    if not ok:
         return False
     # Fixed descend to the box-centred grasp (grasp TCP = box centre + GRASP_TCP_ABOVE,
     # from SLOT_WORLD 'box'). NOT guarded: the box phantom false-triggers on the front
@@ -536,41 +596,15 @@ def pick_slot_top(node, loc, to_hub):
     # the pads never reach the box. Depth is tuned via the box centre z.
     if not node.linear_servo([0.0, 0.0, -HOVER_ABOVE], label=f"pick {loc.name} descend"):
         return False
-    node.control_gripper(GRIPPER_CLOSE)
-    node.object_model, node.object_link = loc.model, loc.link
-    if not node.attach_box():
-        node.control_gripper(GRIPPER_OPEN)
-        fail(node, proto.ErrorCode.ATTACH_FAILED,
-             f"[pick {loc.name}] ATTACHLINK failed")
+    if not grasp(node, loc):
         return False
-    time.sleep(0.5)
     if not node.linear_servo([0.0, 0.0, HOVER_ABOVE], label=f"pick {loc.name} ascend"):
         return False
     node.attach_box_collision()
     return node.go_to_hub() if to_hub else True
 
 
-def place_slot_top(node, loc):
-    """Top-accessible slot: carry to the hover (phantom on), descend to the box-
-    centred grasp height, release, ascend, return to the hub. Mirrors the base drop."""
-    grasp = top_grasp_pose(node, loc)
-    if grasp is None:
-        return False
-    node.attach_box_collision()
-    if not servo_to(node, _offset(grasp, [0.0, 0.0, HOVER_ABOVE]), f"place {loc.name} approach"):
-        return False
-    node.detach_box_collision()
-    if not node.linear_servo([0.0, 0.0, -HOVER_ABOVE], label=f"place {loc.name} descend"):
-        return False
-    node.detach_box()
-    node.control_gripper(GRIPPER_OPEN)
-    time.sleep(0.5)
-    if not node.linear_servo([0.0, 0.0, HOVER_ABOVE], label=f"place {loc.name} ascend"):
-        return False
-    return node.go_to_hub()
-
-
-def pick_slot_front_j1(node, loc):
+def pick_front_staged(node, loc, to_hub=True):
     """Front-load pick for a slot whose approach defeats the free RRT (seq-3 slot D).
     Swings ONLY J1 (STAGE_JOINTS[..][0]) to bring the arm in FRONT of the slot, then
     squares the jaw and STRAIGHT-servos to the jogged approach -> seat -> descend
@@ -619,148 +653,147 @@ def pick_slot_front_j1(node, loc):
         # Seq-1 mirror: straight servos to the front hover, slide in level, then
         # plunge the open pads down AROUND the box (deeper than a place -- see
         # SLOT_PICK_DROP). The reverse replay lifts back out by the same amount.
-        if not servo_to(node, approach, f"pick {loc.name} approach"):
+        if not node.servo_to(approach, f"pick {loc.name} approach"):
             return False
-        if not servo_to(node, seat, f"pick {loc.name} seat"):
+        if not node.servo_to(seat, f"pick {loc.name} seat"):
             return False
         return node.linear_servo([0.0, 0.0, -SLOT_PICK_DROP],
                                  label=f"pick {loc.name} descend")
 
     ok, fwd = node.capture(forward)
     if not ok:
+        # Back out along the proven prefix (it was just executed, so its reverse is
+        # safe) instead of leaving the arm stranded deep in the device front.
+        node.replay_reverse(fwd)
         return False
-    node.control_gripper(GRIPPER_CLOSE)
-    node.object_model, node.object_link = loc.model, loc.link
-    if not node.attach_box():
-        node.control_gripper(GRIPPER_OPEN)
-        fail(node, proto.ErrorCode.ATTACH_FAILED,
-             f"[pick {loc.name}] ATTACHLINK failed")
+    if not grasp(node, loc):
         return False
-    time.sleep(0.5)
     node.attach_box_collision()
     # Retrace the outbound path in reverse: seat -> approach -> J1 back -> hub.
     return node.replay_reverse(fwd)
 
 
-def pick(node, loc, to_hub=True):
-    """Grasp the magazine at loc and return to the hub holding it. True/False.
-    to_hub=False leaves the arm at the lifted-out pose (slot src only) so a
-    slot->slot transfer goes straight to the dst without the hub detour."""
-    if loc.kind == 'slot' and slot_mode(loc) == 'top':
-        return pick_slot_top(node, loc, to_hub)
-    if loc.kind == 'slot' and loc.ref[1] in STAGE_JOINTS:
-        return pick_slot_front_j1(node, loc)
-    center, quat = resolve(node, loc)
-    if center is None:
+def pick_front(node, loc, to_hub=True):
+    """Front-loading slot without a staging config: RRT to a hover in FRONT of the
+    slot, slide in HORIZONTALLY to grasp, pull straight back out. to_hub=False
+    (slot->slot) stays at the pulled-out pose so the place RRTs straight to the dst.
+    ponytail: unused by the current SEQUENCES (slot D is staged) -- kept as the
+    documented fallback for a front slot with no STAGE_JOINTS entry (e.g. A as src)."""
+    seat, idir = slot_flange_seat(node, loc)
+    if seat is None:
         return False
     node.control_gripper(GRIPPER_OPEN)
-
-    if loc.kind == 'base':
-        # Tool-down: linear approach (hub shares the base azimuth), vertical descend.
-        grasp = grasp_tcp_pose(node, center, quat)
-        if grasp is None:
-            fail(node, proto.ErrorCode.UNREACHABLE,
-                 f"[pick {loc.name}] grasp IK unavailable")
-            return False
-        if not node.linear_servo(base_hover_delta(loc), label=f"pick {loc.name} approach"):
-            return False
-        if not node.linear_servo([0.0, 0.0, -HOVER_ABOVE + 0.01], label=f"pick {loc.name} descend"):
-            return False
-    else:
-        # Front-loading slot: hover in front, slide in HORIZONTALLY to grasp.
-        seat, idir = slot_flange_seat(node, loc)
-        if seat is None:
-            return False
-        if not goto(node, _offset(seat, -SLOT_INSERT * idir), f"pick {loc.name} approach"):
-            return False
-        if not node.linear_servo(SLOT_INSERT * idir, label=f"pick {loc.name} insert"):
-            return False
-
-    node.control_gripper(GRIPPER_CLOSE)
-    node.object_model, node.object_link = loc.model, loc.link
-    if not node.attach_box():
-        node.control_gripper(GRIPPER_OPEN)
-        fail(node, proto.ErrorCode.ATTACH_FAILED,
-             f"[pick {loc.name}] ATTACHLINK failed")
+    if not goto(node, _offset(seat, -SLOT_INSERT * idir), f"pick {loc.name} approach"):
         return False
-    time.sleep(0.5)
-
-    if loc.kind == 'base':
-        # Vertical pull-out (box-safe), phantom off; linear retract to the hub.
-        if not node.linear_servo([0.0, 0.0, HOVER_ABOVE], label=f"pick {loc.name} ascend"):
-            return False
-        return node.linear_servo(-base_hover_delta(loc), label=f"pick {loc.name} retract")
-    # Slot: horizontal pull-out clears the device front, then RRT to the hub with
-    # the carried-box phantom on. to_hub=False (slot->slot) stays at the pulled-out
-    # pose so place() RRTs straight to the dst, skipping the hub detour.
+    if not node.linear_servo(SLOT_INSERT * idir, label=f"pick {loc.name} insert"):
+        return False
+    if not grasp(node, loc):
+        return False
+    # Horizontal pull-out clears the device front, then RRT to the hub with the
+    # carried-box phantom on.
     if not node.linear_servo(-SLOT_INSERT * idir, label=f"pick {loc.name} retract"):
         return False
     node.attach_box_collision()
     return node.go_to_hub() if to_hub else True
 
 
-def place(node, loc):
-    """Carry from the hub and release the magazine at loc, then return to the hub.
-    Assumes the carried-box collision model is ON at entry. True/False."""
-    if loc.kind == 'slot' and slot_mode(loc) == 'top':
-        return place_slot_top(node, loc)
-    if loc.kind == 'base':
-        center, quat = resolve(node, loc)
-        if center is None:
-            return False
-        # Guarded place (sim analog of the real-robot torque touch-off, see
-        # place_command_guide.md). Approach to the hover with the phantom OFF (the
-        # IK gate rejects it near the surface -- "ok=94, collision-free=0"), then
-        # descend with the phantom ON and STOP the instant the box meets the pocket
-        # surface. Each pocket seats at ITS true height and any carried-box offset
-        # is absorbed -- no single fixed drop that over-descends one, short of another.
-        # Phantom OFF before the IK gate: arriving from the pick the box phantom is
-        # ON, but the place-grasp pose rests the box on the pocket, so with it
-        # attached the IK rejects every solution ("ok=83, collision-free=0").
-        node.detach_box_collision()
-        target = grasp_tcp_pose(node, center, quat)
-        if target is None:
-            fail(node, proto.ErrorCode.UNREACHABLE,
-                 f"[place {loc.name}] place IK unavailable")
-            return False
-        if not node.linear_servo(base_hover_delta(loc), label=f"place {loc.name} approach"):
-            return False
-        node.attach_box_collision()                 # box vs surface = the contact sensor
-        drop = node.guarded_descend(HOVER_ABOVE + BASE_PLACE_OVERTRAVEL,
-                                    label=f"place {loc.name} descend")
-        node.detach_box_collision()
-        node.detach_box()
-        node.control_gripper(GRIPPER_OPEN)
-        time.sleep(0.5)
-        if drop > 1e-3 and not node.linear_servo([0.0, 0.0, drop], label=f"place {loc.name} ascend"):
-            return False
-        return node.linear_servo(-base_hover_delta(loc), label=f"place {loc.name} retract")
+def pick_base(node, loc, to_hub=True):
+    """Base pocket, rigid to the arm: tool-down linear approach (the hub shares the
+    base azimuth, so it is a pure translation), vertical descend, grasp, vertical
+    pull-out, linear retract to the hub. Phantom stays off -- every leg is linear."""
+    center, quat = resolve(node, loc)
+    if center is None:
+        return False
+    node.control_gripper(GRIPPER_OPEN)
+    if grasp_tcp_pose(node, center, quat) is None:
+        return fail(node, proto.ErrorCode.UNREACHABLE,
+                    f"[pick {loc.name}] grasp IK unavailable")
+    d = base_hover_delta(loc)
+    if not node.linear_servo(d, label=f"pick {loc.name} approach"):
+        return False
+    if not node.linear_servo([0.0, 0.0, -HOVER_ABOVE + 0.01], label=f"pick {loc.name} descend"):
+        return False
+    if not grasp(node, loc):
+        return False
+    if not node.linear_servo([0.0, 0.0, HOVER_ABOVE], label=f"pick {loc.name} ascend"):
+        return False
+    return node.linear_servo(-d, label=f"pick {loc.name} retract")
 
-    # Front-loading slot (part C overhangs, so no top drop). Every leg is a straight
-    # collision-gated servo to a MEASURED world point, so the tight front hover
-    # never needs a free RRT. ponytail: pure translation, valid only because every
-    # wb1 slot and the hub share the azimuth (DOWN, yaw pi).
-    approach = slot_target(node, loc, 'approach')
+
+# --- place strategies ---------------------------------------------------------
+
+def place_top(node, loc, to_hub=True):
+    """Top-accessible slot: carry to the hover (phantom on), descend to the box-
+    centred grasp height, release, ascend, return to the hub. Mirrors the base drop.
+    to_hub=False (direct slot->slot) ends at the post-ascend hover; the caller
+    retraces the recorded transits home."""
+    grasp_pose = top_grasp_pose(node, loc)
+    if grasp_pose is None:
+        return False
+    node.attach_box_collision()
+    ok, node._place_transit = node.capture(lambda: node.servo_to(
+        _offset(grasp_pose, [0.0, 0.0, HOVER_ABOVE]), f"place {loc.name} approach"))
+    if not ok:
+        return False
+    node.detach_box_collision()
+    if not node.linear_servo([0.0, 0.0, -HOVER_ABOVE], label=f"place {loc.name} descend"):
+        return False
+    node.release_object()
+    if not node.linear_servo([0.0, 0.0, HOVER_ABOVE], label=f"place {loc.name} ascend"):
+        return False
+    return node.go_to_hub() if to_hub else True
+
+
+def log_insert_state(node, loc, tag):
+    """Log the two -- and only two -- inputs to the insert collision verdict:
+    the start config and the TCP it implies. Emitted from BOTH the preflight (which
+    passes) and the live place (which collides), so the two can be diffed. If they
+    match, the model differs; if they don't, the arm is not where the planner thinks."""
+    q = node.current_joints.tolist() if tag == 'live' else node._dry_insert_q
+    if q is None:
+        return
+    p = node.tcp_xyz(q)
+    node.get_logger().info(
+        f"[insert-{tag}] {loc.name} q=[" + ",".join(f"{v:+.5f}" for v in q) + "] "
+        f"tcp=({p[0]:+.4f},{p[1]:+.4f},{p[2]:+.4f}) "
+        f"valid={node.is_state_valid(list(q))}")
+
+
+def place_front(node, loc, to_hub=True):
+    """Front-loading slot (part C overhangs, so no top drop). Every leg is a straight
+    collision-gated servo to a MEASURED world point, so the tight front hover never
+    needs a free RRT. ponytail: pure translation, valid only because every wb1 slot
+    and the hub share the azimuth (DOWN, yaw pi)."""
+    legs = front_place_legs(node, loc)
     seat = slot_target(node, loc, 'seat')
-    if approach is None or seat is None:
+    if legs is None or seat is None:
         return False
 
-    # Record the forward run (hub -> front -> under part C -> down). Entry is at
-    # the hub (front-load is only ever reached via the hub), so the reverse of
-    # this proven path lands EXACTLY on hub_q -- deterministic, unlike go_to_hub's
-    # free RRT which re-plans a fresh (often wild) path every cycle.
+    # Record the forward run (hub -> high transit -> front -> under part C -> down).
+    # Entry is at the hub (front-load is only ever reached via the hub), so the
+    # reverse of this proven path lands EXACTLY on hub_q -- deterministic, unlike
+    # go_to_hub's free RRT which re-plans a fresh (often wild) path every cycle.
     def forward():
         node.attach_box_collision()
-        # 1. straight servo from the hub to the front of the slot (phantom on). The
-        #    endpoint is reachable+collision-free (verified by jog) but CBiRRT goal
-        #    IK samples colliding branches; the servo seeds from the current joints,
-        #    so it stays on the reachable branch like the jog does.
-        if not servo_to(node, approach, f"place {loc.name} approach"):
+        # 1. high-transit approach (phantom on): lift over the device front,
+        #    traverse, descend in front of the slot, slide in -- see the
+        #    PLACE_TRANSIT_Z comment for why a straight hub->front diagonal
+        #    sweeps the carried box through the device body.
+        if not run_legs(node, legs):
             return False
         # 2. slide in under part C to the magazine spot; the box now contacts the
         #    shelf (intended), so drop the phantom for the seat servo.
         node.detach_box_collision()
-        if not servo_to(node, seat, f"place {loc.name} insert"):
+        log_insert_state(node, loc, 'live')     # diff against [insert-dry]
+        if not node.servo_to(seat, f"place {loc.name} insert"):
+            # Where on the insert line did it hit? linear_servo logs the pair; this
+            # logs the TCP there, so the stop point can be compared to the seat.
+            bad = getattr(node.cbirrt, 'last_invalid_q', None)
+            if bad is not None:
+                p = node.tcp_xyz(bad)
+                node.get_logger().error(
+                    f"[insert-hit] {loc.name} tcp=({p[0]:+.4f},{p[1]:+.4f},{p[2]:+.4f}) "
+                    f"q=[" + ",".join(f"{v:+.5f}" for v in bad) + "]")
             return False
         # 3. set the box down on the shelf.
         return node.linear_servo([0.0, 0.0, -SLOT_PLACE_DROP],
@@ -768,55 +801,197 @@ def place(node, loc):
 
     ok, fwd = node.capture(forward)
     if not ok:
+        # Still holding the box: retrace the proven prefix (just executed, so its
+        # reverse is safe) back to the hub rather than stranding the arm mid-insert.
+        node.replay_reverse(fwd)
         return False
-    node.detach_box()
-    node.control_gripper(GRIPPER_OPEN)
-    time.sleep(0.5)
+    node.release_object()
     # 4. retrace the proven forward path in reverse: up off the box, back out under
     #    part C, and home to the hub -- the empty gripper follows the same line.
     return node.replay_reverse(fwd)
 
 
-def preflight_place(node, dst, direct):
-    """Dry-run the hub->slot place legs (approach, then seat) WITHOUT moving the arm,
-    so a sequence that can't reach the slot FAILS BEFORE the box is picked (instead of
-    ending stranded holding it). Uses the SAME Cartesian servo the place uses
-    (cbirrt.linear_path -- it only computes the path), from the CURRENT (hub) config,
-    with the carried-box phantom on for the approach as the real place carries it.
-    Only meaningful when the place starts from the hub: skipped for direct slot->slot
-    and non-front dst. Returns True to proceed, False to refuse."""
-    if direct or dst.kind != 'slot' or slot_mode(dst) != 'front':
-        return True
-    approach = slot_target(node, dst, 'approach')
-    seat = slot_target(node, dst, 'seat')
-    if approach is None or seat is None:
+def place_base(node, loc, to_hub=True):
+    """Base pocket, guarded place (sim analog of the real-robot torque touch-off, see
+    place_command_guide.md). Approach to the hover with the phantom OFF (the IK gate
+    rejects it near the surface -- "ok=94, collision-free=0"), then descend with the
+    phantom ON and STOP the instant the box meets the pocket surface. Each pocket
+    seats at ITS true height and any carried-box offset is absorbed -- no single
+    fixed drop that over-descends one and falls short of another."""
+    center, quat = resolve(node, loc)
+    if center is None:
         return False
+    # Phantom OFF before the IK gate: arriving from the pick the box phantom is ON,
+    # but the place-grasp pose rests the box on the pocket, so with it attached the
+    # IK rejects every solution ("ok=83, collision-free=0").
+    node.detach_box_collision()
+    if grasp_tcp_pose(node, center, quat) is None:
+        return fail(node, proto.ErrorCode.UNREACHABLE,
+                    f"[place {loc.name}] place IK unavailable")
+    d = base_hover_delta(loc)
+    if not node.linear_servo(d, label=f"place {loc.name} approach"):
+        return False
+    node.attach_box_collision()                 # box vs surface = the contact sensor
+    drop = node.guarded_descend(HOVER_ABOVE + BASE_PLACE_OVERTRAVEL,
+                                label=f"place {loc.name} descend")
+    node.detach_box_collision()
+    node.release_object()
+    if drop > 1e-3 and not node.linear_servo([0.0, 0.0, drop], label=f"place {loc.name} ascend"):
+        return False
+    return node.linear_servo(-d, label=f"place {loc.name} retract")
 
-    def dry(from_q, pose):
-        cur, _ = node.ik_model.fk_tcp(node.ik_model.pin_q(from_q))
-        p = pose.pose.position
-        delta = np.array([p.x, p.y, p.z]) - cur
-        want = float(np.linalg.norm(delta))
+
+# --- strategy dispatch: adding a transfer is a SEQUENCES edit, not new code ----
+
+def strategy(loc):
+    """'base' | 'front' | 'front_staged' | 'top', or None if the slot has no
+    measured coords. Keys both PICK and PLACE."""
+    if loc.kind == 'base':
+        return 'base'
+    mode = slot_mode(loc)
+    if mode == 'front' and loc.ref[1] in STAGE_JOINTS:
+        return 'front_staged'
+    return mode
+
+
+PICK = {'base': pick_base, 'front': pick_front,
+        'front_staged': pick_front_staged, 'top': pick_top}
+# A staged front slot is PLACED like any other front slot (the staging only exists
+# to reach a pick), so both front keys map to place_front.
+PLACE = {'base': place_base, 'front': place_front,
+         'front_staged': place_front, 'top': place_top}
+
+
+def preflight_transfer(node, src, dst, direct):
+    """Dry-run EVERY plannable leg of the transfer -- pick AND place -- from the
+    current (hub) config WITHOUT moving the arm, so an infeasible transfer fails
+    BEFORE the first motion: the arm stays at the hub and the MCS report gets
+    ErrorCode.UNREACHABLE (fail() fills node.last_error, read at the [REPORT] seam).
+    Each leg's end config chains into the next and the carried-box phantom toggles
+    exactly as in the live legs. Runtime-only events (grasp/attach, guarded-descend
+    contact, RRT search on a valid goal) keep their runtime failure paths.
+    ponytail: the leg lists mirror pick()/place() by hand; the Live/Dry executor
+    refactor (docs/wirebonder_refactor_plan.md) removes that duplication later."""
+
+    def dry(q, delta, label):
+        if q is None:
+            return None
         path, reached, reason = node.cbirrt.linear_path(
-            from_q, delta, node.is_state_valid, node.joint_limits)
-        return (reached >= want - 1e-3), (path[-1] if path else from_q), reached, want, reason
+            list(q), list(delta), node.is_state_valid, node.joint_limits)
+        want = float(np.linalg.norm(delta))
+        if reached < want - 1e-3:
+            bad = getattr(node.cbirrt, 'last_invalid_q', None)
+            pairs = (node.collision.colliding_pairs(bad)
+                     if reason == 'collision' and bad is not None else '')
+            fail(node, proto.ErrorCode.UNREACHABLE,
+                 f"[preflight] {label}: {reached * 1000:.0f}/{want * 1000:.0f} mm "
+                 f"-> {reason} {pairs}; arm NOT moved")
+            return None
+        return path[-1]
 
-    q0 = node.current_joints.tolist()
-    node.attach_box_collision()                     # approach carries the box
-    ok_a, q1, ra, wa, rea = dry(q0, approach)
-    node.detach_box_collision()                     # seat runs after the box is released
-    if not ok_a:
-        fail(node, proto.ErrorCode.UNREACHABLE,
-             f"[preflight] {dst.name}: hub->approach unreachable "
-             f"({ra*1000:.0f}/{wa*1000:.0f} mm -> {rea}); NOT picking the box")
-        return False
-    ok_s, _, rs, ws, res = dry(q1, seat)
-    if not ok_s:
-        fail(node, proto.ErrorCode.UNREACHABLE,
-             f"[preflight] {dst.name}: approach->seat unreachable "
-             f"({rs*1000:.0f}/{ws*1000:.0f} mm -> {res}); NOT picking the box")
-        return False
-    node.get_logger().info(f"[preflight] {dst.name}: hub->slot reachable; proceeding")
+    def dry_to(q, pose, label):
+        if q is None or pose is None:
+            return None
+        p = pose.pose.position
+        return dry(q, np.array([p.x, p.y, p.z]) - node.tcp_xyz(q), label)
+
+    def dry_pick(q0):
+        # Branch on the SAME strategy() the live pick dispatches on, so the two can
+        # never disagree about which body runs.
+        s = strategy(src)
+        if s == 'base':
+            d = base_hover_delta(src)
+            q = dry(q0, d, f"pick {src.name} approach")
+            q = dry(q, [0.0, 0.0, -HOVER_ABOVE + 0.01], f"pick {src.name} descend")
+            q = dry(q, [0.0, 0.0, HOVER_ABOVE], f"pick {src.name} ascend")
+            return dry(q, -d, f"pick {src.name} retract")
+        if s == 'top':
+            grasp_pose = top_grasp_pose(node, src)
+            if grasp_pose is None:
+                return None
+            q = dry_to(q0, _offset(grasp_pose, [0.0, 0.0, HOVER_ABOVE]), f"pick {src.name} hover")
+            q = dry(q, [0.0, 0.0, -HOVER_ABOVE], f"pick {src.name} descend")
+            return dry(q, [0.0, 0.0, HOVER_ABOVE], f"pick {src.name} ascend")
+        if s == 'front_staged':
+            # Staged front pick: validity-sweep the J1 swing, then the servos.
+            # (The jaw-square J6 twist is a few deg; skipped -- see docstring.)
+            q_sw = np.array(q0, float).copy()
+            q_sw[0] = STAGE_JOINTS[src.ref[1]][0]
+            for t in np.linspace(0.0, 1.0, 32):
+                if not node.is_state_valid(list(np.array(q0) + (q_sw - np.array(q0)) * t)):
+                    fail(node, proto.ErrorCode.UNREACHABLE,
+                         f"[preflight] pick {src.name} J1 swing collides; arm NOT moved")
+                    return None
+            q = dry_to(list(q_sw), slot_target(node, src, 'approach'), f"pick {src.name} approach")
+            q = dry_to(q, slot_target(node, src, 'seat'), f"pick {src.name} seat")
+            q = dry(q, [0.0, 0.0, -SLOT_PICK_DROP], f"pick {src.name} descend")
+            # live reverse-replays the outbound path back to the entry config.
+            return list(q0) if q is not None else None
+        # Generic front pick: gate the free-RRT approach on goal IK, then the servos.
+        seat_pose, idir = slot_flange_seat(node, src)
+        if seat_pose is None:
+            return None
+        q_app = node.ik_nearest(_offset(seat_pose, -SLOT_INSERT * idir), list(q0))
+        if q_app is None:
+            fail(node, proto.ErrorCode.UNREACHABLE,
+                 f"[preflight] pick {src.name} approach IK unreachable; arm NOT moved")
+            return None
+        q = dry(q_app, SLOT_INSERT * idir, f"pick {src.name} insert")
+        q = dry(q, -SLOT_INSERT * idir, f"pick {src.name} retract")
+        return list(node.hub_q) if q is not None else None   # RRTs to the hub after
+
+    def dry_place(q0):
+        s = strategy(dst)
+        if s == 'base':
+            # Live: phantom OFF for the approach (the IK gate rejects it near the
+            # surface); the descend is guarded contact (runtime-only); retract empty.
+            d = base_hover_delta(dst)
+            q = dry(q0, d, f"place {dst.name} approach")
+            return dry(q, -d, f"place {dst.name} retract")
+        if s == 'top':
+            grasp_pose = top_grasp_pose(node, dst)
+            if grasp_pose is None:
+                return None
+            node.attach_box_collision()
+            q = dry_to(q0, _offset(grasp_pose, [0.0, 0.0, HOVER_ABOVE]),
+                       f"place {dst.name} approach")
+            node.detach_box_collision()
+            q = dry(q, [0.0, 0.0, -HOVER_ABOVE], f"place {dst.name} descend")
+            return dry(q, [0.0, 0.0, HOVER_ABOVE], f"place {dst.name} ascend")
+        # Front place (staged or not): the high-transit legs (phantom on), then
+        # seat + drop.
+        legs = front_place_legs(node, dst)
+        seat = slot_target(node, dst, 'seat')
+        if legs is None or seat is None:
+            return None
+        node.attach_box_collision()
+        q = list(q0)
+        for tgt, label in legs:
+            if q is None:
+                break
+            if isinstance(tgt, float):
+                q = dry(q, [0.0, 0.0, tgt - node.tcp_xyz(q)[2]], label)
+            else:
+                q = dry_to(q, tgt, label)
+        node.detach_box_collision()
+        node._dry_insert_q = list(q) if q is not None else None
+        log_insert_state(node, dst, 'dry')      # diff against [insert-live]
+        q = dry_to(q, seat, f"place {dst.name} insert")
+        return dry(q, [0.0, 0.0, -SLOT_PLACE_DROP], f"place {dst.name} descend")
+
+    node.detach_box_collision()
+    try:
+        q1 = dry_pick(node.current_joints.tolist())
+        if q1 is None:
+            return False
+        if not direct and strategy(src) == 'top':
+            q1 = list(node.hub_q)    # live top pick returns to the hub before placing
+        if dry_place(list(q1)) is None:
+            return False
+    finally:
+        node.detach_box_collision()
+    node.get_logger().info(
+        f"[preflight] {src.name}->{dst.name}: all legs reachable; proceeding")
     return True
 
 
@@ -827,6 +1002,10 @@ def transfer(node, src, dst):
     transfers touching a base pocket route via the hub, since the hub shares the
     base azimuth and the base spokes run on linear servos."""
     node.get_logger().info(f"[transfer] {src.name} -> {dst.name}")
+    if strategy(src) is None or strategy(dst) is None:
+        return fail(node, proto.ErrorCode.UNREACHABLE,
+                    f"[transfer] {src.name}->{dst.name}: slot has no measured coords; "
+                    f"jog with tools/jog_tcp.py")
     # A transfer always starts with an EMPTY gripper, but an aborted previous
     # cycle can leak the carried-box phantom ON (nothing detaches it on failure)
     # -- then every pick approach false-collides ('carried_box' vs the device).
@@ -836,14 +1015,41 @@ def transfer(node, src, dst):
         if loc.kind == 'slot':
             node.update_wirebonder_collision(DEVICES[loc.ref[0]])
             break
+    # The collision verdict has exactly two inputs beyond the (logged) target: the
+    # start config and where the device body sits in the model. Log both, so a run
+    # that false-collides can be diffed against one that doesn't -- the targets
+    # match across such runs, so one of these two must differ.
+    off_hub = float(np.linalg.norm(node.current_joints - np.array(node.hub_q)))
+    node.get_logger().info(
+        f"[transfer] start off-hub {off_hub:.4f} rad; q=[" +
+        ",".join(f"{v:+.4f}" for v in node.current_joints) + "]")
+    wb_geom = getattr(node, 'wirebonder_geoms', [])
+    if wb_geom:
+        p = node.collision.geom.geometryObjects[wb_geom[0]].placement.translation
+        node.get_logger().info(
+            f"[transfer] wirebonder body in model root: "
+            f"({p[0]:+.4f},{p[1]:+.4f},{p[2]:+.4f})")
     direct = src.kind == 'slot' and dst.kind == 'slot'
-    # Preflight the hub->slot place BEFORE picking, so an unreachable slot fails now
-    # instead of stranding the box in the gripper.
-    if not preflight_place(node, dst, direct):
+    # Preflight EVERY leg of pick AND place BEFORE moving, so an infeasible
+    # transfer refuses with the arm still at the hub (MCS gets UNREACHABLE).
+    if not preflight_transfer(node, src, dst, direct):
         return False
-    if not pick(node, src, to_hub=not direct):
+    if not PICK[strategy(src)](node, src, to_hub=not direct):
         return False
-    return place(node, dst)
+    if not direct:
+        return PLACE[strategy(dst)](node, dst)
+    if not PLACE[strategy(dst)](node, dst, to_hub=False):
+        return False
+    # Deterministic home for direct slot->slot: retrace the two recorded transit
+    # servos in reverse. The free go_to_hub RRT re-plans a wild swing through the
+    # shelf each cycle, and a straight joint interpolation collides with the
+    # device (both measured -- tools/diag_seq_dryrun.py); the reverse of a
+    # just-executed path is safe by construction.
+    back = node.join([node.rev(getattr(node, '_place_transit', [])),
+                      node.rev(getattr(node, '_pick_transit', []))])
+    if back and not node.execute_path(back):
+        return False
+    return node.go_to_hub()   # snap the residual servo drift to the exact hub_q
 
 
 def wait_for_key():
@@ -865,51 +1071,44 @@ def quat_about_y(theta):
 
 
 def capture_device(node):
-    """Two-view (motion-stereo) capture. From the hub, move to view A (CAPTURE_FLANGE
-    with a CAPTURE_PITCH tilt), then to view B (offset by CAPTURE_BASELINE), pinging
-    /vision/capture at each so the vision node triangulates the tag across the two
-    camera POSITIONS -- that recovers depth a single view can't. Then refresh EVERY
-    device's pose from the triangulated /vision/device_pose and return to the hub.
-    DECOUPLED from the hub (which stays transfer-safe). Planned moves (goto) are used
-    because the tilt REORIENTS the tool. Run once before the menu (and on 'c').
-    Returns True -- transfers are gated on it."""
+    """Single-view depth capture. From the hub, move to view A (CAPTURE_FLANGE with a
+    CAPTURE_PITCH tilt) and dwell; the vision node's depth hybrid (single-view PnP for
+    rotation + sensor depth Z for range) publishes the device pose from THIS one view,
+    so no second viewpoint / motion-stereo is needed. refresh EVERY device's pose from
+    /vision/device_pose during the dwell, then return to the hub. DECOUPLED from the hub
+    (which stays transfer-safe). Planned move (goto) is used because the tilt REORIENTS
+    the tool. Run once before the menu (and on 'c'). Returns True -- transfers gate on it.
+
+    (View B / the two-view triangulation was dropped: single-view PnP rotation was stable
+    at view A but flickered at the oblique view B, and depth already fixes range from one
+    view. The two-view code stays in the vision module as an unused fallback.)"""
     if not node.go_to_hub():                                  # start from the hub
         return False
-    quat = CAPTURE_QUAT if CAPTURE_QUAT is not None else quat_mul(
-        quat_about_y(math.radians(CAPTURE_PITCH_DEG)),
-        quat_mul(quat_about_z(PICK_YAW), DOWN))
-    node._cap_pub.publish(Int32(data=0))                     # reset the node buffer
 
     def forward():
-        # View A: planned move to the jogged capture pose (needs the jogged orientation).
-        if not goto(node, pose_at(CAPTURE_FLANGE, quat), "capture view A"):
-            return False
-        time.sleep(2.0)  # settle: the arm keeps moving ~2 s after "finished" (see log)
-        node._cap_pub.publish(Int32(data=1))                 # grab view A
-        time.sleep(0.3)
-        # View B: direct MoveJ to the jogged config (shortest joint path, smooth,
-        # singularity-free) if given, else the pure-translation baseline servo. Only
-        # the endpoint pose matters for triangulation, so the straight path is fine.
-        if CAPTURE_B_JOINTS is not None:
-            # Direct MoveJ (straight joint interpolation) instead of RRT: shortest
-            # joint path, no re-planned swing. Path recorded for the reverse replay.
-            if not node.joint_move(CAPTURE_B_JOINTS):
+        # View A only, reached by a FIXED joint config (deterministic viewpoint) so the
+        # depth-deprojected tag centre is reproducible run-to-run -- required for the
+        # OLD_DEVICE_POSE bias cancellation. Fall back to the planned goto if unset.
+        if CAPTURE_A_JOINTS is not None:
+            if not node.joint_move(list(CAPTURE_A_JOINTS)):
                 return False
-        elif not node.linear_servo(np.array(CAPTURE_BASELINE, dtype=float), label="capture view B"):
-            return False
-        time.sleep(2.0)  # settle (as view A) so the tag is in frame at grab time
-        node._cap_pub.publish(Int32(data=1))                 # grab view B
-        time.sleep(0.3)
+        else:
+            quat = CAPTURE_QUAT if CAPTURE_QUAT is not None else quat_mul(
+                quat_about_y(math.radians(CAPTURE_PITCH_DEG)),
+                quat_mul(quat_about_z(PICK_YAW), DOWN))
+            if not goto(node, pose_at(CAPTURE_FLANGE, quat), "capture view A"):
+                return False
+        time.sleep(2.0)  # settle: the arm keeps moving ~2 s after "finished" (see log)
         return True
 
-    # Record the outbound hub->A->B path; the return is a REVERSE REPLAY of it, not a
+    # Record the outbound hub->A path; the return is a REVERSE REPLAY of it, not a
     # fresh go_to_hub RRT -- that RRT is unaware of the base box (not in the planning
     # scene) and swings through it. Retracing the proven outbound path can't hit it.
     ok_fwd, fwd = node.capture(forward)
     if not ok_fwd:
         return False
     ok = all(refresh_device_pose(node, d) for d in ALL_DEVICES)
-    node.replay_reverse(fwd)                                 # B -> A -> hub (box-safe path)
+    node.replay_reverse(fwd)                                 # A -> hub (box-safe path)
     # Snap to the EXACT hub_q: base pick's approach is a pure translation FROM the hub
     # (base_hover_delta), so the arm must start at the exact hub or the pick lands
     # offset. replay_reverse only lands NEAR hub; this is a tiny, box-safe move.
@@ -937,8 +1136,6 @@ def main(args=None):
         node._vision_pose = None
         node.create_subscription(PoseStamped, '/vision/device_pose',
                                  lambda m: setattr(node, '_vision_pose', m), 10)
-        # Drives the two-view capture: data=0 resets, data=1 grabs a view.
-        node._cap_pub = node.create_publisher(Int32, '/vision/capture', 10)
 
     executor = MultiThreadedExecutor()
     executor.add_node(node)

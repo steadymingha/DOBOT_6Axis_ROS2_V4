@@ -1,6 +1,7 @@
 build/
 install/
 log/
+**/__pycache__/
 src/DOBOT_6Axis_ROS2_V4/build/
 src/DOBOT_6Axis_ROS2_V4/install/
 src/simplescreenrecorder-2026-06-03_00.02.38.mp4
@@ -115,15 +116,3 @@ src/DOBOT_6Axis_ROS2_V4/log_txt/rrt_path_20260527_170110.txt
 src/DOBOT_6Axis_ROS2_V4/ompl_probe2.py
 src/DOBOT_6Axis_ROS2_V4/test.py
 src/DOBOT_6Axis_ROS2_V4/wc_demo.py
-src/DOBOT_6Axis_ROS2_V4/__pycache__/
-
-src/DOBOT_6Axis_ROS2_V4/cr7_pnp/__pycache__/__init__.cpython-310.pyc
-src/DOBOT_6Axis_ROS2_V4/cr7_pnp/__pycache__/cbirrt.cpython-310.pyc
-src/DOBOT_6Axis_ROS2_V4/cr7_pnp/__pycache__/geometry.cpython-310.pyc
-src/DOBOT_6Axis_ROS2_V4/cr7_pnp/__pycache__/gripper_params.cpython-310.pyc
-src/DOBOT_6Axis_ROS2_V4/cr7_pnp/__pycache__/model.cpython-310.pyc
-src/DOBOT_6Axis_ROS2_V4/cr7_pnp/__pycache__/node.cpython-310.pyc
-src/DOBOT_6Axis_ROS2_V4/tools/__pycache__/deploy_optimizer.cpython-310.pyc
-src/DOBOT_6Axis_ROS2_V4/tools/__pycache__/jog_tcp.cpython-310.pyc
-src/DOBOT_6Axis_ROS2_V4/tools/__pycache__/reachability_map.cpython-310.pyc
-.gitignore

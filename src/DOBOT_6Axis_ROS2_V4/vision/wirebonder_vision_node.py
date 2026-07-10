@@ -62,21 +62,25 @@ class Diag(Node):
         super().__init__('wirebonder_vision_diag')
         self.bgr = None
         self.K = None
+        self.depth_msg = None       # latest depth Image (32FC1 sim / 16UC1 real)
+        self._det_logged = None     # last logged detect state -> log only on change
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.create_subscription(Image, '/d405/color/image_raw', self._img_cb, 10)
         self.create_subscription(CameraInfo, '/d405/color/camera_info', self._info_cb, 10)
+        # Aligned depth (same optical frame + resolution as color, so the color K
+        # deprojects it). This is the range-fixing input for the depth hybrid.
+        self.create_subscription(Image, '/d405/color/depth/image_raw', self._depth_cb, 10)
         # Device pose in ODOM (device is static there, so the planner can cache it
         # and reuse its odom->base_link TF). This is the vision-layer contract the
         # .venv flows + dispatcher consume; the AI magazine detector publishes the
         # same shape later.
         self.pub = self.create_publisher(PoseStamped, '/vision/device_pose', 10)
-        # Two-view (motion-stereo) capture: the planner drives the arm to two camera
-        # positions and pings /vision/capture at each (data=0 resets, data=1 grabs a
-        # view). We store (T_odom_optical, corners, K) per grab and triangulate on the
-        # 2nd, then republish that ONE solved pose every tick so the planner's
-        # median-of-frames read gets a steady stream. Single-view detection stays for
-        # the throttled diagnostic print only (it is NOT published -- it can't fix range).
+        # Two-view (motion-stereo) capture: the FALLBACK path now that depth is
+        # primary. The planner drives the arm to two camera positions and pings
+        # /vision/capture at each (data=0 resets, data=1 grabs a view). We store
+        # (T_odom_optical, corners, K) per grab and triangulate on the 2nd; _tick
+        # republishes that solved pose only when no live depth-corrected tag is seen.
         self._cap_buf = []
         self._solved = None
         self.create_subscription(Int32, '/vision/capture', self._capture_cb, 10)
@@ -113,8 +117,24 @@ class Diag(Node):
     def _info_cb(self, msg):
         self.K = np.array(msg.k, dtype=float).reshape(3, 3)
 
+    def _depth_cb(self, msg):
+        self.depth_msg = msg
+
+    def _depth_m(self):
+        """Latest depth as HxW metres (NaN where holed), or None if none yet."""
+        m = self.depth_msg
+        if m is None:
+            return None
+        return wv.read_depth(m.data, m.height, m.width, m.encoding)
+
     def _lookup_T(self, target, source):
-        """T_target_source as a 4x4, or None if the TF is unavailable."""
+        """T_target_source as a 4x4, or None if the TF is unavailable.
+
+        LATEST transform (Time()), not the image stamp: a stamp lookup would need
+        TF to catch up to the just-arrived image every tick (deadlock-prone from a
+        timer callback), and the capture design only reads poses with the arm at
+        REST (dwell + median), where latest-vs-stamp was measured at 0.0 mm
+        (tools/diag_camera_geometry.py). Do NOT capture while the arm moves."""
         try:
             tf = self.tf_buffer.lookup_transform(
                 target, source, rclpy.time.Time(), timeout=Duration(seconds=0.5))
@@ -128,38 +148,57 @@ class Diag(Node):
     def _tick(self):
         if self.bgr is None or self.K is None:
             return
-        # Republish the latest two-view solved pose every tick (fresh stamp) so the
-        # planner's median read gets a steady stream regardless of live detection --
-        # after a capture the arm returns to the hub and the tag leaves the FOV.
-        if self._solved is not None:
+
+        depth = self._depth_m()
+        det = wv.detect_tag(self.bgr, self.K)
+        corners = wv.detect_tag_corners(self.bgr)
+        T_odom_opt = self._lookup_T('odom', 'd405_optical_frame')
+
+        # PRIMARY: single-view PnP + depth range correction, published in odom every
+        # tick. depth fixes PnP's weak range axis in one frame (no arm motion).
+        live = None
+        if det is not None and T_odom_opt is not None:
+            live = wv.device_pose_in_base(T_odom_opt, det, depth=depth,
+                                          K=self.K, corners=corners)
+            self._publish_pose(live)
+
+        # FALLBACK: no live tag this tick -> republish the last two-view solve so the
+        # planner's median read still gets a steady stream (e.g. arm back at the hub,
+        # tag out of FOV). Depth hybrid is primary; two-view stays the planner-driven
+        # fallback (see /vision/capture) and is NOT deleted.
+        if live is None and self._solved is not None:
             self._publish_pose(self._solved)
 
+        # Log detect state only on CHANGE, not every tick (otherwise "not detected"
+        # spams the console and buries every other message).
+        if det is None:
+            if self._det_logged is not False:
+                self.get_logger().info(f"tag {wv.TAG_ID} not detected")
+                self._det_logged = False
+            return
+        if self._det_logged is not True:
+            self.get_logger().info(f"tag {wv.TAG_ID} detected")
+            self._det_logged = True
+
+        # Diagnostic PRINT (base_link): the SAME depth-corrected estimate vs the
+        # DEVICES ground truth, throttled to ~1 Hz -- the sim accuracy/bias check.
+        self._print_ctr = (self._print_ctr + 1) % 10
+        if self._print_ctr != 0:
+            return
         T_base_opt = self._lookup_T('base_link', 'd405_optical_frame')
         T_base_odom = self._lookup_T('base_link', 'odom')
         if T_base_opt is None or T_base_odom is None:
             return
-
-        det = wv.detect_tag(self.bgr, self.K)
-        if det is None:
-            self.get_logger().info(f"tag {wv.TAG_ID} not detected")
-            return
-
-        # Single-view estimate: diagnostic PRINT only (not published -- it can't fix
-        # range; the published pose is the two-view triangulation above).
-        T_base_model_vis = wv.device_pose_in_base(T_base_opt, det)
+        T_base_model_vis = wv.device_pose_in_base(T_base_opt, det, depth=depth,
+                                                  K=self.K, corners=corners)
         slots_vis = wv.slots_in_base(T_base_model_vis)
-
-        # Side-by-side print throttled to ~1 Hz.
-        self._print_ctr = (self._print_ctr + 1) % 10
-        if self._print_ctr != 0:
-            return
 
         dx, dy, dz, dyaw = DEVICES_GT[DEVICE]
         T_odom_model = wv.make_T(wv.rpy_to_R(0, 0, dyaw), [dx, dy, dz])
-        T_base_model_gt = T_base_odom @ T_odom_model
-        slots_gt = wv.slots_in_base(T_base_model_gt)
+        slots_gt = wv.slots_in_base(T_base_odom @ T_odom_model)
 
-        lines = [f"--- {DEVICE}: vision vs ground-truth slot centres (base_link, m) ---"]
+        depth_state = "depth" if depth is not None else "NO depth"
+        lines = [f"--- {DEVICE}: vision({depth_state}) vs ground-truth slot centres (base_link, m) ---"]
         for L in 'ABCD':
             v = slots_vis[L][0]
             g = slots_gt[L][0]

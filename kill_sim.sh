@@ -33,6 +33,19 @@ else
   echo "WARNING: $REMAIN process(es) still alive; check manually with 'ps aux | grep gazebo'."
 fi
 
+# Clear the ROS2/DDS state that OUTLIVES a pkill -- the reason "reboot fixes it"
+# but re-running the script alone sometimes doesn't. Only safe because this script
+# already killed every ROS process: these files are shared, so wiping them while an
+# unrelated ROS node runs would break it.
+#   - ros2 daemon: caches the node graph; not matched by the kill patterns above,
+#     so it can keep serving entries for nodes that are already dead.
+#   - fastrtps shared memory: a -9'd process never unmaps its /dev/shm segments and
+#     lock files. A reboot clears /dev/shm; this does the same without one.
+ros2 daemon stop >/dev/null 2>&1
+rm -rf /dev/shm/fastrtps_* /dev/shm/sem.fastrtps_* 2>/dev/null
+rm -rf /tmp/fastrtps_* 2>/dev/null
+echo "=== Cleared ros2 daemon + fastrtps shared memory ==="
+
 # Verify no stale arm nodes remain -- a lingering 2nd vision node is what silently
 # poisons /vision/device_pose (correct capture, wrong pose read by the transfer).
 ARM_REMAIN=$(pgrep -af "wirebonder_vision_node|wirebonder_pick_place|shelf_pick_place|DOBOT_6Axis_ROS2_V4/main.py|mcs_bridge|mcs_server" | grep -vE "pgrep|bash -c" | wc -l)

@@ -433,7 +433,12 @@
 
   <gazebo reference="d405_link">
     <material>Gazebo/Grey</material>
-    <sensor type="camera" name="d405_color">
+    <!-- type="depth": one sensor emits BOTH the color image and an aligned depth
+         image (same optical frame, so depth registers to color for free). The
+         depth-hybrid vision (device_pose_in_base) fixes the tag RANGE from this;
+         color stays for AprilTag detection. camera_name kept "color" so the
+         existing color topics are UNCHANGED; depth appears alongside them. -->
+    <sensor type="depth" name="d405_depth">
       <!-- ponytail: 848x480@15 + visualize off keeps Gazebo bring-up fast.
            A camera sensor blocks world load until Ogre renders its first frames;
            1280x720@30 stalled it. 848x480 is a native D405 mode (same 87 deg FOV)
@@ -443,7 +448,8 @@
       <visualize>false</visualize>
       <!-- Real D405: 87 deg H FOV, 848x480 (16:9 -> ~56 deg V, datasheet 58),
            ideal Min-Z ~0.07 m. far kept large so the whole scene still renders.
-           Distortion/depth-noise are NOT modelled (Gazebo Classic pinhole only). -->
+           Distortion/depth-noise are NOT modelled (Gazebo Classic pinhole only);
+           real depth has holes/noise the sim won't show (see docs/real_robot_transition.md). -->
       <camera name="d405">
         <horizontal_fov>1.5184</horizontal_fov> <!-- 87 deg -->
         <image><width>848</width><height>480</height><format>R8G8B8</format></image>
@@ -453,6 +459,10 @@
         <ros><namespace>/d405</namespace></ros>
         <camera_name>color</camera_name>
         <frame_name>d405_optical_frame</frame_name>
+        <!-- Depth clamp: matches the D405 usable near/far so out-of-range pixels
+             drop out instead of reporting bogus depth. -->
+        <min_depth>0.07</min_depth>
+        <max_depth>5.0</max_depth>
       </plugin>
     </sensor>
   </gazebo>
