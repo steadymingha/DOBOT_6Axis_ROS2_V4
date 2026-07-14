@@ -256,7 +256,13 @@
         <clip><near>0.07</near><far>5.0</far></clip>
       </camera>
       <plugin name="d405_camera_controller" filename="libgazebo_ros_camera.so">
-        <ros><namespace>/d405</namespace></ros>
+        <ros>
+          <namespace>/camera/d405</namespace>
+          <!-- Match the real realsense2_camera topic names (same as
+               cr7_on_mpo700.urdf.xacro; docs/real_robot_transition.md). -->
+          <remapping>color/depth/image_raw:=aligned_depth_to_color/image_raw</remapping>
+          <remapping>color/depth/camera_info:=aligned_depth_to_color/camera_info</remapping>
+        </ros>
         <camera_name>color</camera_name>
         <frame_name>d405_optical_frame</frame_name>
       </plugin>

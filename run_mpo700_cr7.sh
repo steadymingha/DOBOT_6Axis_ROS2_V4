@@ -40,7 +40,7 @@ echo "MoveIt PID: $MOVEIT_PID"
 
 echo "=== [3/3] D405 eye-in-hand camera view ==="
 sleep 8   # wait for Gazebo camera sensor to advertise the topic
-python3 ~/dobot_ws/src/DOBOT_6Axis_ROS2_V4/debug/view_d405.py /d405/color/image_raw &
+python3 ~/dobot_ws/src/DOBOT_6Axis_ROS2_V4/debug/view_d405.py /camera/d405/color/image_raw &
 VIEW_PID=$!
 echo "image viewer PID: $VIEW_PID"
 

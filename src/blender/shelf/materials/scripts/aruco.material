@@ -1,0 +1,33 @@
+material ArucoMarker/ShelfTier1
+{
+  technique
+  {
+    pass
+    {
+      lighting off
+      texture_unit
+      {
+        texture april_36h11-2.png
+        filtering anistropic
+        max_anisotropy 16
+      }
+    }
+  }
+}
+
+material ArucoMarker/ShelfTier2
+{
+  technique
+  {
+    pass
+    {
+      lighting off
+      texture_unit
+      {
+        texture april_36h11-3.png
+        filtering anistropic
+        max_anisotropy 16
+      }
+    }
+  }
+}

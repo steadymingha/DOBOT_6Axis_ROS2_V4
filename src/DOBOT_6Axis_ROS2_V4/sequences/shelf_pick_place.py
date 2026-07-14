@@ -15,11 +15,12 @@ live in cr7_pnp. The SPACE trigger is a development stand-in for the AMR/MCS
 state signal -- the sequence functions (pick_place_one_box, ...) are
 trigger-agnostic so a BT/FSM mission node can call them directly later.
 
-Run (sim already up):
+Run (sim already up). SYSTEM python, not the .venv -- the venv's numpy 2.x
+segfaults the ROS pinocchio build:
     source /opt/ros/humble/setup.bash
     source ~/dobot_ws/install/setup.bash
     cd ~/dobot_ws/src/DOBOT_6Axis_ROS2_V4
-    ~/dobot_ws/.venv/bin/python3 sequences/shelf_pick_place.py
+    /usr/bin/python3 sequences/shelf_pick_place.py
 """
 
 import math
@@ -42,6 +43,7 @@ from cr7_pnp import (  # noqa: E402
     INSERT_TCP_ABOVE, GRASP_TCP_ABOVE, PREGRASP_BACK,
     POCKET_X, POCKET_SURFACE_Z, POCKET_HOVER, PLACE_TCP_ABOVE,
     SHELF_BOX_LINK, BOX_SIZE, GRASP_LATERAL_M,
+    SHELF_BOX_XS, shelf_box_center, shelf_box_model,
 )
 
 # Tool-down HUB waypoint (carried-object TCP, tool pointing DOWN). Solving IK
@@ -55,14 +57,22 @@ HUB_TCP = (0.33, 0.0, 0.32)
 # Pocket centres in base_link y, in the order boxes are placed (-y to +y).
 PLACE_ORDER_Y = [-0.177, -0.059, 0.059, 0.177]
 
-# Tier-1 shelf boxes (world xyz, Gazebo model name). Box i goes to pocket
-# PLACE_ORDER_Y[i] (1:1). Edit the order/mapping here if needed.
-SHELF_BOXES = [
-    ((0.7095, 0.5, 0.97), 'box_l1a'),
-    ((0.8905, 0.5, 0.97), 'box_l1b'),
-    ((0.5285, 0.5, 0.97), 'box_l1c'),
-    ((1.0715, 0.5, 0.97), 'box_l1d'),
-]
+# Tier-1 shelf boxes (world xyz, Gazebo model name), derived from the SAME
+# layout constants the collision stock phantoms use (SHELF_TIER_TOPS /
+# SHELF_BOX_XS in cr7_pnp/geometry.py), so tier height and box names live in
+# ONE place and always match cr.world. Box i goes to pocket PLACE_ORDER_Y[i].
+TIER = 1
+SHELF_BOXES = [(shelf_box_center(TIER, i), shelf_box_model(TIER, i))
+               for i in range(len(SHELF_BOX_XS))]
+
+# The AGV stays parked for this sequence (spawn-and-pick), so a placed box just
+# settles into its pocket by gravity. Set True if the AGV will DRIVE with boxes
+# aboard -- a loose box slides in the pocket (friction can't beat planar_move).
+MAGAZINE_ATTACH = False
+
+# Sim-only stowaway magazine the launch file spawns onto a base pocket for the
+# wirebonder flow; dropped at bring-up so all four pockets are free for placing.
+STOWAWAY_MODEL = 'box_l2c'
 
 # Release TCP height above the pocket surface. RAISE this if the box is pressed
 # into the pocket floor; LOWER it if it drops from too high. TUNE IN SIM.
@@ -109,12 +119,21 @@ def compute_place_ref(node, pocket_y):
     return node.compute_ik_ordered(pose_at(pocket_center_xyz(pocket_y), place_quat()))
 
 
-def shelf_pick_to_hub(node, box_world, box_model, place_ref):
+def shelf_pick_to_hub(node, box_world, box_model, stock_key, place_ref):
     """Pick the shelf box and return to the hub holding it (box-attached model ON
-    at exit). Pre-flight validates the approach spoke + grasp servos with NO
-    motion; a forward-side failure retraces to the hub. Returns True on success.
+    at exit). Pre-flight validates the approach spoke + grasp servos AND the
+    twisted hub return (box + box-vs-stock model) with NO motion; a forward-side
+    failure retraces to the hub. Returns True on success.
     The fixed-jaw lateral offset is baked into the approach, so the grasp is just
-    approach -> J6 twist -> descend (no separate jaw-align)."""
+    approach -> J6 twist -> descend (no separate jaw-align).
+
+    stock_key: (tier, i) of the TARGET box's resting-stock phantom. It stays ON
+    for the insert pre-flights and the P1 spoke planning (pregrasp is 250 mm in
+    front, insert/twist ride 73 mm above the box top, so they clear it -- and
+    keeping it on stops the spoke from cutting through the target's volume,
+    which brushed it, measured). It is parked only where the jaws legitimately
+    meet the box: per-candidate for the descend pre-flight, then for the return
+    sweep + execution once a branch is locked in."""
     box_ps = node.transform_world_pose(*box_world, DOWN)
     insert_dir = node.transform_world_vector([0.0, 1.0, 0.0])   # world +y = into shelf
     row_dir = node.transform_world_vector([1.0, 0.0, 0.0])      # world +x = magazine row
@@ -145,26 +164,89 @@ def shelf_pick_to_hub(node, box_world, box_model, place_ref):
     pregrasp_xyz = pregrasp0_xyz - GRASP_LATERAL_M * jaw_x
     pregrasp_pose = pose_at(pregrasp_xyz, grasp_quat)
 
+    # The place_ref-nearest IK branch is not always servo-able: it can drive the
+    # straight-line insert through a wrist singularity even from a well-within-
+    # reach pose (measured: box d stalled 4 mm short at sigma_min=1e-4). The pose
+    # is fine, the BRANCH is not -- so vet candidates in place_ref order and take
+    # the first whose insert + descend servos pre-flight clean. The target's own
+    # phantom stays SOLID for the insert check (it rides 73 mm above the box) and
+    # is parked only for the descend check, where the jaws wrap the box.
+    cands = node.compute_ik_ordered(pose_at(pregrasp_xyz, grasp_quat),
+                                    return_all=True)
+    if not cands:
+        node.get_logger().error("[pre-flight] pre-grasp IK failed")
+        return False
+    ref = np.array(place_ref)
+    cands.sort(key=lambda q: np.linalg.norm(np.array(q) - ref))
+    q_goal = None
+    for k, q in enumerate(cands):
+        # Candidate rejections log at INFO: trying the next branch is normal
+        # flow, and the ERROR stream is forwarded to the MCS. The real abort
+        # (ALL candidates rejected) is the ERROR below.
+        after_insert = node.preflight_linear(q, insert_dir * PREGRASP_BACK,
+                                             f"insert(cand {k})", severity='info')
+        if after_insert is None:
+            continue
+        after_twist = list(after_insert)
+        after_twist[5] += GRIPPER_YAW_TWIST
+        node.set_shelf_stock_absent(*stock_key)
+        ok = node.preflight_linear(after_twist, [0.0, 0.0, -descend_dist + 0.01],
+                                   f"descend(cand {k})", severity='info') is not None
+        node.set_shelf_stock_absent(*stock_key, absent=False)  # solid for P1
+        if not ok:
+            continue
+        q_goal = q
+        if k:
+            node.get_logger().info(f"[pre-flight] branch candidate {k} passes "
+                                   f"the grasp servos (0..{k - 1} rejected)")
+        break
+    if q_goal is None:
+        node.get_logger().error("[pre-flight] no IK branch passes insert+descend; "
+                                "abort (no motion)")
+        return False
+
     node.attach_box_collision()
     if not node.is_state_valid(node.hub_q):
         node.detach_box_collision()
         node.get_logger().error("[pre-flight] hub collides with the carried box; "
                                 "raise HUB_TCP")
         return False
-    P1 = node.plan_spoke(node.hub_q, pregrasp_pose, place_ref, label="P1 hub->pregrasp")
+    P1 = node.plan_spoke(node.hub_q, pregrasp_pose, place_ref, goal_q=q_goal,
+                         label="P1 hub->pregrasp")
     node.detach_box_collision()
     if P1 is None:
         node.get_logger().error("[pre-flight] approach spoke infeasible; abort (no motion)")
         return False
-    after_insert = node.preflight_linear(P1[-1], insert_dir * PREGRASP_BACK, "insert")
-    if after_insert is None:
-        node.get_logger().error("[pre-flight] insert unreachable; abort (no motion)")
-        return False
-    after_twist = list(after_insert)
-    after_twist[5] += GRIPPER_YAW_TWIST
-    if node.preflight_linear(after_twist, [0.0, 0.0, -descend_dist + 0.01],
-                             "descend") is None:
-        node.get_logger().error("[pre-flight] descend unreachable; abort (no motion)")
+    # Park the target's phantom for the rest of the cycle: the return sweep
+    # models the box IN the gripper, and the executed descend wraps the jaws
+    # around the box. On failure the caller restores it (box still on shelf).
+    node.set_shelf_stock_absent(*stock_key)
+
+    # Twisted hub return. Replaying P1 with J6 offset sweeps a volume the
+    # untwisted plan never validated (measured: knocked neighbours over), so
+    # validate it HERE, box phantom + box-vs-stock pairs on and the target's
+    # stock absent (the box is in the gripper on the way back). If the replay
+    # collides, pre-plan a replacement spoke under the same model -- still NO
+    # motion, so a failure aborts before the arm ever moves. The executed twist
+    # is driven to exactly +GRIPPER_YAW_TWIST below, matching this validation.
+    node.attach_box_collision()
+    node.set_box_stock_collision(True)
+    spoke_back = node.offset_j6(node.rev(P1), GRIPPER_YAW_TWIST)
+    if any(not node.is_state_valid(q) for q in spoke_back):
+        node.get_logger().warn("[pre-flight] twisted replay collides with resting "
+                               "stock; pre-planning the hub return")
+        hub_tw = list(node.hub_q)
+        hub_tw[5] += GRIPPER_YAW_TWIST
+        node.cbirrt.set_reference(DOWN)
+        spoke_back = (node.cbirrt.plan(list(spoke_back[0]), hub_tw,
+                                       node.is_state_valid, node.joint_limits,
+                                       time_limit=10.0)
+                      if node.is_state_valid(hub_tw) else None)
+    node.set_box_stock_collision(False)
+    node.detach_box_collision()
+    if not spoke_back:
+        node.get_logger().error("[pre-flight] twisted hub return infeasible; "
+                                "abort (no motion)")
         return False
 
     # ---- EXECUTE shelf side (each forward segment captured for the return) ----
@@ -182,10 +264,14 @@ def shelf_pick_to_hub(node, box_world, box_model, place_ref):
     done.append(insert_path)
     q_ins = node.current_joints.tolist()
 
-    if not node.rotate_j6(GRIPPER_YAW_TWIST, label="yaw-twist"):
+    # Exactly +GRIPPER_YAW_TWIST (not rotate_j6, which may flip sign): the
+    # twisted return above was validated for THIS sign, and move_single_joint
+    # validity-checks the whole J6 sweep, not just the endpoint.
+    if not node.move_single_joint(5, q_ins[5] + GRIPPER_YAW_TWIST,
+                                  label="yaw-twist"):
         return _abort_to_hub(node, done, "yaw twist failed")
     q_tw = node.current_joints.tolist()
-    twist_delta = q_tw[5] - q_ins[5]   # actual J6 change (rotate_j6 may flip sign)
+    twist_delta = q_tw[5] - q_ins[5]
     done.append([q_ins, q_tw])
 
     ok, descend_path = node.capture(
@@ -202,23 +288,21 @@ def shelf_pick_to_hub(node, box_world, box_model, place_ref):
     node.attach_box_collision()
     time.sleep(0.5)
 
-    # Return holding the twist the WHOLE way to the hub: ascend, retreat, then
-    # reverse the (box-validated) approach spoke -- all with J6 offset so the
-    # gripper stays in its picked azimuth. The longer gripper sweeps into the
-    # neighbouring shelf boxes if it un-twists right next to the shelf, so the
-    # un-twist is deferred to the hub, where there is open space.
-    return_path = node.join([
+    # Return holding the twist (the un-twist waits for the hub, where there is
+    # open space). Ascend + retreat are straight, box-safe moves: the box slides
+    # back out exactly the way it came in.
+    out_path = node.join([
         node.rev(descend_path),                              # ascend (lift box)
         node.offset_j6(node.rev(insert_path), twist_delta),  # retreat, twist held
-        node.offset_j6(node.rev(P1), twist_delta),           # spoke to hub, twist held
     ])
-    bad = sum(0 if node.is_state_valid(q) else 1 for q in return_path)
-    if bad:
-        node.get_logger().warn(
-            f"[return] {bad}/{len(return_path)} return waypoints collide under the "
-            f"twist-held box model; proceeding (straight pull-out is box-safe; the "
-            f"spoke was box-validated in the untwisted azimuth)")
-    if not node.execute_path(return_path, speed=0.6):
+    if not node.execute_path(out_path, speed=0.6):
+        node.get_logger().error("[pick] shelf pull-out failed")
+        return False
+
+    # Spoke back to the hub: pre-validated (or pre-planned) in the pre-flight
+    # under the twisted, box-attached, box-vs-stock model, so no runtime
+    # re-planning is ever needed here.
+    if not node.execute_path(spoke_back, speed=0.6):
         node.get_logger().error("[pick] shelf return failed")
         return False
     # At the hub now (J6 still twisted). Un-twist here, in the open, to drop the
@@ -259,11 +343,10 @@ def pocket_place_from_hub(node, pocket_y, place_ref, place_jaw_x, label):
         return False
     forward = node._stop_recording()
 
-    # Hand the box from the gripper to the magazine: detach from the gripper, then
-    # fix it to the AGV so it rides along when the base drives (a loose box slides
-    # in the pocket even at low speed -- friction can't beat the planar_move step).
+    # Detach from the gripper; optionally fix the box to the AGV so it rides
+    # along when the base drives (MAGAZINE_ATTACH -- off while the AGV is parked).
     node.detach_box()
-    if not node.attach_box_to_magazine():
+    if MAGAZINE_ATTACH and not node.attach_box_to_magazine():
         node.get_logger().warn(f"[{label}] magazine attach failed; box left loose")
     node.control_gripper(GRIPPER_OPEN)
     time.sleep(0.5)
@@ -300,10 +383,53 @@ def pick_place_one_box(node, idx):
         node.get_logger().error("[cycle] pocket unreachable; abort (no motion)")
         return False
 
-    if not shelf_pick_to_hub(node, box_world, box_model, place_ref):
+    # The target's own stock phantom is parked INSIDE shelf_pick_to_hub, right
+    # before the descend pre-flight (approach + insert are validated against it).
+    # On any pick failure the box is still on the shelf: restore its phantom.
+    if not shelf_pick_to_hub(node, box_world, box_model, (TIER, idx), place_ref):
+        node.set_shelf_stock_absent(TIER, idx, absent=False)  # box still on shelf
         return False
     return pocket_place_from_hub(node, pocket_y, place_ref, place_jaw_x,
                                  label=box_model)
+
+
+def clear_pocket_stowaway(node):
+    """Delete the sim-only stowaway magazine (spawned onto a pocket by the launch
+    file for the wirebonder flow) so all four pockets are free. Best-effort: the
+    model may already be gone, or lying on the floor away from the pockets."""
+    from gazebo_msgs.srv import DeleteEntity
+    cli = node.create_client(DeleteEntity, '/delete_entity')
+    if not cli.wait_for_service(timeout_sec=3.0):
+        node.get_logger().warn("[bringup] /delete_entity unavailable; stowaway left")
+        return
+    req = DeleteEntity.Request()
+    req.name = STOWAWAY_MODEL
+    future = cli.call_async(req)
+    if node._wait_future(future, 10.0, "delete stowaway"):
+        node.get_logger().info(
+            f"[bringup] {STOWAWAY_MODEL}: {future.result().status_message}")
+
+
+def bringup(node):
+    """One-time bring-up (also called by main.py): place the shelf collision
+    (boards + resting-stock phantoms) at the anchor pose BEFORE any motion --
+    the spawn->hub RRT must already know the shelf -- then compute the hub, move
+    there, and drop the pocket stowaway. Returns True when ready to cycle."""
+    while node.current_joints is None:
+        node.get_logger().info("Waiting for /joint_states...")
+        time.sleep(0.5)
+    if not node.update_shelf_collision():
+        node.get_logger().error("[bringup] shelf TF unavailable; is the sim up?")
+        return False
+    if not node.init_hub(pose_at(pocket_center_xyz(PLACE_ORDER_Y[0]), place_quat()),
+                         HUB_TCP, GRASP_LATERAL_M):
+        node.get_logger().error("Hub bring-up failed; adjust HUB_TCP and retry")
+        return False
+    if not node.go_to_hub():
+        node.get_logger().error("Could not reach the hub from the spawn pose")
+        return False
+    clear_pocket_stowaway(node)
+    return True
 
 
 def main(args=None):
@@ -316,15 +442,7 @@ def main(args=None):
     threading.Thread(target=executor.spin, daemon=True).start()
     time.sleep(2)  # wait for joint states
 
-    if not node.init_hub(pose_at(pocket_center_xyz(PLACE_ORDER_Y[0]), place_quat()),
-                         HUB_TCP, GRASP_LATERAL_M):
-        node.get_logger().error("Hub bring-up failed; adjust HUB_TCP and retry")
-        node.destroy_node()
-        rclpy.shutdown()
-        return
-
-    if not node.go_to_hub():
-        node.get_logger().error("Could not reach the hub from the spawn pose")
+    if not bringup(node):
         node.destroy_node()
         rclpy.shutdown()
         return

@@ -31,7 +31,7 @@ DEFAULT_SRDF = os.path.join(
 # Gripper / tool geometry: single source of truth in gripper_params.py (pure,
 # ROS-free) so the planner and the standalone reachability_map.py share it.
 from .gripper_params import (  # noqa: F401  (re-exported via cr7_pnp internals)
-    ARM_JOINTS, GRIPPER_JOINTS, EE_FRAME, TCP_OFFSET_M)
+    ARM_JOINTS, GRIPPER_JOINTS, EE_FRAME, TCP_OFFSET_M, FINGER_OPEN_M)
 
 
 class ReachabilityModel:
@@ -60,8 +60,17 @@ class ReachabilityModel:
         else:
             locked_ids = [full.getJointId(n) for n in GRIPPER_JOINTS
                           if full.existJointName(n)]
+        # Freeze the locked joints at neutral EXCEPT the gripper finger, frozen
+        # at its widest commanded opening (FINGER_OPEN_M): the arm travels with
+        # the gripper OPEN, and a q=0 freeze leaves the real moving jaw 30 mm
+        # outside the collision model (it brushed shelf boxes the planner had
+        # cleared, measured).
+        q_freeze = pin.neutral(full)
+        for jname in GRIPPER_JOINTS:
+            if full.existJointName(jname):
+                q_freeze[full.joints[full.getJointId(jname)].idx_q] = FINGER_OPEN_M
         self.model, geoms = pin.buildReducedModel(
-            full, [full_geom], locked_ids, pin.neutral(full))
+            full, [full_geom], locked_ids, q_freeze)
         self.geom = geoms[0]
         self.data = self.model.createData()
 

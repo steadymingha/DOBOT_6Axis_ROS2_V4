@@ -13,11 +13,18 @@
          (cr7_on_mpo700.urdf.xacro: MPO-700 base + cube_link),
          so they move together with the arm. -->
 
-    <!-- Blender shelf: 4-tier, board tops at z=0.40/0.685/1.30/1.90, footprint 2.0x0.30m.
-         Tier-1 (board 2) at 0.685 (min down-grasp reach); tier-2 (board 3) at 1.30. -->
+    <!-- Blender shelf: 4-tier, board tops at z=0.40/0.90/1.40/1.95, footprint 2.0x0.30m.
+         Pick tiers: tier-1 (board 2) 0.90, tier-2 (board 3) 1.40. The TOP board
+         was raised 1.90 -> 1.95: the tier-2 insert wrist needs ~240 mm headroom
+         above the flange (at 1.90 it swept into the top board, measured).
+         Mirrors cr7_pnp/geometry.py SHELF_BOARD_TOPS. -->
+    <!-- Raised +0.32 so tier-1 board top is 0.90+0.32 = 1.22 (= robot base 1.0m
+         + 0.22, the June pick-proven relative height), tier 2 -> 1.72. Boxes
+         below raised the same 0.32. Keep shelf/model.sdf leg-extension stubs
+         equal to this pose z. -->
     <include>
       <name>shelf</name>
-      <pose>0.8 0.5 0 0 0 0</pose>
+      <pose>0.8 0.5 0.32 0 0 0</pose>
       <uri>model://shelf</uri>
     </include>
 
@@ -39,28 +46,49 @@
       <uri>model://post_wb</uri>
     </include>
 
-    <!-- Shelf tier 1 boxes: tier-1 board lowered to MIN reachable height for the
-         down-grasp reach test (board top 0.685 + half box height 0.07 = 0.755).
-         Grasp TCP = 0.755 + 0.015 = 0.770 m = floor reach 0.75 + 2 cm margin. -->
+    <!-- Shelf boxes, 4 per tier. Names box_t<tier><a-d>; a,b = inner pair,
+         c,d = outer flank (one box-pitch 0.181 out) -- the PICK ORDER of
+         sequences/shelf_pick_place.py (SHELF_BOX_XS in cr7_pnp/geometry.py;
+         keep both in sync). z = board top + half box height (0.07). -->
     <include>
-      <name>box_l1a</name>
-      <pose>0.7095 0.5 0.755 0 0 1.5708</pose>
+      <name>box_t1a</name>
+      <pose>0.7095 0.5 1.29 0 0 1.5708</pose>
       <uri>model://box</uri>
     </include>
     <include>
-      <name>box_l1b</name>
-      <pose>0.8905 0.5 0.755 0 0 1.5708</pose>
-      <uri>model://box</uri>
-    </include>
-    <!-- Flanking boxes: one box-pitch (0.181) left and right of the existing pair -->
-    <include>
-      <name>box_l1c</name>
-      <pose>0.5285 0.5 0.755 0 0 1.5708</pose>
+      <name>box_t1b</name>
+      <pose>0.8905 0.5 1.29 0 0 1.5708</pose>
       <uri>model://box</uri>
     </include>
     <include>
-      <name>box_l1d</name>
-      <pose>1.0715 0.5 0.755 0 0 1.5708</pose>
+      <name>box_t1c</name>
+      <pose>0.5285 0.5 1.29 0 0 1.5708</pose>
+      <uri>model://box</uri>
+    </include>
+    <include>
+      <name>box_t1d</name>
+      <pose>1.0715 0.5 1.29 0 0 1.5708</pose>
+      <uri>model://box</uri>
+    </include>
+    <!-- Shelf tier-2 boxes: board top 1.72 + 0.07 = 1.79. Same x layout as tier 1. -->
+    <include>
+      <name>box_t2a</name>
+      <pose>0.7095 0.5 1.79 0 0 1.5708</pose>
+      <uri>model://box</uri>
+    </include>
+    <include>
+      <name>box_t2b</name>
+      <pose>0.8905 0.5 1.79 0 0 1.5708</pose>
+      <uri>model://box</uri>
+    </include>
+    <include>
+      <name>box_t2c</name>
+      <pose>0.5285 0.5 1.79 0 0 1.5708</pose>
+      <uri>model://box</uri>
+    </include>
+    <include>
+      <name>box_t2d</name>
+      <pose>1.0715 0.5 1.79 0 0 1.5708</pose>
       <uri>model://box</uri>
     </include>
 
@@ -80,20 +108,8 @@
     </include>
     <!-- box_l2c is spawned onto the +Y (largest-y) robot pocket by the launch
          file (spawn_box_l2c), AFTER the robot, so it is NOT included here. -->
-    <!-- Shelf tier 2 box: tier-2 board top at 1.30 m + half box height 0.07 = 1.37. -->
-    <include>
-      <name>box_l2d</name>
-      <pose>1.0715 0.5 1.37 0 0 1.5708</pose>
-      <uri>model://box</uri>
-    </include>
-
-    <!-- ArUco box resting on tier-2 board (1.40) at the shelf right end:
-         x = 1.8 (right edge) - 0.025 (half cube) = 1.775; z = 1.40 + 0.025 = 1.425 -->
-    <include>
-      <name>aruco</name>
-      <pose>0.675 0.5 1.425 0 0 0</pose>
-      <uri>model://aruco_box</uri>
-    </include>
+    <!-- The floating aruco_box was removed: shelf localisation now uses the
+         per-tier AprilTag plates baked into shelf/model.sdf (IDs 2/3). -->
 
     <!-- GUI camera initial viewpoint -->
     <gui>

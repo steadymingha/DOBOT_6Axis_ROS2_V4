@@ -33,7 +33,7 @@ class Viewer(Node):
 
 
 def main():
-    topic = sys.argv[1] if len(sys.argv) > 1 else '/d405/color/image_raw'
+    topic = sys.argv[1] if len(sys.argv) > 1 else '/camera/d405/color/image_raw'
     rclpy.init()
     node = Viewer(topic)
     try:

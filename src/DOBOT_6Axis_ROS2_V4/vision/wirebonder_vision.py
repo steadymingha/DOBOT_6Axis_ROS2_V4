@@ -119,6 +119,18 @@ def R_to_quat(R):
     return (x, y, z, w)
 
 
+def quat_to_R(x, y, z, w):
+    """Quaternion (x,y,z,w) -> 3x3 rotation matrix. Shared by the ROS-side
+    consumers (vision node, diag tools) so TF quaternions decode one way."""
+    n = math.sqrt(x * x + y * y + z * z + w * w) or 1.0
+    x, y, z, w = x / n, y / n, z / n, w / n
+    return np.array([
+        [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+        [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+        [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)],
+    ])
+
+
 # Constant: tag-0 pose in the model frame (from the SDF).
 T_MODEL_TAG = make_T(rpy_to_R(*TAG0_RPY), TAG0_XYZ)
 
@@ -192,17 +204,20 @@ def T_optical_tagcv(rvec, tvec):
     return make_T(R, np.asarray(tvec, dtype=float))
 
 
-def _T_base_model_from(T_base_optical, rvec, tvec):
+def _T_base_model_from(T_base_optical, rvec, tvec, T_model_tag=None):
     """One detection solution -> T_base_model. tagcv (OpenCV marker) -> tagsdf (SDF
     plate) is the fixed R_CV_TO_SDF rotation; the tag's pose in the model is
-    T_MODEL_TAG (includes TAG0_XYZ), so the model in base is
-    T_base_tagsdf @ inv(T_MODEL_TAG)."""
+    T_model_tag (default: the wirebonder T_MODEL_TAG), so the model in base is
+    T_base_tagsdf @ inv(T_model_tag)."""
+    if T_model_tag is None:
+        T_model_tag = T_MODEL_TAG
     T_base_tagcv = np.asarray(T_base_optical, dtype=float) @ T_optical_tagcv(rvec, tvec)
     T_base_tagsdf = T_base_tagcv @ make_T(R_CV_TO_SDF, np.zeros(3))
-    return T_base_tagsdf @ inv_T(T_MODEL_TAG)
+    return T_base_tagsdf @ inv_T(T_model_tag)
 
 
-def device_pose_in_base(T_base_optical, solutions, depth=None, K=None, corners=None):
+def device_pose_in_base(T_base_optical, solutions, depth=None, K=None, corners=None,
+                        dist=None, T_model_tag=None, plane_scale=None):
     """Compose the detection(s) with the base<-optical TF and the known tag-in-model
     pose to get T_base_model (the device model frame expressed in base_link).
 
@@ -218,13 +233,24 @@ def device_pose_in_base(T_base_optical, solutions, depth=None, K=None, corners=N
     Depth that is holed / out of range is ignored per-axis and PnP stands (the
     fallback), so bad depth never makes it worse. Without depth: the device is known
     vertical, so keep the IPPE solution whose model z-axis is most aligned with base z
-    (T[2,2] closest to +1). ponytail: assumes base_link z ~ world up (flat floor)."""
+    (T[2,2] closest to +1). ponytail: assumes base_link z ~ world up (flat floor).
+
+    T_model_tag: the tag's pose in the MODEL frame (4x4). Default = the wirebonder
+    T_MODEL_TAG; pass another (e.g. a shelf tag from shelf_vision.py) to solve any
+    upright model that carries an upright tag with the same pipeline.
+    plane_scale: how far around the tag the plane fit samples (default
+    PLANE_SCALE). Use ~1.0 for a tag on a SMALL placard (shelf): the x2 expansion
+    assumes a large flat face around the tag (wirebonder) and otherwise sweeps in
+    background at other depths, tilting the fit."""
+    if T_model_tag is None:
+        T_model_tag = T_MODEL_TAG
     if not isinstance(solutions, list):        # tolerate a single (rvec, tvec)
         solutions = [solutions]
 
     have_depth = depth is not None and K is not None and corners is not None
-    n_depth = _tag_plane_normal(depth, corners, K) if have_depth else None
-    tvec_d = _depth_corrected_tvec(depth, corners, K) if have_depth else None
+    n_depth = (_tag_plane_normal(depth, corners, K, dist, scale=plane_scale)
+               if have_depth else None)
+    tvec_d = _depth_corrected_tvec(depth, corners, K, dist) if have_depth else None
 
     # FULL-DEPTH UPRIGHT pose: with both the tag centre and the plane normal
     # measured from depth, and the device known upright (base z ~ world up --
@@ -242,12 +268,12 @@ def device_pose_in_base(T_base_optical, solutions, depth=None, K=None, corners=N
         n_base = T_bo[:3, :3] @ n_depth
         if abs(n_base[2]) < 0.2:
             c_base = (T_bo @ np.append(tvec_d, 1.0))[:3]
-            n_model = T_MODEL_TAG[:3, 2]          # tag normal in the model frame
+            n_model = T_model_tag[:3, 2]          # tag normal in the model frame
             yaw = (math.atan2(n_base[1], n_base[0])
                    - math.atan2(n_model[1], n_model[0]))
             c, s = math.cos(yaw), math.sin(yaw)
             R = np.array([[c, -s, 0.], [s, c, 0.], [0., 0., 1.]])
-            return make_T(R, c_base - R @ T_MODEL_TAG[:3, 3])
+            return make_T(R, c_base - R @ T_model_tag[:3, 3])
 
     # Disambiguate the (up to 2) IPPE solutions. With a depth normal: pick the one whose
     # tag normal matches it (unambiguous). Else: the base z-up heuristic.
@@ -256,14 +282,15 @@ def device_pose_in_base(T_base_optical, solutions, depth=None, K=None, corners=N
                          key=lambda rt: float(T_optical_tagcv(rt[0], rt[1])[:3, 2] @ n_depth))
     else:
         rvec, tvec = max(solutions,
-                         key=lambda rt: _T_base_model_from(T_base_optical, rt[0], rt[1])[2, 2])
+                         key=lambda rt: _T_base_model_from(
+                             T_base_optical, rt[0], rt[1], T_model_tag)[2, 2])
 
     R = T_optical_tagcv(rvec, tvec)[:3, :3]
     if n_depth is not None:                     # snap out-of-plane orientation to depth
         rvec = cv2.Rodrigues(_align_normal(R, n_depth))[0].ravel()
     if tvec_d is not None:                       # replace the weak range axis with depth
         tvec = tvec_d
-    return _T_base_model_from(T_base_optical, rvec, tvec)
+    return _T_base_model_from(T_base_optical, rvec, tvec, T_model_tag)
 
 
 # --- slot resolution -----------------------------------------------------------
@@ -328,15 +355,18 @@ def _tag_roi(depth, corners, shrink=DEPTH_ROI_SHRINK):
     return depth[y0:y1, x0:x1], x0, y0
 
 
-def _deproject(px, z, K):
+def _deproject(px, z, K, dist=None):
     """Pixel (u,v) + depth Z (metres, the optical-axis distance a depth image
-    stores) -> 3D point in the optical frame via the pinhole model."""
-    u, v = px
-    K = np.asarray(K, dtype=float)
-    return np.array([(u - K[0, 2]) / K[0, 0] * z, (v - K[1, 2]) / K[1, 1] * z, z])
+    stores) -> 3D point in the optical frame. Goes through undistortPoints so a
+    real camera's distortion is honoured; with dist=None (sim) it reduces to the
+    pinhole model."""
+    und = cv2.undistortPoints(
+        np.array([[px]], dtype=np.float32), np.asarray(K, dtype=float),
+        dist).ravel()
+    return np.array([und[0] * z, und[1] * z, z])
 
 
-def _depth_corrected_tvec(depth, corners, K):
+def _depth_corrected_tvec(depth, corners, K, dist=None):
     """Return the tag-centre position in the optical frame from depth, or None if
     the depth over the tag is not trustworthy (too many holes / out of range).
     Correcting along the trusted PnP ray fixes the whole translation, not just Z."""
@@ -347,26 +377,48 @@ def _depth_corrected_tvec(depth, corners, K):
     z = float(np.median(finite))
     if not (DEPTH_MIN_Z <= z <= DEPTH_MAX_Z):
         return None
-    return _deproject(_tag_center_px(corners), z, K)
+    return _deproject(_tag_center_px(corners), z, K, dist)
 
 
-def _tag_plane_normal(depth, corners, K):
-    """Fit a plane to the tag's depth points; return its unit normal in the OPTICAL
-    frame, oriented toward the camera (optical -z side), or None if too few finite
-    points. This is the tag's facing direction measured DIRECTLY in 3D -- monocular
-    PnP has a two-fold planar flip that swings the device yaw ~20 deg between nearly
-    equal viewpoints; the depth normal has no such ambiguity, so it pins that axis."""
-    roi, x0, y0 = _tag_roi(depth, corners)
-    ys, xs = np.where(np.isfinite(roi))
-    if xs.size < 8:                              # too few points for a stable plane
+# Plane-fit knobs (real-D405 robustness, harmless in sim): sample an EXPANDED
+# region around the tag (the plate it sits on is coplanar, more points = steadier
+# normal on noisy depth) and iteratively reject off-plane points (background
+# leaking into the expanded quad).
+PLANE_SCALE = 2.0             # expand the tag quad about its centre
+PLANE_RESID_M = 0.005         # reject points further than this from the fit plane
+PLANE_MIN_PTS = 30
+
+
+def _tag_plane_normal(depth, corners, K, dist=None, scale=None):
+    """Fit a plane to the depth around the tag; return its unit normal in the
+    OPTICAL frame, oriented toward the camera (optical -z side), or None if too few
+    finite points. This is the tag's facing direction measured DIRECTLY in 3D --
+    monocular PnP has a two-fold planar flip that swings the device yaw ~20 deg
+    between nearly equal viewpoints; the depth normal has no such ambiguity, so it
+    pins that axis. Samples a PLANE_SCALE-expanded quad (fit -> reject off-plane
+    points -> refit, x3) so real-depth noise and background pixels are handled;
+    sim depth is exact so the rejection simply never fires there."""
+    quad = np.asarray(corners, dtype=float).reshape(4, 2)
+    qc = quad.mean(0)
+    quad = qc + (quad - qc) * (PLANE_SCALE if scale is None else scale)
+    mask = np.zeros(depth.shape, np.uint8)
+    cv2.fillConvexPoly(mask, quad.astype(np.int32), 1)
+    ys, xs = np.nonzero((mask > 0) & np.isfinite(depth))
+    if xs.size < PLANE_MIN_PTS:
         return None
-    z = roi[ys, xs].astype(float)
-    K = np.asarray(K, dtype=float)
-    X = (xs + x0 - K[0, 2]) / K[0, 0] * z
-    Y = (ys + y0 - K[1, 2]) / K[1, 1] * z
-    P = np.stack([X, Y, z], axis=1)              # tag-surface points in optical frame
-    _, _, Vt = np.linalg.svd(P - P.mean(0), full_matrices=False)
-    n = Vt[2]                                    # least-variance direction = normal
+    z = depth[ys, xs].astype(float)
+    und = cv2.undistortPoints(
+        np.stack([xs, ys], axis=1).astype(np.float32).reshape(-1, 1, 2),
+        np.asarray(K, dtype=float), dist).reshape(-1, 2)
+    P = np.column_stack([und[:, 0] * z, und[:, 1] * z, z])
+    for _ in range(3):                           # fit -> reject off-plane -> refit
+        c = P.mean(0)
+        _, _, Vt = np.linalg.svd(P - c, full_matrices=False)
+        n = Vt[2]                                # least-variance direction = normal
+        inlier = np.abs((P - c) @ n) < PLANE_RESID_M
+        if inlier.all() or inlier.sum() < PLANE_MIN_PTS:
+            break
+        P = P[inlier]
     if n[2] > 0:                                 # orient toward the camera (optical -z)
         n = -n
     return n / np.linalg.norm(n)
@@ -636,6 +688,20 @@ def _demo():
     assert np.allclose(T_up, T_truth9, atol=2e-3), \
         f"upright construction off: {np.abs(T_up - T_truth9).max():.4f}"
     assert abs(T_up[2, 2] - 1.0) < 1e-9, "upright pose not exactly upright"
+
+    # 10) Distortion-aware deprojection (real-D405 path): project a 3D point with
+    #     non-zero distortion via cv2.projectPoints, deproject the distorted pixel
+    #     with the same coeffs -> must recover the point; with dist=None it must
+    #     reduce to the plain pinhole (sim behaviour unchanged).
+    K10 = np.array([[430., 0., 424.], [0., 430., 240.], [0., 0., 1.]])
+    dist10 = np.array([-0.05, 0.06, 0.001, 0.001, 0.0])
+    p10 = np.array([0.06, -0.04, 0.30])
+    px10, _ = cv2.projectPoints(p10.reshape(1, 3), np.zeros(3), np.zeros(3), K10, dist10)
+    rec10 = _deproject(px10.ravel(), p10[2], K10, dist10)
+    assert np.allclose(rec10, p10, atol=1e-6), "distorted deprojection round-trip"
+    px_pin, _ = cv2.projectPoints(p10.reshape(1, 3), np.zeros(3), np.zeros(3), K10, None)
+    rec_pin = _deproject(px_pin.ravel(), p10[2], K10)
+    assert np.allclose(rec_pin, p10, atol=1e-6), "pinhole deprojection unchanged"
 
     print("wirebonder_vision self-check: OK")
 

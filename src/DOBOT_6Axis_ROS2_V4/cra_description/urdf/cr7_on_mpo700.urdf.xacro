@@ -329,16 +329,23 @@
   </joint>
 
   <!-- Base + cube: no gravity. The AGV is velocity-controlled by the planar-move
-       plugin (it does not rely on weight/wheel friction) and the arm is
-       position-controlled, so gravity on these heavy bodies only adds tipping /
-       contact-instability with nothing holding roll-pitch. Turning it off makes
-       the robot unable to tip while driving or folding the arm. -->
+       plugin and the arm is position-controlled. NOTE (2026-07-12): roll/pitch/z
+       still RATCHET from contact impulses regardless of gravity, because
+       gazebo_ros_planar_move zeroes angular-x/y and linear-z velocity every tick
+       (no restoring path; gravity-on was tried and changed nothing). The shelf
+       sequence therefore re-LEVELS the base by teleport at each park
+       (shelf_pick_place._level_base), a sim-only workaround; the real AGV's
+       mass/suspension makes this failure class physically impossible. -->
   <gazebo reference="mpo_base_link">
     <gravity>false</gravity>
   </gazebo>
   <gazebo reference="cube_link">
     <gravity>false</gravity>
     <selfCollide>true</selfCollide>
+    <mu1>100.0</mu1>
+    <mu2>100.0</mu2>
+    <kp>1000000.0</kp>
+    <kd>1.0</kd>
   </gazebo>
 
   <!-- CR7 links: no gravity (arm is position-controlled), self collision on -->
@@ -436,8 +443,10 @@
     <!-- type="depth": one sensor emits BOTH the color image and an aligned depth
          image (same optical frame, so depth registers to color for free). The
          depth-hybrid vision (device_pose_in_base) fixes the tag RANGE from this;
-         color stays for AprilTag detection. camera_name kept "color" so the
-         existing color topics are UNCHANGED; depth appears alongside them. -->
+         color stays for AprilTag detection. Topic names are remapped to match the
+         REAL realsense2_camera (camera_name:=d405) exactly, so the vision node
+         subscribes the same names in sim and on the real robot
+         (docs/real_robot_transition.md). -->
     <sensor type="depth" name="d405_depth">
       <!-- ponytail: 848x480@15 + visualize off keeps Gazebo bring-up fast.
            A camera sensor blocks world load until Ogre renders its first frames;
@@ -456,7 +465,13 @@
         <clip><near>0.07</near><far>5.0</far></clip>
       </camera>
       <plugin name="d405_camera_controller" filename="libgazebo_ros_camera.so">
-        <ros><namespace>/d405</namespace></ros>
+        <ros>
+          <namespace>/camera/d405</namespace>
+          <!-- Depth under the realsense2_camera name (aligned_depth_to_color);
+               color/camera_info already match once the namespace is /camera/d405. -->
+          <remapping>color/depth/image_raw:=aligned_depth_to_color/image_raw</remapping>
+          <remapping>color/depth/camera_info:=aligned_depth_to_color/camera_info</remapping>
+        </ros>
         <camera_name>color</camera_name>
         <frame_name>d405_optical_frame</frame_name>
         <!-- Depth clamp: matches the D405 usable near/far so out-of-range pixels

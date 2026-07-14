@@ -26,6 +26,11 @@ EE_FRAME = 'Link6'
 # fixed jaw on +X. finger joint axis -X: q > 0 opens; pad gap = JAW_GAP_AT_ZERO+q.
 JAW_FIXED_PAD_X = 0.1832     # fixed pad inner face (gripper x), pad_fixed.stl Xmin
 JAW_MOVING_PAD_X0 = 0.1022   # moving pad inner face at q=0, pad_moving.stl Xmax
+# Widest finger opening any sequence commands (GRIPPER_OPEN). The planning
+# collision model freezes the finger HERE: frozen at neutral (q=0) the real
+# OPEN moving jaw travels 30 mm outside the model and brushes shelf boxes
+# the planner thinks it cleared (measured).
+FINGER_OPEN_M = 0.03
 JAW_GAP_AT_ZERO = JAW_FIXED_PAD_X - JAW_MOVING_PAD_X0   # 81.0 mm (== BOX_SHORT)
 PAD_BOTTOM_BELOW_FLANGE = 0.0821   # pad lower edge, metres below the flange face
 BOX_SHORT = 0.081            # box graspable width (short side)

@@ -10,8 +10,8 @@ thread, one shared hub (both flows use the same HUB_TCP and a pocket-family seed
 The two flows are imported AS LIBRARIES and their sequence functions reused -- no
 logic is duplicated here:
     wirebonder -> wb.capture_device (LOCATE, AprilTag) + wb.transfer
-    shelf      -> shelf.pick_place_one_box        (LOCATE is a STUB: the shelf frame
-                  is hardcoded; AI magazine detection is deferred)
+    shelf      -> shelf.bringup (hub + pocket clear) + shelf.pick_place_one_box
+                  (no vision; walks box_idx over the four tier-1 boxes)
 
 One trigger == one transfer; re-trigger for the next unit (shelf walks its box index).
 
@@ -37,10 +37,7 @@ from rclpy.executors import MultiThreadedExecutor
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Int32, String
 
-from cr7_pnp import (
-    HubPickPlace, pose_at, quat_mul, quat_about_z, DOWN,
-    GRASP_TCP_ABOVE, GRASP_LATERAL_M,
-)
+from cr7_pnp import HubPickPlace
 
 # The two flows live in sequences/, the MCS protocol in comms/; add both to the
 # path so they import by name.
@@ -53,7 +50,8 @@ import mcs_protocol as proto  # noqa: E402
 # --- location registry --------------------------------------------------------
 # id -> (type, *params). One concrete job per id (re-trigger for the next unit).
 #   wirebonder: ('wirebonder', device_name, (src, dst) Locations)
-#   shelf:      ('shelf',)  -- walks node.box_idx across SHELF_BOXES
+#   shelf:      ('shelf',)  -- walks node.box_idx over the four tier-1 boxes
+#               (0-3); no vision, AGV spawned in a fixed reachable park
 # Add a line per real location; the AMR/MCS bridge will key into this by id.
 REGISTRY = {
     'wb1':   ('wirebonder', 'wb1', wb.SEQUENCES['1']),   # base   -> slot A
@@ -70,8 +68,9 @@ def locate(node, kind, *params):
         # /vision/device_pose at the capture viewpoint, then return to the hub.
         return wb.capture_device(node)
     if kind == 'shelf':
-        # STUB: the shelf frame is hardcoded (shelf.SHELF_BOXES). AI magazine
-        # detection plugs in here later.
+        # No-vision tier-1 flow: the shelf pose is the cr.world spawn and the
+        # +0.177 pocket stowaway (box_l2c) is dropped in shelf.bringup, so LOCATE
+        # is a no-op here.
         return True
     return False
 
@@ -83,9 +82,11 @@ def pick_place(node, kind, *params):
         return wb.transfer(node, src, dst)
     if kind == 'shelf':
         idx = node.box_idx
-        if idx >= len(shelf.SHELF_BOXES):
-            print(f"[shelf] all {len(shelf.SHELF_BOXES)} boxes placed; nothing left")
+        n = len(shelf.PLACE_ORDER_Y)
+        if idx >= n:
+            print(f"[shelf] all {n} boxes placed; nothing left")
             return False
+        # Tier-1, fixed park (AGV spawned in position): no in-sequence driving.
         if shelf.pick_place_one_box(node, idx):
             node.box_idx += 1
             return True
@@ -146,6 +147,7 @@ def main(args=None):
 
     # Vision layer: device pose arrives on /vision/device_pose (odom) from
     # wirebonder_vision_node.py. Cache the latest; wb.refresh_device_pose() reads it.
+    # (The shelf flow is no-vision -- tier-1 boxes from the cr.world spawn pose.)
     node._vision_pose = None
     node.create_subscription(PoseStamped, '/vision/device_pose',
                              lambda m: setattr(node, '_vision_pose', m), 10)
@@ -157,17 +159,12 @@ def main(args=None):
     threading.Thread(target=executor.spin, daemon=True).start()
     time.sleep(2)  # wait for joint states
 
-    # Shared hub: both flows use the same HUB_TCP and a pocket-family seed, so one
-    # init_hub serves both. Seed from the wirebonder base pocket (the first flow to
-    # verify); the shelf flow reads node.hub_q the same way.
-    base = wb.base_loc()
-    ref = pose_at([base.ref[0], base.ref[1], base.ref[2] + GRASP_TCP_ABOVE],
-                  quat_mul(quat_about_z(base.yaw), DOWN))
-    if not node.init_hub(ref, wb.HUB_TCP, GRASP_LATERAL_M):
+    # Shared hub: both flows use the same HUB_TCP (0.33, 0, 0.32) and azimuth
+    # (PLACE_YAW == PICK_YAW == pi), so shelf.bringup serves both. It places the
+    # shelf boards + resting-stock phantoms at the anchor pose, moves to the hub,
+    # and drops the sim-only pocket stowaway (box_l2c).
+    if not shelf.bringup(node):
         node.get_logger().error("Hub bring-up failed; adjust HUB_TCP and retry")
-        node.destroy_node(); rclpy.shutdown(); return
-    if not node.go_to_hub():
-        node.get_logger().error("Could not reach the hub from the spawn pose")
         node.destroy_node(); rclpy.shutdown(); return
     node.box_idx = 0  # shelf box counter (shelf.pick_place_one_box walks it)
 

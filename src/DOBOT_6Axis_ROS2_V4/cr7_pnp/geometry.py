@@ -44,10 +44,63 @@ else:
 # boards are added as thin boxes to the planning collision model and placed at
 # the AGV's current pose via TF each cycle. Boards (not a solid block) so the GAPS
 # between tiers stay open for the straight insert servo to reach the box.
-SHELF_WORLD_XY = (0.8, 0.5)             # shelf model origin in world (x, y)
-SHELF_BOARD_TOPS = (0.40, 0.90, 1.40, 1.90)  # board top heights (world z), 4-tier
+#
+# SHELF_WORLD_POSE is the cr.world spawn pose -- the --no-vision fallback and the
+# plausibility anchor for the ArUco read. At runtime the LIVE shelf pose comes
+# from /vision/shelf_pose (per-tier AprilTags baked into shelf/model.sdf) and
+# everything below composes with it, so "shelf moved" is no longer a code edit.
+SHELF_WORLD_POSE = (0.8, 0.5, 0.0)      # shelf model origin in world (x, y, yaw)
+# Board tops (world z). Shelf raised +0.32 in cr.world (pose z=0.32) so tier-1
+# top is 0.90->1.22 (= robot base 1.0 m + 0.22, the June pick-proven relative
+# height -- +0.28 left box d marginal: all-branch singular ~20 mm short once
+# the base ratcheted a few mm) and tier-2 1.40->1.72; the mesh
+# still bakes 0.40/0.90/1.40/1.95, so the pose offset is what lifts it. Keep
+# these in sync with the cr.world shelf pose. (June note: base heights 0.90/1.40
+# were pick-proven; 0.685 jammed the upper arm on the next board, measured.)
+SHELF_BOARD_TOPS = (0.72, 1.22, 1.72, 2.27)   # board top heights (world z), 4-tier
 SHELF_FOOTPRINT = (2.0, 0.30)           # board size (x, y) in metres
 SHELF_BOARD_THICK = 0.018               # board thickness (z), real shelf board
+
+# Pickable tiers: tier number -> board top height (subset of SHELF_BOARD_TOPS).
+SHELF_TIER_TOPS = {1: 1.22, 2: 1.72}
+
+# Box centres in the SHELF MODEL frame: x offsets in PICK ORDER (a,b = inner
+# pair, c,d = outer flank, one box-pitch 0.181 out), y centred on the board.
+# Mirrors the box_t<tier><a-d> spawns in cr.world -- keep both in sync.
+SHELF_BOX_XS = (-0.0905, +0.0905, -0.2715, +0.2715)
+SHELF_BOX_Y = 0.0
+
+
+# Per-tier ArUco placard placement in the SHELF MODEL frame (x, y at the board
+# front edge left of the box row; centre rises half a plate above the board top).
+# MIRRORS shelf/model.sdf (aruco_tier1/2) and vision/shelf_vision.py -- keep the
+# three in sync. The sequence uses this only to AIM the capture pose; the pose
+# solve itself lives in the vision node.
+SHELF_TAG_XY = (-0.45, -0.1505)
+SHELF_TAG_RISE = 0.0375 / 2.0
+
+
+def shelf_tag_world(tier, shelf_pose=SHELF_WORLD_POSE):
+    """Expected world (odom) centre of the `tier` tag placard for a shelf at
+    shelf_pose (x, y, yaw). Used to aim the camera before the capture read."""
+    x, y, yaw = shelf_pose
+    tx, ty = SHELF_TAG_XY
+    c, s = math.cos(yaw), math.sin(yaw)
+    return (x + c * tx - s * ty, y + s * tx + c * ty,
+            SHELF_TIER_TOPS[tier] + SHELF_TAG_RISE)
+
+
+def shelf_box_center(tier, i, shelf_pose=SHELF_WORLD_POSE):
+    """World (odom) centre of shelf box `i` (pick order) on `tier`, composing the
+    model-frame layout with a live shelf pose (x, y, yaw). THIS is the seam the
+    AI magazine detector replaces later: today the centre is layout-derived from
+    the ArUco shelf pose; the detector will return a measured centre instead."""
+    x, y, yaw = shelf_pose
+    bx, by = SHELF_BOX_XS[i], SHELF_BOX_Y
+    c, s = math.cos(yaw), math.sin(yaw)
+    from .gripper_params import BOX_SIZE as _BS
+    return (x + c * bx - s * by, y + s * bx + c * by,
+            SHELF_TIER_TOPS[tier] + _BS[2] / 2.0)
 
 
 # --- pure helpers -------------------------------------------------------------
@@ -126,9 +179,11 @@ from .gripper_params import (  # noqa: F401
     JAW_FIXED_PAD_X, JAW_MOVING_PAD_X0, JAW_GAP_AT_ZERO, PAD_BOTTOM_BELOW_FLANGE,
     BOX_SHORT, FIXED_PAD_CLEARANCE, BOX_SIZE, BOX_IN_LINK6_XYZ,
     TCP_OFFSET_M, GRASP_TCP_ABOVE, INSERT_TCP_ABOVE, GRASP_CENTER_OFFSET_M,
-    GRASP_LATERAL_M)
+    GRASP_LATERAL_M, FINGER_OPEN_M)
 
-GRIPPER_OPEN = [0.03]        # gap 111 mm; after jaw-align the moving pad still
+# == FINGER_OPEN_M: the collision model freezes the finger at this opening, so
+# commanding wider than this would put the real jaw outside the planned model.
+GRIPPER_OPEN = [FINGER_OPEN_M]  # gap 111 mm; after jaw-align the moving pad still
                              # clears the box face by ~19 mm on the descend, and
                              # the shorter close sweep hits the box at ~12 mm/s
                              # instead of ~32 mm/s (0.07), which the contact
@@ -143,10 +198,14 @@ GRIPPER_OPEN = [0.03]        # gap 111 mm; after jaw-align the moving pad still
 CLOSE_SQUEEZE = -0.002
 GRIPPER_CLOSE = [BOX_SHORT - JAW_GAP_AT_ZERO - CLOSE_SQUEEZE]   # gap = box + 2 mm (clearance)
 
-# Shelf pick target: WORLD frame (from cr.world). box_l1a on the 2nd shelf board.
-SHELF_BOX_WORLD = (0.7095, 0.5, 0.97)   # box_l1a centre (board top 0.90 + 0.07)
-SHELF_BOX_MODEL = 'box_l1a'             # Gazebo model name (for the link attacher)
+# Shelf box Gazebo naming: model 'box_t<tier><a-d>' (a-d in PICK ORDER, matching
+# SHELF_BOX_XS), link 'box_link'. Used by the link attacher.
 SHELF_BOX_LINK = 'box_link'
+
+
+def shelf_box_model(tier, i):
+    """Gazebo model name of shelf box `i` (pick order) on `tier`."""
+    return f"box_t{tier}{'abcd'[i]}"
 
 # Base magazine pockets: CONSTANT in base_link (rigid to the arm base), so no TF
 # needed. 0.236 m along base_link x, 0.081 m along y, 11.8 cm y-pitch.

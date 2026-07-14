@@ -14,6 +14,11 @@ wirebonder_pick_place.py once), then:
     cd ~/dobot_ws/src/DOBOT_6Axis_ROS2_V4
     python3 wirebonder_vision_node.py
 
+Camera topics are the realsense2_camera names (/camera/d405/...); the sim gazebo
+plugin publishes the SAME names, so this node runs unchanged in sim and on the
+real robot -- swapping means only starting the real driver instead of Gazebo
+(docs/real_robot_transition.md).
+
 It prints once a second. If vision and ground truth disagree by more than a few
 mm / deg, fix R_TAGCV_TO_MODEL in wirebonder_vision.py and re-run.
 """
@@ -24,29 +29,20 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from rclpy.duration import Duration
+from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import Image, CameraInfo
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Int32
 from tf2_ros import Buffer, TransformListener
 
 import wirebonder_vision as wv
+import shelf_vision as sv
 
 # Ground-truth device world (odom) poses, mirrored from wirebonder_pick_place.DEVICES.
 DEVICES_GT = {
     'wb1': (2.35, 0.5, 0.0, 0.0),
 }
 DEVICE = 'wb1'
-
-
-def quat_to_R(x, y, z, w):
-    """Quaternion (x,y,z,w) -> 3x3 rotation matrix."""
-    n = math.sqrt(x * x + y * y + z * z + w * w) or 1.0
-    x, y, z, w = x / n, y / n, z / n, w / n
-    return np.array([
-        [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
-        [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
-        [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)],
-    ])
 
 
 def _image_to_bgr(msg):
@@ -62,20 +58,46 @@ class Diag(Node):
         super().__init__('wirebonder_vision_diag')
         self.bgr = None
         self.K = None
+        self.dist = None            # distortion coeffs (None until CameraInfo; sim ~ zeros)
         self.depth_msg = None       # latest depth Image (32FC1 sim / 16UC1 real)
         self._det_logged = None     # last logged detect state -> log only on change
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
-        self.create_subscription(Image, '/d405/color/image_raw', self._img_cb, 10)
-        self.create_subscription(CameraInfo, '/d405/color/camera_info', self._info_cb, 10)
+        # Topic names = the REAL realsense2_camera names (camera_name:=d405). The
+        # sim gazebo plugin publishes the same names (cr7_on_mpo700.urdf.xacro), so
+        # there is no sim<->real topic seam at all (docs/real_robot_transition.md).
+        self.create_subscription(
+            Image, '/camera/d405/color/image_raw', self._img_cb, 10)
+        self.create_subscription(
+            CameraInfo, '/camera/d405/color/camera_info', self._info_cb, 10)
         # Aligned depth (same optical frame + resolution as color, so the color K
         # deprojects it). This is the range-fixing input for the depth hybrid.
-        self.create_subscription(Image, '/d405/color/depth/image_raw', self._depth_cb, 10)
+        # BEST_EFFORT: the real realsense publishes depth best-effort (a reliable
+        # subscriber would never match); against the sim's reliable publisher a
+        # best-effort subscription is still compatible.
+        depth_qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT)
+        self.create_subscription(
+            Image, '/camera/d405/aligned_depth_to_color/image_raw',
+            self._depth_cb, depth_qos)
+        # SECOND depth subscription, RELIABLE: the sim gazebo plugin publishes
+        # RELIABLE, and a best-effort subscription against it drops ~97% of the
+        # big depth frames here -- the node then runs depth-less and every solve
+        # falls back to PnP (deterministic but cm-off, so it even passes spread
+        # gates). Reliable<->reliable delivers everything in sim; against the
+        # real best-effort realsense this subscription simply never matches and
+        # the best-effort one above feeds the callback instead.
+        self.create_subscription(
+            Image, '/camera/d405/aligned_depth_to_color/image_raw',
+            self._depth_cb, 10)
         # Device pose in ODOM (device is static there, so the planner can cache it
         # and reuse its odom->base_link TF). This is the vision-layer contract the
         # .venv flows + dispatcher consume; the AI magazine detector publishes the
         # same shape later.
         self.pub = self.create_publisher(PoseStamped, '/vision/device_pose', 10)
+        # Shelf model frame in ODOM, solved from either per-tier shelf tag (both
+        # tags estimate the SAME frame, so one topic; the sequence medians a
+        # burst). Consumed by sequences/shelf_pick_place.py capture_shelf().
+        self.shelf_pub = self.create_publisher(PoseStamped, '/vision/shelf_pose', 10)
         # Two-view (motion-stereo) capture: the FALLBACK path now that depth is
         # primary. The planner drives the arm to two camera positions and pings
         # /vision/capture at each (data=0 resets, data=1 grabs a view). We store
@@ -116,6 +138,8 @@ class Diag(Node):
 
     def _info_cb(self, msg):
         self.K = np.array(msg.k, dtype=float).reshape(3, 3)
+        # Real D405 color has non-zero distortion; sim publishes zeros (or empty).
+        self.dist = np.array(msg.d, dtype=float) if len(msg.d) else None
 
     def _depth_cb(self, msg):
         self.depth_msg = msg
@@ -143,14 +167,14 @@ class Diag(Node):
             return None
         t = tf.transform.translation
         q = tf.transform.rotation
-        return wv.make_T(quat_to_R(q.x, q.y, q.z, q.w), [t.x, t.y, t.z])
+        return wv.make_T(wv.quat_to_R(q.x, q.y, q.z, q.w), [t.x, t.y, t.z])
 
     def _tick(self):
         if self.bgr is None or self.K is None:
             return
 
         depth = self._depth_m()
-        det = wv.detect_tag(self.bgr, self.K)
+        det = wv.detect_tag(self.bgr, self.K, self.dist)
         corners = wv.detect_tag_corners(self.bgr)
         T_odom_opt = self._lookup_T('odom', 'd405_optical_frame')
 
@@ -159,8 +183,17 @@ class Diag(Node):
         live = None
         if det is not None and T_odom_opt is not None:
             live = wv.device_pose_in_base(T_odom_opt, det, depth=depth,
-                                          K=self.K, corners=corners)
+                                          K=self.K, corners=corners, dist=self.dist)
             self._publish_pose(live)
+
+        # SHELF tags (IDs 2/3, one per tier): each visible tag yields the shelf
+        # model frame on /vision/shelf_pose (same depth-upright pipeline).
+        if T_odom_opt is not None:
+            for tier in sv.SHELF_TAG_ID:
+                T_shelf = sv.shelf_pose_in_base(T_odom_opt, tier, self.bgr,
+                                                self.K, depth=depth, dist=self.dist)
+                if T_shelf is not None:
+                    self._publish_pose(T_shelf, self.shelf_pub)
 
         # FALLBACK: no live tag this tick -> republish the last two-view solve so the
         # planner's median read still gets a steady stream (e.g. arm back at the hub,
@@ -190,7 +223,8 @@ class Diag(Node):
         if T_base_opt is None or T_base_odom is None:
             return
         T_base_model_vis = wv.device_pose_in_base(T_base_opt, det, depth=depth,
-                                                  K=self.K, corners=corners)
+                                                  K=self.K, corners=corners,
+                                                  dist=self.dist)
         slots_vis = wv.slots_in_base(T_base_model_vis)
 
         dx, dy, dz, dyaw = DEVICES_GT[DEVICE]
@@ -208,7 +242,7 @@ class Diag(Node):
                 f"gt=({g[0]:+.3f},{g[1]:+.3f},{g[2]:+.3f})  |dist|={d * 1000:5.1f} mm")
         self.get_logger().info("\n".join(lines))
 
-    def _publish_pose(self, T_odom_model):
+    def _publish_pose(self, T_odom_model, pub=None):
         ps = PoseStamped()
         ps.header.stamp = self.get_clock().now().to_msg()
         ps.header.frame_id = 'odom'
@@ -219,7 +253,7 @@ class Diag(Node):
         ps.pose.orientation.y = float(qy)
         ps.pose.orientation.z = float(qz)
         ps.pose.orientation.w = float(qw)
-        self.pub.publish(ps)
+        (pub or self.pub).publish(ps)
 
 
 def main():

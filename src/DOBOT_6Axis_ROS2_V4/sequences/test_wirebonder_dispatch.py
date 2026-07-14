@@ -20,8 +20,8 @@ def load():
 
     numpy is stubbed too when absent: strategy() and the tables need no real math,
     only the module-level SLOT_LOCAL comprehension touches np (mocks satisfy it)."""
-    for name in ('rclpy', 'rclpy.executors', 'geometry_msgs', 'geometry_msgs.msg',
-                 'cr7_pnp', 'mcs_protocol'):
+    for name in ('rclpy', 'rclpy.duration', 'rclpy.executors',
+                 'geometry_msgs', 'geometry_msgs.msg', 'cr7_pnp', 'mcs_protocol'):
         sys.modules.setdefault(name, mock.MagicMock())
     if importlib.util.find_spec('numpy') is None:
         sys.modules['numpy'] = mock.MagicMock()

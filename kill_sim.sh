@@ -11,7 +11,7 @@ PATTERNS="gzserver gzclient spawn_entity robot_state_publisher move_group ros2_c
 # Arm-side nodes: stale duplicates here publish conflicting /vision/device_pose (two
 # vision nodes) or double-consume commands, which silently corrupts a capture. Kill
 # them too. main.py pattern is path-qualified so it can't match unrelated main.py.
-ARM_PATTERNS="wirebonder_vision_node wirebonder_pick_place shelf_pick_place DOBOT_6Axis_ROS2_V4/main.py mcs_bridge mcs_server"
+ARM_PATTERNS="wirebonder_vision_node wirebonder_pick_place shelf_pick_place test_shelf_cycle DOBOT_6Axis_ROS2_V4/main.py mcs_bridge mcs_server"
 
 echo "=== Before ==="
 ps aux | grep -E "gzserver|gzclient|spawn_entity|robot_state_publisher|move_group|ros2_control_node|controller_manager|rqt_image_view|image_view|view_d405|ros2 launch" | grep -v grep | wc -l

@@ -4,9 +4,9 @@
     <pose>0 0 0 0 0 0</pose>
     <static>true</static>
     <!-- 4-tier shelf, real-world scale (meters), Z-up.
-         Board top surfaces at z = 0.40 / 0.685 / 1.30 / 1.90 m. Board 2 (tier-1)
-         at 0.685 (min down-grasp reach); board 3 (tier-2) at 1.30. Boards 1 and 4
-         keep the original 0.40 / 1.90.
+         Board top surfaces at z = 0.40 / 0.90 / 1.40 / 1.90 m. Boards 2/3 are
+         the pick tiers, restored to the pick-proven heights (the 0.685
+         "min-reach" tier-1 jammed the upper arm on the tier-2 board).
          Frame = 4 corner posts. Footprint 2.0 x 0.30 m, total height 1.95 m.
          Mesh URIs use model:// for Gazebo Classic 11 compatibility
          (needs GAZEBO_MODEL_PATH to contain the design_gz directory). -->
@@ -19,6 +19,35 @@
           </mesh>
         </geometry>
       </visual>
+      <!-- Per-tier AprilTag 36h11 plates (tier1 = ID 2, tier2 = ID 3; 0/1 are
+           the wirebonder's). Small placard standing at the board FRONT edge,
+           LEFT of the box row (boxes span model x -0.2715..+0.2715), facing the
+           robot (-y) via roll = pi/2 -- the same upright convention as the
+           wirebonder tags, so the depth-upright vision pipeline is reused as-is.
+           0.0375 = 0.03 black tag + 1-module white quiet zone (640px texture =
+           512 tag + 64 white each side); the BLACK tag stays 30 mm (TAG_SIZE_M).
+           z = board top + half plate, so the plate bottom sits ON the board edge;
+           y = -0.1505 (0.5 mm proud of the board front face at -0.15).
+           MIRRORED in vision/shelf_vision.py (SHELF_TAGS) -- keep them in sync;
+           on the REAL shelf, stick printed 30 mm tags here and re-measure. -->
+      <visual name='aruco_tier1'>
+        <pose>-0.45 -0.1505 0.91875 1.5708 0 0</pose>
+        <geometry><box><size>0.0375 0.0375 0.001</size></box></geometry>
+        <material><script>
+          <uri>model://shelf/materials/scripts</uri>
+          <uri>model://shelf/materials/textures</uri>
+          <name>ArucoMarker/ShelfTier1</name>
+        </script></material>
+      </visual>
+      <visual name='aruco_tier2'>
+        <pose>-0.45 -0.1505 1.41875 1.5708 0 0</pose>
+        <geometry><box><size>0.0375 0.0375 0.001</size></box></geometry>
+        <material><script>
+          <uri>model://shelf/materials/scripts</uri>
+          <uri>model://shelf/materials/textures</uri>
+          <name>ArucoMarker/ShelfTier2</name>
+        </script></material>
+      </visual>
       <!-- Collision follows the boards + posts (not a solid block), so a
            robot arm can reach into the open gaps between the shelves. -->
       <collision name='shelf_collision'>
@@ -27,6 +56,44 @@
             <uri>model://shelf/meshes/shelf_collision.dae</uri>
           </mesh>
         </geometry>
+      </collision>
+      <!-- Leg extensions: the whole shelf is raised +0.32 via its cr.world pose
+           (board heights are baked into the mesh), which left the posts floating.
+           These stubs continue the 0.03 x 0.03 posts (model frame x = +-0.985,
+           y = +-0.135, mesh z 0..1.95) down to the floor. Keep the stub length
+           equal to the cr.world shelf pose z; remove them if the shelf is ever
+           set back on the ground. -->
+      <visual name='leg_ext_1'>
+        <pose>0.985 0.135 -0.16 0 0 0</pose>
+        <geometry><box><size>0.03 0.03 0.32</size></box></geometry>
+      </visual>
+      <visual name='leg_ext_2'>
+        <pose>0.985 -0.135 -0.16 0 0 0</pose>
+        <geometry><box><size>0.03 0.03 0.32</size></box></geometry>
+      </visual>
+      <visual name='leg_ext_3'>
+        <pose>-0.985 0.135 -0.16 0 0 0</pose>
+        <geometry><box><size>0.03 0.03 0.32</size></box></geometry>
+      </visual>
+      <visual name='leg_ext_4'>
+        <pose>-0.985 -0.135 -0.16 0 0 0</pose>
+        <geometry><box><size>0.03 0.03 0.32</size></box></geometry>
+      </visual>
+      <collision name='leg_ext_1_col'>
+        <pose>0.985 0.135 -0.16 0 0 0</pose>
+        <geometry><box><size>0.03 0.03 0.32</size></box></geometry>
+      </collision>
+      <collision name='leg_ext_2_col'>
+        <pose>0.985 -0.135 -0.16 0 0 0</pose>
+        <geometry><box><size>0.03 0.03 0.32</size></box></geometry>
+      </collision>
+      <collision name='leg_ext_3_col'>
+        <pose>-0.985 0.135 -0.16 0 0 0</pose>
+        <geometry><box><size>0.03 0.03 0.32</size></box></geometry>
+      </collision>
+      <collision name='leg_ext_4_col'>
+        <pose>-0.985 -0.135 -0.16 0 0 0</pose>
+        <geometry><box><size>0.03 0.03 0.32</size></box></geometry>
       </collision>
     </link>
   </model>

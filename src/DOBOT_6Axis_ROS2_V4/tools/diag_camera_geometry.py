@@ -92,13 +92,7 @@ CORNERS_GT = np.array([(T_ODOM_TAGCV @ np.append(p, 1.0))[:3] for p in OBJP])
 CENTRE_GT = T_ODOM_TAGCV[:3, 3]
 
 
-def quat_to_R(x, y, z, w):
-    n = math.sqrt(x * x + y * y + z * z + w * w) or 1.0
-    x, y, z, w = x / n, y / n, z / n, w / n
-    return np.array([
-        [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
-        [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
-        [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
+quat_to_R = wv.quat_to_R
 
 
 def diag_intersect(c):
@@ -150,9 +144,9 @@ class Diag(Node):
         self.depth_msg = None
         self.tfb = Buffer()
         self.tfl = TransformListener(self.tfb, self)
-        self.create_subscription(Image, '/d405/color/image_raw', self._img, 10)
-        self.create_subscription(CameraInfo, '/d405/color/camera_info', self._info, 10)
-        self.create_subscription(Image, '/d405/color/depth/image_raw', self._dep, 10)
+        self.create_subscription(Image, '/camera/d405/color/image_raw', self._img, 10)
+        self.create_subscription(CameraInfo, '/camera/d405/color/camera_info', self._info, 10)
+        self.create_subscription(Image, '/camera/d405/aligned_depth_to_color/image_raw', self._dep, 10)
         self.client = ActionClient(self, FollowJointTrajectory, ACTION)
 
     def _img(self, m):

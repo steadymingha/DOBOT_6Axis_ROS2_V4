@@ -43,7 +43,8 @@ from .model import ReachabilityModel
 from .cbirrt import ConstrainedPlanner
 from .geometry import (
     XACRO_PATH, COMBINED_XACRO, quat_to_R, pose_at, DOWN,
-    SHELF_WORLD_XY, SHELF_BOARD_TOPS, SHELF_FOOTPRINT, SHELF_BOARD_THICK,
+    SHELF_WORLD_POSE, SHELF_BOARD_TOPS, SHELF_FOOTPRINT, SHELF_BOARD_THICK,
+    SHELF_TIER_TOPS, SHELF_BOX_XS, shelf_box_center,
     BOX_SIZE, BOX_IN_LINK6_XYZ, MAGAZINE_LINK, GRASP_LATERAL_M,
     GRIPPER_OPEN, GRIPPER_CLOSE,
 )
@@ -103,6 +104,18 @@ class CR7Node(Node):
 
         self.get_logger().info("CR7 RRT Planner Node Initialized. Waiting for joint states...")
 
+    def _wait_future(self, future, timeout, label):
+        """Bounded wait on an rclpy future: a DDS hiccup can leave a service /
+        action future pending FOREVER (measured mid-place); a timeout turns
+        that into a visible failure. Returns True when the future completed."""
+        t0 = time.time()
+        while rclpy.ok() and not future.done():
+            if time.time() - t0 > timeout:
+                self.get_logger().error(f"[{label}] no response in {timeout:.0f}s")
+                return False
+            time.sleep(0.01)
+        return future.done()
+
     def joint_state_callback(self, msg):
         """Extract only the 6-axis arm joints from /joint_states in the correct order."""
         target_names = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6']
@@ -130,8 +143,8 @@ class CR7Node(Node):
         goal_msg.trajectory.points.append(point)
 
         send_goal_future = self.gripper_client.send_goal_async(goal_msg)
-        while rclpy.ok() and not send_goal_future.done():
-            time.sleep(0.01)
+        if not self._wait_future(send_goal_future, 20.0, "gripper goal send"):
+            return False
 
         goal_handle = send_goal_future.result()
         if not goal_handle.accepted:
@@ -139,8 +152,8 @@ class CR7Node(Node):
             return False
 
         get_result_future = goal_handle.get_result_async()
-        while rclpy.ok() and not get_result_future.done():
-            time.sleep(0.01)
+        if not self._wait_future(get_result_future, 30.0, "gripper result"):
+            return False
         self.get_logger().info(f"Gripper moved to positions: {positions}")
         return True
 
@@ -155,8 +168,8 @@ class CR7Node(Node):
         req.model2_name = self.object_model
         req.link2_name = self.object_link
         future = self.attach_client.call_async(req)
-        while rclpy.ok() and not future.done():
-            time.sleep(0.01)
+        if not self._wait_future(future, 20.0, "ATTACHLINK"):
+            return False
         self.get_logger().info(f"Attach: {future.result().message}")
         return future.result().success
 
@@ -171,8 +184,8 @@ class CR7Node(Node):
         req.model2_name = self.object_model
         req.link2_name = self.object_link
         future = self.detach_client.call_async(req)
-        while rclpy.ok() and not future.done():
-            time.sleep(0.01)
+        if not self._wait_future(future, 20.0, "DETACHLINK"):
+            return False
         self.get_logger().info(f"Detach: {future.result().message}")
         return future.result().success
 
@@ -310,9 +323,18 @@ class CR7Node(Node):
             point.time_from_start.nanosec = int((time_from_start % 1) * 1e9)
             goal_msg.trajectory.points.append(point)
 
-        self.traj_action_client.wait_for_server()
+        # Bounded waits: a DDS discovery hiccup can leave wait_for_server /
+        # a goal future pending FOREVER (measured: bring-up frozen at the first
+        # trajectory). A timeout turns that into a visible failed motion.
+        if not self.traj_action_client.wait_for_server(timeout_sec=20.0):
+            self.get_logger().error("Trajectory action server not available (20s)")
+            return False
         send_goal_future = self.traj_action_client.send_goal_async(goal_msg)
+        t0 = time.time()
         while rclpy.ok() and not send_goal_future.done():
+            if time.time() - t0 > 20.0:
+                self.get_logger().error("Trajectory goal send timed out (20s)")
+                return False
             time.sleep(0.01)
         self.get_logger().info("Trajectory Sent!")
         self.get_logger().info(f"Final executed trajectory node count: {len(path)}")
@@ -323,7 +345,11 @@ class CR7Node(Node):
             return False
 
         get_result_future = goal_handle.get_result_async()
+        deadline = time.time() + time_from_start + 90.0
         while rclpy.ok() and not get_result_future.done():
+            if time.time() > deadline:
+                self.get_logger().error("Trajectory result timed out; aborting motion")
+                return False
             time.sleep(0.01)
         self._wait_settled(path[-1])
         self.get_logger().info("Trajectory execution finished.")
@@ -446,10 +472,67 @@ class CBiRRTPickPlace(CR7Node):
         self.get_logger().info(
             f"[collision] added {len(self.shelf_geoms)} shelf boards "
             f"(open gaps, avoided by the planner)")
+        self._add_shelf_stock()
 
-    def update_shelf_collision(self):
+    def _add_shelf_stock(self):
+        """Add a static phantom for EVERY shelf box (both tiers) so free RRTs
+        (captures, spokes) route around the resting stock, not just the boards
+        -- an unmodelled resting box got smashed by a capture swing and shoved
+        the AGV over (measured). Shrunk 10 mm per side: these guard against
+        gross sweeps; the pick's own grasp legs run millimetres from the target
+        box, so THAT box is parked far during its pick via set_shelf_stock_absent."""
+        import coal
+        geom = self.collision.geom
+        objs = geom.geometryObjects
+        box_idx = getattr(self, '_box_geom_idx', None)
+        arm_links = [i for i in range(len(objs))
+                     if objs[i].parentJoint != 0 and i != box_idx]
+        far = pin.SE3(np.eye(3), np.array([0.0, 0.0, -100.0]))
+        # World-frame dims for the yaw-90 spawn: short side along the row (x),
+        # long side into the shelf (y). FULL SIZE: any shrink lets the planner
+        # graze real boxes by that much (the 10 mm/side legacy shrink is what
+        # brushed neighbours on the approach spoke). The TARGET box is parked
+        # absent during its pick, so nothing legitimate ever needs to enter a
+        # resting box's volume. On the REAL robot set this NEGATIVE (inflate) by
+        # the vision + tracking uncertainty -- avoidance wants margin, not slack.
+        STOCK_SHRINK = 0.0     # total per dimension; negative = inflate
+        dims = (BOX_SIZE[0] - STOCK_SHRINK, BOX_SIZE[1] - STOCK_SHRINK,
+                BOX_SIZE[2] - STOCK_SHRINK)
+        self.shelf_stock_geoms = {}
+        self._shelf_stock_absent = set()
+        self._shelf_pose_last = None
+        for tier in SHELF_TIER_TOPS:
+            for i in range(len(SHELF_BOX_XS)):
+                go = pin.GeometryObject(f"shelf_stock_t{tier}{i}", 0, far,
+                                        coal.Box(*dims))
+                idx = geom.addGeometryObject(go)
+                for j in arm_links:
+                    geom.addCollisionPair(pin.CollisionPair(j, idx))
+                # Carried-box vs stock pairs are NOT built here: they live in
+                # _box_stock_pairs (built later by _add_attached_box) and are
+                # toggled by set_box_stock_collision for twisted-carry sweeps.
+                self.shelf_stock_geoms[(tier, i)] = idx
+        self.collision.geom_data = geom.createData()
+        self.get_logger().info(
+            f"[collision] added {len(self.shelf_stock_geoms)} shelf stock "
+            f"phantoms (resting boxes)")
+
+    def set_shelf_stock_absent(self, tier, i, absent=True):
+        """Mark shelf box (tier, i) as OFF the shelf: its phantom parks far so
+        the pick's own grasp legs (which run millimetres from it) don't
+        false-collide. Restore with absent=False after a put-back / failure."""
+        key = (tier, i)
+        if absent:
+            self._shelf_stock_absent.add(key)
+        else:
+            self._shelf_stock_absent.discard(key)
+        self.update_shelf_collision(self._shelf_pose_last)
+
+    def update_shelf_collision(self, shelf_pose=None):
         """Place the shelf boards in the model-root (mpo_base_link) frame from the
-        live TF. Call once per cycle. Returns False if the TF is unavailable."""
+        live TF and a shelf world pose (x, y, yaw) -- the vision-read pose, or the
+        cr.world spawn (SHELF_WORLD_POSE) when None. Call once per cycle. Returns
+        False if the TF is unavailable."""
         try:
             tf = self.tf_buffer.lookup_transform(
                 'mpo_base_link', self.world_frame, rclpy.time.Time(),
@@ -460,12 +543,24 @@ class CBiRRTPickPlace(CR7Node):
         t, r = tf.transform.translation, tf.transform.rotation
         T_root_world = pin.SE3(quat_to_R(r.x, r.y, r.z, r.w),
                                np.array([t.x, t.y, t.z]))
-        sx, sy = SHELF_WORLD_XY
+        pose = tuple(shelf_pose) if shelf_pose is not None else SHELF_WORLD_POSE
+        self._shelf_pose_last = pose
+        sx, sy, syaw = pose
+        c, s = math.cos(syaw), math.sin(syaw)
+        R_shelf = np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
         for idx, ztop in self.shelf_geoms:
-            board_world = pin.SE3(np.eye(3),
+            board_world = pin.SE3(R_shelf,
                                   np.array([sx, sy, ztop - SHELF_BOARD_THICK / 2]))
             self.collision.geom.geometryObjects[idx].placement = (
                 T_root_world * board_world)
+        far = pin.SE3(np.eye(3), np.array([0.0, 0.0, -100.0]))
+        for (tier, i), idx in getattr(self, 'shelf_stock_geoms', {}).items():
+            if (tier, i) in self._shelf_stock_absent:
+                self.collision.geom.geometryObjects[idx].placement = far
+            else:
+                self.collision.geom.geometryObjects[idx].placement = (
+                    T_root_world * pin.SE3(R_shelf, np.array(
+                        shelf_box_center(tier, i, pose))))
         self.collision.geom_data = self.collision.geom.createData()
         return True
 
@@ -698,16 +793,27 @@ class CBiRRTPickPlace(CR7Node):
             pt.time_from_start.nanosec = int((t % 1) * 1e9)
             goal_msg.trajectory.points.append(pt)
 
-        self.traj_action_client.wait_for_server()
+        # Bounded waits, same reason as execute_trajectory (DDS hiccup freeze).
+        if not self.traj_action_client.wait_for_server(timeout_sec=20.0):
+            self.get_logger().error("[execute_path] action server not available (20s)")
+            return False
         send_goal_future = self.traj_action_client.send_goal_async(goal_msg)
+        t0 = time.time()
         while rclpy.ok() and not send_goal_future.done():
+            if time.time() - t0 > 20.0:
+                self.get_logger().error("[execute_path] goal send timed out (20s)")
+                return False
             time.sleep(0.01)
         goal_handle = send_goal_future.result()
         if not goal_handle.accepted:
             self.get_logger().error("[execute_path] trajectory goal rejected")
             return False
         get_result_future = goal_handle.get_result_async()
+        deadline = time.time() + t + 90.0
         while rclpy.ok() and not get_result_future.done():
+            if time.time() > deadline:
+                self.get_logger().error("[execute_path] result timed out; aborting")
+                return False
             time.sleep(0.01)
         self._wait_settled(path[-1])
         self.get_logger().info("[execute_path] done")
@@ -916,12 +1022,24 @@ class HubPickPlace(CBiRRTPickPlace):
                                 placement, coal.Box(*BOX_SIZE))
         self._box_geom_idx = geom.addGeometryObject(go)
         objs = geom.geometryObjects
+        # Shelf STOCK pairs are kept SEPARATE (_box_stock_pairs): the phantom
+        # sits where the box hangs when GRASPED, so checking it at the untwisted
+        # wrist (P1 pre-flight, no box in hand yet) lands it off-centre over a
+        # neighbouring box and false-collides. set_box_stock_collision turns the
+        # stock pairs on ONLY while sweeping twisted-carry configs.
         self._box_pairs = [
             pin.CollisionPair(self._box_geom_idx, i)
             for i in range(len(objs))
             if i != self._box_geom_idx
             and objs[i].parentJoint != self._box_parent_joint
+            and not objs[i].name.startswith('shelf_stock')
         ]
+        self._box_stock_pairs = [
+            pin.CollisionPair(self._box_geom_idx, i)
+            for i in range(len(objs))
+            if objs[i].name.startswith('shelf_stock')
+        ]
+        self._box_stock_on = False
         self.collision.geom_data = geom.createData()
 
     def attach_box_collision(self):
@@ -941,6 +1059,21 @@ class HubPickPlace(CBiRRTPickPlace):
             self.collision.geom.removeCollisionPair(cp)
         self.collision.geom_data = self.collision.geom.createData()
         self._box_attached_model = False
+
+    def set_box_stock_collision(self, on):
+        """Toggle carried-box vs resting-stock collision pairs. Turn ON only
+        while validating configs where the box is actually in the gripper in its
+        grasped (twisted) azimuth -- at the untwisted wrist the phantom
+        false-collides with a neighbouring box (see _add_attached_box)."""
+        if on == self._box_stock_on:
+            return
+        for cp in self._box_stock_pairs:
+            if on:
+                self.collision.geom.addCollisionPair(cp)
+            else:
+                self.collision.geom.removeCollisionPair(cp)
+        self.collision.geom_data = self.collision.geom.createData()
+        self._box_stock_on = on
 
     # --- grasp / release (the two blocks every pick and place share) ---
 
@@ -977,10 +1110,28 @@ class HubPickPlace(CBiRRTPickPlace):
         req.model2_name = self.object_model
         req.link2_name = self.object_link
         future = self.attach_client.call_async(req)
-        while rclpy.ok() and not future.done():
-            time.sleep(0.01)
+        if not self._wait_future(future, 20.0, "magazine ATTACHLINK"):
+            return False
         res = future.result()
         self.get_logger().info(f"[magazine] attach {self.object_model}: {res.message}")
+        return res.success
+
+    def detach_box_from_magazine(self, model, link):
+        """Undo attach_box_to_magazine for `model`/`link` so the box can be
+        re-picked off the AGV pocket. Returns the service success flag."""
+        if not self.detach_client.wait_for_service(timeout_sec=5.0):
+            self.get_logger().error("DETACHLINK service not available")
+            return False
+        req = DetachLink.Request()
+        req.model1_name = self.robot_model
+        req.link1_name = MAGAZINE_LINK
+        req.model2_name = model
+        req.link2_name = link
+        future = self.detach_client.call_async(req)
+        if not self._wait_future(future, 20.0, "magazine DETACHLINK"):
+            return False
+        res = future.result()
+        self.get_logger().info(f"[magazine] detach {model}: {res.message}")
         return res.success
 
     # --- recording + reverse-replay ---
@@ -1059,11 +1210,16 @@ class HubPickPlace(CBiRRTPickPlace):
         ref = np.array(ref_q)
         return min(cands, key=lambda q: np.linalg.norm(np.array(q) - ref))
 
-    def plan_spoke(self, start_q, goal_pose, ref_q, time_limit=10.0, label="spoke"):
+    def plan_spoke(self, start_q, goal_pose, ref_q, time_limit=10.0, label="spoke",
+                   goal_q=None):
         """Plan a tool-down CBiRRT spoke from start_q to goal_pose, choosing the
-        goal IK branch nearest ref_q. Validity uses whatever collision model is
-        active (box-attached during pre-flight). Returns waypoints or None."""
-        goal_q = self.ik_nearest(goal_pose, ref_q)
+        goal IK branch nearest ref_q -- or pin the goal to an explicit goal_q
+        (a caller-vetted branch; IK is stochastic, so re-solving here could land
+        on a different branch than the one the caller pre-flighted). Validity
+        uses whatever collision model is active (box-attached during
+        pre-flight). Returns waypoints or None."""
+        if goal_q is None:
+            goal_q = self.ik_nearest(goal_pose, ref_q)
         if goal_q is None:
             self.get_logger().error(f"[{label}] goal IK failed")
             return None
@@ -1077,17 +1233,24 @@ class HubPickPlace(CBiRRTPickPlace):
             return None
         return path
 
-    def preflight_linear(self, start_q, delta, label):
+    def preflight_linear(self, start_q, delta, label, severity='error'):
         """Pre-flight a Cartesian servo WITHOUT moving: run the same straight-line
         solver linear_servo uses and check it reaches the full distance. Returns
-        the end config (to chain the next servo) or None if it would stall short."""
+        the end config (to chain the next servo) or None if it would stall short.
+
+        severity: log level for an infeasible result. Callers probing multiple
+        candidates (rejection = normal flow) pass 'info' -- ERROR is reserved
+        for real aborts, since the ERROR stream is forwarded to the MCS."""
         path, reached, reason = self.cbirrt.linear_path(
             list(start_q), list(delta), self.is_state_valid, self.joint_limits)
         want = float(np.linalg.norm(delta))
         if reached < want - 1e-3:
-            self.get_logger().error(
+            bad = getattr(self.cbirrt, 'last_invalid_q', None)
+            pairs = (self.collision.colliding_pairs(bad)
+                     if reason == 'collision' and bad is not None else '')
+            getattr(self.get_logger(), severity)(
                 f"[pre-flight] {label} servo infeasible: reaches "
-                f"{reached * 1000:.0f} of {want * 1000:.0f} mm -> {reason}")
+                f"{reached * 1000:.0f} of {want * 1000:.0f} mm -> {reason} {pairs}")
             return None
         return path[-1]
 

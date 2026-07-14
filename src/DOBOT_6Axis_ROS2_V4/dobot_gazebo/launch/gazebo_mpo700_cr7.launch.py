@@ -57,8 +57,11 @@ def generate_launch_description():
                                    # Gazebo world pose (gz model -m cr7_on_mpo700 -p)
                                    # after teleoping to the working position. yaw ~ 0.
                                    # To revert to origin, restore -x '0' -y '0'.
-                                #    '-x', '0.849', '-y', '-0.072', '-z', '0.0'],
-                                   '-x', '2.16', '-y', '-0.08', '-z', '-0.005'],
+                                   # '-x', '2.16', '-y', '-0.08', '-z', '-0.005'],
+                                   # 0.683/0.008: single park where all 4 tier-1
+                                   # magazines are reachable (shelf_pick_place.py).
+                                   '-x', '0.683', '-y', '0.008', '-z', '0.0'],
+                                #    '-x', '2.16', '-y', '-0.08', '-z', '-0.005'], # infront of wb device
                         output='screen')
 
     # Base-pocket magazine, spawned AFTER the robot so it lands on the (late-
