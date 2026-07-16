@@ -23,7 +23,7 @@ Slot offsets come from tools/spawn_device_markers.py (rail centre + 5 mm gap beh
 magazine centre, in the model frame).
 
 Device poses come from the AprilTag vision node (no precise AGV parking): start
-wirebonder_vision_node.py FIRST (system python -- it needs cv2), then this script
+tag_vision_node.py FIRST (system python -- it needs cv2), then this script
 in the .venv. On startup the arm goes to the hub, then servos to CAPTURE_FLANGE (a
 separate close-to-tag pose) and reads every device's pose ONCE from
 /vision/device_pose, returns to the hub, and offers the 1/2/3 menu -- so any
@@ -34,7 +34,7 @@ Run (sim up, AGV parked roughly facing a device):
     source /opt/ros/humble/setup.bash
     source ~/dobot_ws/install/setup.bash
     cd ~/dobot_ws/src/DOBOT_6Axis_ROS2_V4
-    python3 vision/wirebonder_vision_node.py                 # terminal A (system cv2)
+    python3 vision/tag_vision_node.py                 # terminal A (system cv2)
     ~/dobot_ws/.venv/bin/python3 sequences/wirebonder_pick_place.py   # terminal B (.venv)
 
     # --no-vision: skip the vision node; use the hardcoded DEVICES placeholder
@@ -62,9 +62,10 @@ sys.path.insert(0, os.path.join(_PKG_ROOT, 'comms'))
 from cr7_pnp import (  # noqa: E402
     HubPickPlace, pose_at, quat_mul, quat_about_z,
     DOWN, GRIPPER_OPEN, GRASP_TCP_ABOVE, GRASP_LATERAL_M,
-    POCKET_X, POCKET_Y, POCKET_SURFACE_Z, BOX_SIZE,
+    POCKET_X, POCKET_SURFACE_Z, BOX_SIZE,
 )
 import mcs_protocol as proto  # noqa: E402
+from vision import pocket_vision as pockets  # noqa: E402
 
 # --- device model: slot magazine-centre offsets in the MODEL frame -------------
 # Constant per wirebonder model. Each = the rail centre (from the collision STLs)
@@ -93,38 +94,48 @@ DEVICES = {
 # --- locations ----------------------------------------------------------------
 # kind='base' -> ref is a constant base_link xyz (base pocket, rigid to the arm).
 # kind='slot' -> ref is (device_name, slot_letter), resolved via DEVICES x SLOT.
-# model/link are the Gazebo magazine names used when this location is a PICK src.
-Location = namedtuple('Location', 'name kind ref yaw model link')
+# No Gazebo box names here: the model grasped is resolved AT PICK TIME from
+# /gazebo/model_states (pocket_vision.model_at, nearest model to the box centre).
+Location = namedtuple('Location', 'name kind ref yaw link')
 
 BOX_HALF_Z = BOX_SIZE[2] / 2.0
 PICK_YAW = math.pi        # jaw azimuth at a base pocket (TUNE IN SIM)
 SLOT_YAW = math.pi        # jaw azimuth at a slot, added to the device yaw (TUNE)
 MAG_LINK = 'box_link'     # magazine link name (Gazebo)
 
+# Preferred base pocket (index into pockets.POCKET_ORDER_Y) per direction. The
+# occupancy look (transfer) starts scanning HERE: pick takes the next pocket
+# holding a box, place the next free one. With no vision read these are used
+# verbatim (the pre-vision fixed pockets).
+# Pick order REVERSED (2026-07-15, mirrors the place order): take from the
+# HIGH-y end first, scanning downward (3 -> 2 -> 1 -> 0) -- with the reversed
+# fill this picks the most recently placed box first. Was index 0, low -> high.
+BASE_PICK_START = 3       # y=+0.177
+# Place order REVERSED (2026-07-15, matches the shelf flow): fill from the
+# HIGH-y end, scanning downward (3 -> 2 -> 1 -> 0). Was index 2 (y=+0.059).
+BASE_PLACE_START = 3      # y=+0.177
 
-def base_loc(pocket_y=POCKET_Y[3], model='box_l2c'):
-    # box_l2c is on this pocket (observed). The TCP lands on the OUTER side of the box,
-    # not on it -- a lateral grasp offset (GRASP_LATERAL_M) pushing the wrong way, not
-    # the pocket index. That's the thing to fix next, separately.
+
+def base_loc(pocket=BASE_PICK_START):
+    """Base-pocket Location by index into pockets.POCKET_ORDER_Y (place order)."""
+    y = pockets.POCKET_ORDER_Y[pocket]
     z = POCKET_SURFACE_Z + BOX_HALF_Z
-    return Location('base', 'base', (POCKET_X, pocket_y, z), PICK_YAW, model, MAG_LINK)
+    return Location('base', 'base', (POCKET_X, y, z), PICK_YAW, MAG_LINK)
 
 
-def slot_loc(device, letter, model=None):
+def slot_loc(device, letter):
     return Location(f'{device}:{letter}', 'slot', (device, letter), SLOT_YAW,
-                    model or f'mag_{device}_{letter}', MAG_LINK)
+                    MAG_LINK)
 
 
 # The three transfers as (src, dst) Locations. Default to a single device (wb1);
 # for a cross-device transfer point src/dst at different devices, e.g.
-# slot_loc('wb2', 'C'). EDIT pocket / model placeholders to the real sim names.
-# Gazebo magazine names (cr.world): base pocket=box_l2c, slot B=box_l2a, slot D=box_l2b.
-# model only matters on the PICK src (the box grasped); the place dst reuses it.
+# slot_loc('wb2', 'C'). Base pockets are PLACEHOLDERS: transfer() swaps them for
+# the next usable pocket after the occupancy look (see BASE_*_START above).
 SEQUENCES = {
-    '1': (base_loc(),                            slot_loc('wb1', 'A')),  # box_l2c base  -> slot A
-    '2': (slot_loc('wb1', 'B', model='box_l2a'), slot_loc('wb1', 'C')),  # box_l2a slotB -> slot C
-    '3': (slot_loc('wb1', 'D', model='box_l2b'),
-          base_loc(pocket_y=POCKET_Y[1])),                              # box_l2b slotD -> base pocket (y=0.059)
+    '1': (base_loc(),           slot_loc('wb1', 'A')),        # base  -> slot A
+    '2': (slot_loc('wb1', 'B'), slot_loc('wb1', 'C')),        # slotB -> slot C
+    '3': (slot_loc('wb1', 'D'), base_loc(BASE_PLACE_START)),  # slotD -> base
 }
 
 # Every device any transfer touches -- captured ONCE up front so any of 1/2/3 can
@@ -189,7 +200,13 @@ SLOT_NUDGE = (0.0, 0.0, -0.01)
 #       TCP from it via grasp_tcp_pose (box-centred, auto lateral hang), the SAME
 #       primitive as the base pick, so no hand-jogged hover and B/C are symmetric.
 SLOT_WORLD = {
-    'A': {'mode': 'front', 'approach': (1.996, 0.17, 1.06), 'seat': (1.996, 0.30, 1.06)},
+    # A: z lowered 1.06 -> 1.055 (2026-07-15): the insert corridor's margin to
+    # the Cube_C overhang was razor-thin -- preflight passed and the live servo
+    # collided from a start just 1.1 mm away ([insert-dry] vs [insert-live] /
+    # [insert-hit] gripper_base_link_2 vs wb_Cube_C at 81/130 mm). Ducking 5 mm
+    # buys real margin from C; SLOT_PLACE_DROP shrinks 5 mm to keep the box's
+    # set-down height unchanged.
+    'A': {'mode': 'front', 'approach': (1.996, 0.17, 1.055), 'seat': (1.996, 0.30, 1.055)},
     # Box CENTRE world coords (SETTLED, not spawn). The cr.world spawn z=1.281 sits
     # 64 mm INTO the Cube_C shelf (top at model z 1.275), so Gazebo pops the box up
     # to rest on Cube_C -> real centre = 1.275 + box_half(0.07) = 1.345.
@@ -216,7 +233,7 @@ SLOT_WORLD = {
 PLACE_TRANSIT_Z = 1.40      # model z of the TCP during the high transit (TUNE)
 PLACE_STAGE_BACKOFF = 0.07  # descend this far in front of the approach y, then slide in
 
-SLOT_PLACE_DROP = 0.03      # front-load PLACE: descend from the seat to set the
+SLOT_PLACE_DROP = 0.025     # front-load PLACE: descend from the seat to set the
                             # (already-gripped) box onto the shelf (TUNE)
 # Front-load PICK descends MORE than place: place lowers a box the pads already
 # hold, but pick must plunge the OPEN pads down around the box body before closing
@@ -326,7 +343,7 @@ def refresh_device_pose(node, device, n=15, timeout=6.0):
     if not samples:
         fail(node, proto.ErrorCode.TAG_NOT_DETECTED,
              f"[vision] no /vision/device_pose in {timeout}s -- is "
-             f"wirebonder_vision_node.py running and the tag in FOV?")
+             f"tag_vision_node.py running and the tag in FOV?")
         return False
     arr = np.array(samples)
     med = np.median(arr, axis=0)            # ponytail: yaw ~0 here, no wrap handling
@@ -565,9 +582,37 @@ def run_legs(node, legs):
     return True
 
 
+def box_world_center(node, loc):
+    """World (odom) box-centre xyz at a location: base pocket via TF (the ref is
+    base_link), slot via the live device pose. None if TF is unavailable.
+    Top slots use the SETTLED box centre (SLOT_WORLD 'box', the same point the
+    grasp itself targets): the SLOT_OFFSET compose is the SPAWN height, which
+    sits ~70 mm below the settled box (Gazebo pops it up onto Cube_C) and
+    misses model_at's radius (measured: seq2 'no box model near the target')."""
+    if loc.kind == 'base':
+        return pockets.base_to_world(node, loc.ref)
+    letter = loc.ref[1]
+    if SLOT_WORLD.get(letter, {}).get('box') is not None:
+        return np.asarray(_to_odom(SLOT_LOCAL[letter]['box'], DEVICES[loc.ref[0]]),
+                          dtype=float)
+    return np.asarray(slot_world(*loc.ref)[0], dtype=float)
+
+
 def grasp(node, loc):
-    """Close on the magazine at loc; fail() with ATTACH_FAILED if the attach fails."""
-    if node.grasp_object(loc.model, loc.link):
+    """Close on the magazine at loc. The Gazebo model name is resolved HERE from
+    /gazebo/model_states (nearest model to the box centre) -- no hardcoded box
+    names. fail() with ATTACH_FAILED if nothing is there or the attach fails.
+    tol: base pockets sit 118 mm apart so the radius must stay tight; device
+    slots are >300 mm apart, so a generous radius absorbs settle/model offsets."""
+    model = pockets.model_at(node, box_world_center(node, loc),
+                             tol=0.06 if loc.kind == 'base' else 0.12)
+    if model is None:
+        return fail(node, proto.ErrorCode.ATTACH_FAILED,
+                    f"[pick {loc.name}] no box model near the target -- empty "
+                    f"spot, or /gazebo/model_states missing (gazebo_ros_state "
+                    f"plugin in cr.world; restart the sim after adding it)")
+    node.get_logger().info(f"[pick {loc.name}] grasping model '{model}'")
+    if node.grasp_object(model, loc.link):
         return True
     return fail(node, proto.ErrorCode.ATTACH_FAILED, f"[pick {loc.name}] ATTACHLINK failed")
 
@@ -597,6 +642,10 @@ def pick_top(node, loc, to_hub=True):
     if not node.linear_servo([0.0, 0.0, -HOVER_ABOVE], label=f"pick {loc.name} descend"):
         return False
     if not grasp(node, loc):
+        # Grasp failed with the open jaws wrapped around the box spot: back
+        # straight out (ascend) and home, never strand the arm in the slot.
+        node.linear_servo([0.0, 0.0, HOVER_ABOVE], label=f"pick {loc.name} abort ascend")
+        node.go_to_hub()
         return False
     if not node.linear_servo([0.0, 0.0, HOVER_ABOVE], label=f"pick {loc.name} ascend"):
         return False
@@ -667,6 +716,7 @@ def pick_front_staged(node, loc, to_hub=True):
         node.replay_reverse(fwd)
         return False
     if not grasp(node, loc):
+        node.replay_reverse(fwd)     # back out along the proven path, empty-handed
         return False
     node.attach_box_collision()
     # Retrace the outbound path in reverse: seat -> approach -> J1 back -> hub.
@@ -688,6 +738,8 @@ def pick_front(node, loc, to_hub=True):
     if not node.linear_servo(SLOT_INSERT * idir, label=f"pick {loc.name} insert"):
         return False
     if not grasp(node, loc):
+        node.linear_servo(-SLOT_INSERT * idir, label=f"pick {loc.name} abort retract")
+        node.go_to_hub()
         return False
     # Horizontal pull-out clears the device front, then RRT to the hub with the
     # carried-box phantom on.
@@ -714,6 +766,8 @@ def pick_base(node, loc, to_hub=True):
     if not node.linear_servo([0.0, 0.0, -HOVER_ABOVE + 0.01], label=f"pick {loc.name} descend"):
         return False
     if not grasp(node, loc):
+        node.linear_servo([0.0, 0.0, HOVER_ABOVE], label=f"pick {loc.name} abort ascend")
+        node.linear_servo(-d, label=f"pick {loc.name} abort retract")
         return False
     if not node.linear_servo([0.0, 0.0, HOVER_ABOVE], label=f"pick {loc.name} ascend"):
         return False
@@ -804,7 +858,11 @@ def place_front(node, loc, to_hub=True):
         # Still holding the box: retrace the proven prefix (just executed, so its
         # reverse is safe) back to the hub rather than stranding the arm mid-insert.
         node.replay_reverse(fwd)
-        return False
+        # The servo already ERROR-logged where/what it hit; set the MCS code too
+        # (this failure previously reported FAILED with no error code).
+        return fail(node, proto.ErrorCode.COLLISION,
+                    f"[place {loc.name}] aborted mid-place (collision-gated servo "
+                    f"stopped; box carried back to the hub)")
     node.release_object()
     # 4. retrace the proven forward path in reverse: up off the box, back out under
     #    part C, and home to the hub -- the empty gripper follows the same line.
@@ -1010,6 +1068,40 @@ def transfer(node, src, dst):
     # cycle can leak the carried-box phantom ON (nothing detaches it on failure)
     # -- then every pick approach false-collides ('carried_box' vs the device).
     node.detach_box_collision()
+    # Dynamic base pocket: ONE wrist-bend look at the base per command, then
+    # swap the static placeholder for the next usable pocket -- pick from the
+    # next pocket HOLDING a box, place into the next FREE one, scanning from
+    # the sequence default. None = vision not configured (--no-vision) -> keep
+    # the placeholder; a FAILED look reads all-UNKNOWN and aborts below.
+    if src.kind == 'base' or dst.kind == 'base':
+        occ = pockets.check_pockets(node)
+        if occ is not None:
+            if src.kind == 'base':
+                i = pockets.next_filled(occ, BASE_PICK_START, step=-1)
+                if i is None:
+                    return fail(node, proto.ErrorCode.NO_POCKET,
+                                f"[transfer] no base pocket holds a box "
+                                f"(occupancy {occ}; all -1 = look/read failed)")
+                src = base_loc(i)
+            if dst.kind == 'base':
+                i = pockets.next_free(occ, BASE_PLACE_START, step=-1)
+                if i is None:
+                    return fail(node, proto.ErrorCode.NO_POCKET,
+                                f"[transfer] no free base pocket "
+                                f"(occupancy {occ}; all -1 = look/read failed)")
+                dst = base_loc(i)
+            node.get_logger().info(
+                f"[transfer] base pocket resolved: "
+                f"{src.name if src.kind == 'base' else dst.name} "
+                f"y={(src if src.kind == 'base' else dst).ref[1]:+.3f}")
+    # Re-anchor ALL world-fixed collision to the CURRENT TF. The shelf boards /
+    # stock phantoms are static geometry in the model root, placed wherever the
+    # AGV was parked at placement time -- after DRIVING here (shelf -> device,
+    # main.py single-node flow) they sit at stale base-frame coords and can
+    # float straight across the slot approach (measured: 'shelf_stock_t12'
+    # blocked the slot-A place lower at the wb park). Live shelf pose if a
+    # capture set it (main.py locate('shelf')), else the SHELF_WORLD_POSE anchor.
+    node.update_shelf_collision(getattr(node, 'shelf_pose', None))
     # Place the wirebonder body at the involved device so the RRTs avoid it.
     for loc in (src, dst):
         if loc.kind == 'slot':
@@ -1132,10 +1224,15 @@ def main(args=None):
     use_vision = '--no-vision' not in sys.argv
     if use_vision:
         # Vision layer: the device pose arrives on /vision/device_pose (odom) from
-        # wirebonder_vision_node.py. Cache the latest; refresh_device_pose() reads it.
+        # tag_vision_node.py. Cache the latest; refresh_device_pose() reads it.
         node._vision_pose = None
         node.create_subscription(PoseStamped, '/vision/device_pose',
                                  lambda m: setattr(node, '_vision_pose', m), 10)
+        # Pocket-occupancy cache (check_pockets reads it at command time).
+        pockets.subscribe(node)
+    # Gazebo model-name cache: grasps resolve the box model via model_at() in
+    # sim, vision or not.
+    pockets.subscribe_models(node)
 
     executor = MultiThreadedExecutor()
     executor.add_node(node)

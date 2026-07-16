@@ -57,20 +57,16 @@ def generate_launch_description():
                                    # Gazebo world pose (gz model -m cr7_on_mpo700 -p)
                                    # after teleoping to the working position. yaw ~ 0.
                                    # To revert to origin, restore -x '0' -y '0'.
-                                   # '-x', '2.16', '-y', '-0.08', '-z', '-0.005'],
                                    # 0.683/0.008: single park where all 4 tier-1
                                    # magazines are reachable (shelf_pick_place.py).
                                    '-x', '0.683', '-y', '0.008', '-z', '0.0'],
                                 #    '-x', '2.16', '-y', '-0.08', '-z', '-0.005'], # infront of wb device
                         output='screen')
 
-    # Base-pocket magazine, spawned AFTER the robot so it lands on the (late-
-    # spawned) cube instead of free-falling during the world->robot spawn gap.
-    # World pose matches the +Y outer pocket marker (see cr.world).
-    spawn_box_l2c = Node(package='gazebo_ros', executable='spawn_entity.py',
-                         arguments=['-database', 'box', '-entity', 'box_l2c',
-                                    '-x', '1.97475', '-y', '0.097', '-z', '1.028'],
-                         output='screen')
+    # (box_l2c stowaway spawn removed 2026-07-15: its coords matched the old wb
+    # park, so at the current shelf spawn it just fell on the floor. Base-pocket
+    # boxes now come from the shelf flow, and the wirebonder base pick resolves
+    # whatever box is there via the pocket occupancy scan + model_at.)
 
     # Joint state broadcaster
     load_joint_state_controller = ExecuteProcess(
@@ -96,7 +92,7 @@ def generate_launch_description():
     close_evt1 = RegisterEventHandler(
         event_handler=OnProcessExit(
             target_action=spawn_entity,
-            on_exit=[spawn_box_l2c, load_joint_state_controller],
+            on_exit=[load_joint_state_controller],
         )
     )
     close_evt2 = RegisterEventHandler(

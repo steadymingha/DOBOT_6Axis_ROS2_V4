@@ -489,13 +489,21 @@ class CBiRRTPickPlace(CR7Node):
                      if objs[i].parentJoint != 0 and i != box_idx]
         far = pin.SE3(np.eye(3), np.array([0.0, 0.0, -100.0]))
         # World-frame dims for the yaw-90 spawn: short side along the row (x),
-        # long side into the shelf (y). FULL SIZE: any shrink lets the planner
-        # graze real boxes by that much (the 10 mm/side legacy shrink is what
-        # brushed neighbours on the approach spoke). The TARGET box is parked
-        # absent during its pick, so nothing legitimate ever needs to enter a
-        # resting box's volume. On the REAL robot set this NEGATIVE (inflate) by
-        # the vision + tracking uncertainty -- avoidance wants margin, not slack.
-        STOCK_SHRINK = 0.0     # total per dimension; negative = inflate
+        # long side into the shelf (y). NEVER positive (shrink): the 10 mm/side
+        # legacy shrink let the planner graze real boxes. The TARGET box is
+        # parked absent during its pick, so nothing legitimate ever needs to
+        # enter a resting box's volume.
+        # INFLATED 3 mm/side (user-approved 2026-07-15): the vision-driven flow
+        # carries real uncertainty -- grasp seating varies +-3-4 mm per grasp
+        # (contact physics), so with full-size phantoms a randomly-sampled
+        # carry that hugs a phantom brushed the REAL neighbour box on some runs
+        # (carry #2 knocked shelf box #3). Inflation buys that budget; cost is
+        # 3 mm/side off the shelf descend-preflight margin (inter-box gap
+        # ~100 mm, so branches should still pass -- watch for "no IK branch
+        # passes insert+descend"). Shelf stock ONLY: the wirebonder body meshes
+        # and SLOT_WORLD margins are a separate geometry set, unaffected.
+        # Same treatment planned on the REAL robot with the measured budget.
+        STOCK_SHRINK = -0.006  # total per dimension; negative = inflate
         dims = (BOX_SIZE[0] - STOCK_SHRINK, BOX_SIZE[1] - STOCK_SHRINK,
                 BOX_SIZE[2] - STOCK_SHRINK)
         self.shelf_stock_geoms = {}
@@ -635,7 +643,14 @@ class CBiRRTPickPlace(CR7Node):
         collision-free branch). Used by plan_rrt-based movers."""
         return self.compute_ik_ordered(target_pose, max_retries=max_retries)
 
-    def compute_ik_ordered(self, target_pose: PoseStamped, max_retries=200,
+    # max_retries 200 -> 600 (2026-07-15): the first `near_attempts` seeds
+    # cluster near the CURRENT arm pose, so when a previous aborted run leaves
+    # the arm in a posture whose nearby IK branch collides, those attempts are
+    # wasted and the remaining random restarts were too few -- bringup
+    # intermittently failed with "ok=88, collision-free=0" and succeeded on a
+    # re-run. Only the failure path gets slower (~8 s instead of ~3 s); success
+    # still breaks out at `want_candidates`.
+    def compute_ik_ordered(self, target_pose: PoseStamped, max_retries=600,
                            want_candidates=12, near_attempts=80, near_sigma=0.25,
                            return_all=False):
         """IK returning joints in joint1..joint6 order, within limits (or None).
@@ -1074,6 +1089,63 @@ class HubPickPlace(CBiRRTPickPlace):
                 self.collision.geom.removeCollisionPair(cp)
         self.collision.geom_data = self.collision.geom.createData()
         self._box_stock_on = on
+
+    def level_base(self, tol_deg=0.2, tol_z=0.003):
+        """SIM-ONLY: teleport the AGV upright (roll = pitch = 0, z = 0) at its
+        current x/y/yaw. gazebo_ros_planar_move zeroes the tilt VELOCITY every
+        tick but has no restoring path, so contact impulses (grasp presses,
+        attach fights) RATCHET roll/pitch/z cycle after cycle -- measured
+        -1.7/-1.3 deg after one test session, which at slot-D reach is ~30 mm
+        of TCP error plus visible base wobble under acceleration (see the note
+        at the <gazebo> base block in cr7_on_mpo700.urdf.xacro). The real
+        AGV's mass makes this failure class impossible, so this is a no-op
+        when the gazebo state services are absent.
+        NOT CALLED since 2026-07-16: the x10 ballast bump (cube_link 5000 kg /
+        I=20000, mpo 1400 kg) shrank the per-impulse ratchet below relevance,
+        replacing the per-cycle calls. Kept as a MANUAL repair/diagnostic --
+        drift never restores on its own, so if a marathon session creeps,
+        call this (or re-add the cycle-start calls).
+        Requires the gazebo_ros_state plugin (cr.world). Returns True when the
+        base is level (already or after the teleport)."""
+        import math as m
+        from gazebo_msgs.srv import GetEntityState, SetEntityState
+        if not hasattr(self, '_get_state_cli'):
+            self._get_state_cli = self.create_client(
+                GetEntityState, '/gazebo/get_entity_state')
+            self._set_state_cli = self.create_client(
+                SetEntityState, '/gazebo/set_entity_state')
+        if not self._get_state_cli.wait_for_service(timeout_sec=2.0):
+            return False                     # real robot: nothing to level
+        req = GetEntityState.Request()
+        req.name = self.robot_model
+        fut = self._get_state_cli.call_async(req)
+        if not self._wait_future(fut, 5.0, "get base state") or not fut.result().success:
+            return False
+        p = fut.result().state.pose
+        q = p.orientation
+        roll = m.atan2(2 * (q.w * q.x + q.y * q.z), 1 - 2 * (q.x * q.x + q.y * q.y))
+        pitch = m.asin(max(-1.0, min(1.0, 2 * (q.w * q.y - q.z * q.x))))
+        yaw = m.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))
+        if (abs(roll) < m.radians(tol_deg) and abs(pitch) < m.radians(tol_deg)
+                and abs(p.position.z) < tol_z):
+            return True
+        from gazebo_msgs.msg import EntityState
+        st = EntityState()
+        st.name = self.robot_model
+        st.pose.position.x = p.position.x
+        st.pose.position.y = p.position.y
+        st.pose.position.z = 0.0
+        st.pose.orientation.z = m.sin(yaw / 2.0)
+        st.pose.orientation.w = m.cos(yaw / 2.0)
+        sreq = SetEntityState.Request()
+        sreq.state = st
+        fut = self._set_state_cli.call_async(sreq)
+        ok = bool(self._wait_future(fut, 5.0, "level base") and fut.result().success)
+        if ok:
+            self.get_logger().info(
+                f"[level] base releveled: was roll {m.degrees(roll):+.2f} "
+                f"pitch {m.degrees(pitch):+.2f} deg, z {p.position.z * 1000:+.1f} mm")
+        return ok
 
     # --- grasp / release (the two blocks every pick and place share) ---
 

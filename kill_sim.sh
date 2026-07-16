@@ -11,7 +11,13 @@ PATTERNS="gzserver gzclient spawn_entity robot_state_publisher move_group ros2_c
 # Arm-side nodes: stale duplicates here publish conflicting /vision/device_pose (two
 # vision nodes) or double-consume commands, which silently corrupts a capture. Kill
 # them too. main.py pattern is path-qualified so it can't match unrelated main.py.
-ARM_PATTERNS="wirebonder_vision_node wirebonder_pick_place shelf_pick_place test_shelf_cycle DOBOT_6Axis_ROS2_V4/main.py mcs_bridge mcs_server"
+# octomap_server / realsense2_camera_node: leftovers from camera experiments.
+# A survivor keeps a participant with the OLD ROS_LOCALHOST_ONLY value in the
+# graph; every NEW node then stalls its discovery retrying that unreachable
+# peer -> "Trajectory goal send timed out" / half-matched action clients
+# (measured 2026-07-15: a day-old octomap_server made fresh goal sends a coin
+# flip; killing it -> 3/3 goals in 1-2 s).
+ARM_PATTERNS="tag_vision_node wirebonder_pick_place shelf_pick_place test_shelf_cycle DOBOT_6Axis_ROS2_V4/main.py mcs_bridge mcs_server octomap_server realsense2_camera_node"
 
 echo "=== Before ==="
 ps aux | grep -E "gzserver|gzclient|spawn_entity|robot_state_publisher|move_group|ros2_control_node|controller_manager|rqt_image_view|image_view|view_d405|ros2 launch" | grep -v grep | wc -l
@@ -48,7 +54,7 @@ echo "=== Cleared ros2 daemon + fastrtps shared memory ==="
 
 # Verify no stale arm nodes remain -- a lingering 2nd vision node is what silently
 # poisons /vision/device_pose (correct capture, wrong pose read by the transfer).
-ARM_REMAIN=$(pgrep -af "wirebonder_vision_node|wirebonder_pick_place|shelf_pick_place|DOBOT_6Axis_ROS2_V4/main.py|mcs_bridge|mcs_server" | grep -vE "pgrep|bash -c" | wc -l)
+ARM_REMAIN=$(pgrep -af "tag_vision_node|wirebonder_pick_place|shelf_pick_place|DOBOT_6Axis_ROS2_V4/main.py|mcs_bridge|mcs_server|octomap_server|realsense2_camera_node" | grep -vE "pgrep|bash -c" | wc -l)
 echo "=== Arm nodes: $ARM_REMAIN remaining ==="
 if [ "$ARM_REMAIN" -ne 0 ]; then
   echo "WARNING: stale arm node(s) alive -- 'ros2 topic info /vision/device_pose' should show Publisher count: 1"

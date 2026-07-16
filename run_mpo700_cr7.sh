@@ -11,6 +11,16 @@ export DISPLAY=:0
 export __GLX_VENDOR_LIBRARY_NAME=nvidia
 export DOBOT_TYPE=cr7
 export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/home/user/dobot_ws/src/blender
+# Single-machine cell: keep DDS discovery on loopback only. Multi-interface
+# discovery caused minutes of degraded endpoint matching right after a sim
+# relaunch (2026-07-15: action goal send timed out 20s on the first run).
+# Unset only if ROS topics must be visible from another machine (MCS is plain
+# TCP, unaffected). Must match the other terminals (set in ~/.bashrc too).
+export ROS_LOCALHOST_ONLY=1
+# Wide-probe discovery: localhost probing covers 64 participant slots, not 4
+# (9+ participants here; a controller landing on a high slot took 15-20 s for
+# fresh nodes to find -> goal send timeouts). See fastdds_localhost.xml.
+export FASTRTPS_DEFAULT_PROFILES_FILE=$HOME/dobot_ws/fastdds_localhost.xml
 
 # ponytail: strip conda from PATH so python3 -> /usr/bin/python3. conda base
 # shadows ROS's pyyaml -> xacro dies -> empty robot_description -> no robot in

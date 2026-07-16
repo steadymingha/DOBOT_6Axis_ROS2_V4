@@ -12,7 +12,7 @@
        Gazebo-sim robots; false for the MoveIt-only description, which has none). -->
   <xacro:macro name="cr7_gripper" params="gazebo_props:=true">
 
-    <xacro:property name="mesh" value="file:///home/user/dobot_ws/src/blender/gripper_long"/>
+    <xacro:property name="mesh" value="file://$(env HOME)/dobot_ws/src/blender/gripper_long"/>
 
     <!-- Fixed part: flange + body + integral L-jaw + fixed pad -->
     <link name="gripper_base_link">

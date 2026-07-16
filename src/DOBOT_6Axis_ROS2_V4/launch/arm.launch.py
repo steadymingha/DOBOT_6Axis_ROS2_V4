@@ -19,8 +19,8 @@ PY = '/usr/bin/python3'   # cv2 4.5.4 + apt pinocchio both live here
 def generate_launch_description():
     return LaunchDescription([
         ExecuteProcess(
-            cmd=[PY, os.path.join(PKG, 'vision', 'wirebonder_vision_node.py')],
-            name='wirebonder_vision', output='screen'),
+            cmd=[PY, os.path.join(PKG, 'vision', 'tag_vision_node.py')],
+            name='tag_vision', output='screen'),
         ExecuteProcess(
             cmd=[PY, os.path.join(PKG, 'main.py')],
             name='mcs_dispatcher', output='screen'),

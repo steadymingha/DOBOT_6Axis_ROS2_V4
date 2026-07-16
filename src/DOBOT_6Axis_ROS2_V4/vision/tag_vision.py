@@ -1,14 +1,21 @@
-"""Wirebonder AprilTag vision: detect tag -> device/slot poses in base_link.
+"""Shared AprilTag vision: detect tag -> upright model pose in base_link.
+
+Serves BOTH flows from one module -- wirebonder DEVICE tags (IDs 0/1, config here:
+TAG0_* / SLOT_OFFSET / slots_in_base) and SHELF tags (IDs 2/3, config here:
+SHELF_TAG_* / T_SHELF_TAG / shelf_pose_in_base). Both go through the SAME
+detect_tag -> device_pose_in_base pipeline; only the tag id and the tag-in-model
+pose (T_model_tag) differ, so the tag configs sit side by side and the core is
+written once. tag_vision_node.py runs this on the live camera and publishes both
+/vision/device_pose and /vision/shelf_pose.
 
 Pure detection + SE3 geometry (no rclpy here, so it stays offline-testable). The
-ROS plumbing (image/camera_info subscriptions, TF lookup) lives in the diagnostic
-node (__main__ of wirebonder_vision_node.py, Task 2) and later in the pick/place
-script (Task 3); both feed this module the captured frame, the camera intrinsics
-and the base_link <- d405_optical_frame transform.
+ROS plumbing (image/camera_info subscriptions, TF lookup) lives in tag_vision_node.py
+and the pick/place scripts; they feed this module the captured frame, the camera
+intrinsics and the base_link <- d405_optical_frame transform.
 
-Markers are AprilTag 36h11 (textures april_36h11-*.png), 30 mm, IDs 0/1. We use
-ID 0 only -- it sits on the device's left column above slots A/B and one tag gives
-a full 6-DoF pose. Detected with cv2.aruco (OpenCV 4.5.4 old API).
+Markers are AprilTag 36h11 (textures april_36h11-*.png), 30 mm. The wirebonder uses
+ID 0 (device left column, above slots A/B; one tag gives a full 6-DoF pose); the
+shelf uses one tag per tier. Detected with cv2.aruco (OpenCV 4.5.4 old API).
 
 Frames:
     optical : d405_optical_frame (ROS image convention, z forward)
@@ -236,7 +243,7 @@ def device_pose_in_base(T_base_optical, solutions, depth=None, K=None, corners=N
     (T[2,2] closest to +1). ponytail: assumes base_link z ~ world up (flat floor).
 
     T_model_tag: the tag's pose in the MODEL frame (4x4). Default = the wirebonder
-    T_MODEL_TAG; pass another (e.g. a shelf tag from shelf_vision.py) to solve any
+    T_MODEL_TAG; pass another (e.g. T_SHELF_TAG[tier] below) to solve any
     upright model that carries an upright tag with the same pipeline.
     plane_scale: how far around the tag the plane fit samples (default
     PLANE_SCALE). Use ~1.0 for a tag on a SMALL placard (shelf): the x2 expansion
@@ -305,6 +312,46 @@ def slots_in_base(T_base_model, letters=('A', 'B', 'C', 'D')):
         p_base = (T_base_model @ np.append(p_model, 1.0))[:3]
         out[L] = (p_base, quat)
     return out
+
+
+# --- shelf model config (tier ArUco -> shelf model frame) ----------------------
+# The shelf carries one upright 30 mm 36h11 tag per tier (IDs 2/3), SAME plate
+# convention as the wirebonder tags above (vertical, facing the robot -y,
+# roll = pi/2), so only the id and the tag-in-model pose differ -- the shelf reuses
+# device_pose_in_base with T_model_tag=T_SHELF_TAG[tier]. MIRRORS
+# blender/shelf/model.sdf (aruco_tier1/2) and cr7_pnp/geometry.py (SHELF_TAG_XY /
+# SHELF_TIER_TOPS) -- keep the three in sync. On the REAL shelf, stick printed tags
+# and replace these poses with measured values; nothing else changes
+# (docs/shelf_aruco_pick_plan.md section 3).
+SHELF_TAG_ID = {1: 2, 2: 3}
+
+# Tag pose in the SHELF MODEL frame: standing placard at the board front edge, left
+# of the box row. z = board top + half plate (0.0375/2); roll pi/2 turns the plate
+# to face the robot (-y) -- identical convention to the wirebonder tags.
+SHELF_TAG_XYZ = {1: (-0.45, -0.1505, 0.91875), 2: (-0.45, -0.1505, 1.41875)}
+SHELF_TAG_RPY = (math.pi / 2.0, 0.0, 0.0)
+
+# tier -> T_model_tag (4x4), passed to device_pose_in_base(T_model_tag=...).
+T_SHELF_TAG = {tier: make_T(rpy_to_R(*SHELF_TAG_RPY), xyz)
+               for tier, xyz in SHELF_TAG_XYZ.items()}
+
+
+def shelf_pose_in_base(T_base_optical, tier, bgr, K, depth=None, dist=None):
+    """Detect the `tier` shelf tag in `bgr` and return T_base_shelfmodel (4x4), or
+    None if the tag is not visible. Same depth-upright pipeline as the wirebonder
+    device pose (shelf assumed upright on a flat floor)."""
+    tag_id = SHELF_TAG_ID[tier]
+    det = detect_tag(bgr, K, dist, tag_id=tag_id)
+    if det is None:
+        return None
+    corners = detect_tag_corners(bgr, tag_id=tag_id)
+    # plane_scale=1.0: the tag sits on a SMALL placard at the board edge, so the
+    # plane fit must sample only the tag's own surface -- the default x2 expansion
+    # sweeps in the board below / boxes behind (other depths) and tilts the normal,
+    # kicking the solve off the depth-upright path.
+    return device_pose_in_base(T_base_optical, det, depth=depth, K=K,
+                               corners=corners, dist=dist,
+                               T_model_tag=T_SHELF_TAG[tier], plane_scale=1.0)
 
 
 # --- depth (RGBD range) --------------------------------------------------------
@@ -703,7 +750,7 @@ def _demo():
     rec_pin = _deproject(px_pin.ravel(), p10[2], K10)
     assert np.allclose(rec_pin, p10, atol=1e-6), "pinhole deprojection unchanged"
 
-    print("wirebonder_vision self-check: OK")
+    print("tag_vision self-check: OK")
 
 
 if __name__ == '__main__':

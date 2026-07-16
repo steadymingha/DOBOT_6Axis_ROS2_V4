@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- Fast DDS profile for this single-machine cell (ROS_LOCALHOST_ONLY=1).
+     Default UDPv4 discovery only probes the first 4 participant slots on
+     127.0.0.1 (maxInitialPeersRange=4); this graph has 9+ participants, so a
+     participant landing on a high slot (e.g. the gazebo_ros2_control
+     controller_manager) is found only via slow fallback paths -> fresh nodes
+     took 15-20 s to match the trajectory action server ("Trajectory goal send
+     timed out (20s)", measured 2026-07-15). Raise the probe range to 64 and
+     keep SHM + UDP transports. Loaded via FASTRTPS_DEFAULT_PROFILES_FILE
+     (bashrc + run scripts). -->
+<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+  <transport_descriptors>
+    <transport_descriptor>
+      <transport_id>udp_wide_probe</transport_id>
+      <type>UDPv4</type>
+      <maxInitialPeersRange>64</maxInitialPeersRange>
+    </transport_descriptor>
+    <transport_descriptor>
+      <transport_id>shm_default</transport_id>
+      <type>SHM</type>
+    </transport_descriptor>
+  </transport_descriptors>
+  <participant profile_name="localhost_wide_probe" is_default_profile="true">
+    <rtps>
+      <userTransports>
+        <transport_id>shm_default</transport_id>
+        <transport_id>udp_wide_probe</transport_id>
+      </userTransports>
+      <useBuiltinTransports>false</useBuiltinTransports>
+    </rtps>
+  </participant>
+</profiles>

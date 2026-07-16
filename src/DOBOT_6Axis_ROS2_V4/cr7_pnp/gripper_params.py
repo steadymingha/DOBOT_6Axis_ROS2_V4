@@ -30,7 +30,7 @@ JAW_MOVING_PAD_X0 = 0.1022   # moving pad inner face at q=0, pad_moving.stl Xmax
 # collision model freezes the finger HERE: frozen at neutral (q=0) the real
 # OPEN moving jaw travels 30 mm outside the model and brushes shelf boxes
 # the planner thinks it cleared (measured).
-FINGER_OPEN_M = 0.03
+FINGER_OPEN_M = 0.015
 JAW_GAP_AT_ZERO = JAW_FIXED_PAD_X - JAW_MOVING_PAD_X0   # 81.0 mm (== BOX_SHORT)
 PAD_BOTTOM_BELOW_FLANGE = 0.0821   # pad lower edge, metres below the flange face
 BOX_SHORT = 0.081            # box graspable width (short side)

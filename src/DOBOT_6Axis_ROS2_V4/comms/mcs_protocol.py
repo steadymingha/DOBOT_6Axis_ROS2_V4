@@ -62,6 +62,8 @@ class ErrorCode(IntEnum):
     ATTACH_FAILED = 9          # ATTACHLINK/DETACHLINK (grasp/release) failed
     GRIPPER_FAULT = 10         # gripper action server unavailable or goal rejected (hardware)
     INIT_FAILED = 11           # hub bring-up failed / could not reach the hub at startup
+    NO_POCKET = 12             # pocket occupancy scan: no usable base pocket (pick:
+                               # none holds a box; place: none free)
     # split finer only if MCS needs to act differently on a sub-case
 
 

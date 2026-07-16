@@ -9,6 +9,17 @@
       <uri>model://sun</uri>
     </include>
 
+    <!-- Publish /gazebo/model_states so the sequences can resolve WHICH box
+         model sits at a pocket/slot at runtime (pocket_vision.model_at)
+         instead of hardcoding box names. 2 Hz is plenty: it is read once per
+         grasp. Sim-only seam; the real robot has no attacher and never asks. -->
+    <plugin name="gazebo_ros_state" filename="libgazebo_ros_state.so">
+      <ros>
+        <namespace>/gazebo</namespace>
+      </ros>
+      <update_rate>2.0</update_rate>
+    </plugin>
+
     <!-- AGV body + cube platform are now part of the robot URDF
          (cr7_on_mpo700.urdf.xacro: MPO-700 base + cube_link),
          so they move together with the arm. -->
@@ -47,7 +58,7 @@
     </include>
 
     <!-- Shelf boxes, 4 per tier. Names box_t<tier><a-d>; a,b = inner pair,
-         c,d = outer flank (one box-pitch 0.181 out) -- the PICK ORDER of
+         c,d = outer flank (one box-pitch 0.181 out); the PICK ORDER of
          sequences/shelf_pick_place.py (SHELF_BOX_XS in cr7_pnp/geometry.py;
          keep both in sync). z = board top + half box height (0.07). -->
     <include>
@@ -95,10 +106,14 @@
     <!-- Wirebonder magazines: box_l2a -> slot B (G_L), box_l2b -> slot D (H_R).
          Place centre = rail centre +y by (rail_half 0.0075 + mag_half 0.0405 +
          5 mm gap) = +0.053; yaw 0 so the 236 mm side runs along the rail (world x).
-         Coords from spawn_device_markers.py rail centres. -->
+         Coords from spawn_device_markers.py rail centres.
+         box_l2a z: 1.281 (rail-centre convention) sat 64 mm INTO the Cube_C
+         shelf; Gazebo popped it up to the settled 1.355 (= SLOT_WORLD['B']
+         measured value), which put spawn-height composes 70 mm off the real
+         box. Spawn AT the settled height so spawn == rest (2026-07-15). -->
     <include>
       <name>box_l2a</name>
-      <pose>2.002 0.441 1.281 0 0 0</pose>
+      <pose>2.002 0.441 1.355 0 0 0</pose>
       <uri>model://box</uri>
     </include>
     <include>
@@ -106,19 +121,19 @@
       <pose>2.698 0.441 0.896 0 0 0</pose>
       <uri>model://box</uri>
     </include>
-    <!-- box_l2c is spawned onto the +Y (largest-y) robot pocket by the launch
-         file (spawn_box_l2c), AFTER the robot, so it is NOT included here. -->
+    <!-- (the box_l2c pocket stowaway spawn was removed 2026-07-15; base-pocket
+         boxes come from the shelf flow now) -->
     <!-- The floating aruco_box was removed: shelf localisation now uses the
          per-tier AprilTag plates baked into shelf/model.sdf (IDs 2/3). -->
 
     <!-- GUI camera initial viewpoint -->
     <gui>
       <camera name="user_camera">
-        <!-- <pose>2.1 -1.8 1.8 0 0.42 2.36</pose> -->
-        <!-- <pose>0.73 0.04 1.11 0.0 0.3 1.55</pose> -->
+        <pose>-0.82 -0.63 1.68 0.0 0.29 0.47</pose>
+
         <!-- <pose>0.48 -3.15 1.95 0.0 0.34 1.48</pose> -->
         <!-- <pose>-0.89 0.001 1.04 0.0 0.24 0.1</pose> -->
-        <pose>3.94 -0.43 1.57 0.0 0.28 2.8</pose>
+        <!-- <pose>3.94 -0.43 1.57 0.0 0.28 2.8</pose> -->
       </camera>
     </gui>
 

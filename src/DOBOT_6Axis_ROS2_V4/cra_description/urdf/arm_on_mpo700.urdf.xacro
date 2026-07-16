@@ -208,7 +208,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="1.5707963 0 1.5707963"/>
       <geometry>
-        <mesh filename="file:///home/user/dobot_ws/src/realsense-ros/realsense2_description/meshes/d405.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="file://$(find cra_description)/meshes/d405.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="d405_alu"><color rgba="0.7 0.72 0.75 1"/></material>
     </visual>
@@ -218,7 +218,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="1.5707963 0 1.5707963"/>
       <geometry>
-        <mesh filename="file:///home/user/dobot_ws/src/realsense-ros/realsense2_description/meshes/d405.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="file://$(find cra_description)/meshes/d405.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
     -->

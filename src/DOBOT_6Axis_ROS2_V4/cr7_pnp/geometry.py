@@ -69,11 +69,17 @@ SHELF_TIER_TOPS = {1: 1.22, 2: 1.72}
 # Mirrors the box_t<tier><a-d> spawns in cr.world -- keep both in sync.
 SHELF_BOX_XS = (-0.0905, +0.0905, -0.2715, +0.2715)
 SHELF_BOX_Y = 0.0
+# Per-box GRASP x nudge (shelf MODEL frame, PICK order), applied to the pick
+# target only (NOT the stock phantoms -- those model where the box rests).
+# TUNE: box c (idx 2, outer-left) tends to be gripped at its edge and tips;
+# set from the "[grasp-offset]" log printed at each attach (the measured
+# box-centre minus target vector), don't guess. Default 0.
+SHELF_BOX_X_NUDGE = (0.0, 0.0, 0.0, 0.0)
 
 
 # Per-tier ArUco placard placement in the SHELF MODEL frame (x, y at the board
 # front edge left of the box row; centre rises half a plate above the board top).
-# MIRRORS shelf/model.sdf (aruco_tier1/2) and vision/shelf_vision.py -- keep the
+# MIRRORS shelf/model.sdf (aruco_tier1/2) and vision/tag_vision.py -- keep the
 # three in sync. The sequence uses this only to AIM the capture pose; the pose
 # solve itself lives in the vision node.
 SHELF_TAG_XY = (-0.45, -0.1505)
@@ -96,7 +102,7 @@ def shelf_box_center(tier, i, shelf_pose=SHELF_WORLD_POSE):
     AI magazine detector replaces later: today the centre is layout-derived from
     the ArUco shelf pose; the detector will return a measured centre instead."""
     x, y, yaw = shelf_pose
-    bx, by = SHELF_BOX_XS[i], SHELF_BOX_Y
+    bx, by = SHELF_BOX_XS[i] + SHELF_BOX_X_NUDGE[i], SHELF_BOX_Y
     c, s = math.cos(yaw), math.sin(yaw)
     from .gripper_params import BOX_SIZE as _BS
     return (x + c * bx - s * by, y + s * bx + c * by,
@@ -227,7 +233,13 @@ GRIPPER_YAW_TWIST = math.radians(90)   # rad, J6 in-place rotation; sign TUNE IN
 # Heights / clearances. GRASP_TCP_ABOVE / INSERT_TCP_ABOVE come from
 # gripper_params (TCP = Link6 + 0.12005 along tool z, IK-target convention).
 PREGRASP_BACK = 0.25       # start this far in front of the shelf (along -insertion)
-POCKET_HOVER = 0.18        # tip height above the pocket surface to hover before placing
+# 0.18 -> 0.38 (2026-07-16): hover/traverse height must clear boxes ALREADY
+# sitting in pockets. At 0.18 the carried box's bottom crossed 115 mm BELOW an
+# occupied neighbour's top, so the reversed fill order's last carry (hub ->
+# pocket 0 passes over occupied pocket 1) knocked the placed boxes off. At
+# 0.38 the traverse rides at hub height with the carried-box bottom ~85 mm
+# above box tops; the guarded place descend absorbs the longer vertical drop.
+POCKET_HOVER = 0.38        # tip height above the pocket surface to hover before placing
 PLACE_TCP_ABOVE = 0.08     # TCP above the pocket surface at release
 # Folded standby pose: arm stays tucked low until a trigger moves it out.
 STANDBY_POSE_DEG = [-8, -39, -105, 0, 0, 0]

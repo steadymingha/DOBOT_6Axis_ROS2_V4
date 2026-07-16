@@ -53,7 +53,7 @@ from tf2_ros import Buffer, TransformListener
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), 'vision'))
-import wirebonder_vision as wv  # noqa: E402
+import tag_vision as wv  # noqa: E402
 
 # Ground truth: device pose from cr.world (odom == world, verified against
 # `gz model -m wirebonder -p` and the mpo700 model pose vs /odom).
@@ -84,7 +84,7 @@ def T_of(x, y, z, yaw):
 
 
 # GT tag corners/centre in odom, in the OpenCV tag frame convention the
-# detector uses (same composition as wirebonder_vision._demo case 5).
+# detector uses (same composition as tag_vision._demo case 5).
 T_ODOM_TAGCV = (T_of(*GT_DEVICE) @ wv.T_MODEL_TAG
                 @ wv.inv_T(wv.make_T(wv.R_CV_TO_SDF, np.zeros(3))))
 OBJP = wv._marker_object_points(wv.TAG_SIZE_M)

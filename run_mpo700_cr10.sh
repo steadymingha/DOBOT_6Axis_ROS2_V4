@@ -14,6 +14,8 @@ export ARM_TYPE=cr10          # <-- change to cr12 / cr16 / cr20 to swap the arm
 export DISPLAY=:0
 export __GLX_VENDOR_LIBRARY_NAME=nvidia
 export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/home/user/dobot_ws/src/blender
+export ROS_LOCALHOST_ONLY=1   # single-machine cell; see run_mpo700_cr7.sh note
+export FASTRTPS_DEFAULT_PROFILES_FILE=$HOME/dobot_ws/fastdds_localhost.xml
 
 # ponytail: strip conda from PATH so python3 -> /usr/bin/python3 (conda base shadows
 # ROS's pyyaml -> xacro dies -> empty robot_description). Don't 'exit' if sourced.

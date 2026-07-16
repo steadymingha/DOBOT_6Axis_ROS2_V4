@@ -5,9 +5,12 @@
 
     <link name="mpo_base_link">
         <inertial>
-            <mass value="140"/>
+            <!-- x10 (2026-07-16), with the cube_link ballast bump: shrink the
+                 contact-impulse ratchet. planar_move drives by velocity, so
+                 teleop is unaffected. -->
+            <mass value="1400"/>
             <origin xyz="0 0 0"/>
-            <inertia ixx="7.8" ixy="0.0" ixz="0" iyy="7.8" iyz="0.0" izz="7.8"/>
+            <inertia ixx="78" ixy="0.0" ixz="0" iyy="78" iyz="0.0" izz="78"/>
         </inertial>
         <visual>
             <origin rpy="0 0 -1.571" xyz="0.0 0.0 0.0"/>

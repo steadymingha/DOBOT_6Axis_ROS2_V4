@@ -42,10 +42,16 @@
          IK/collision solver (cube_link is a fixed, locked link, so its inertia
          never enters the purely kinematic IK or collision checks); it only
          changes Gazebo physics. -->
+    <!-- x10 ballast bump (2026-07-16): 500 kg / I=2000 still ratcheted a few
+         mm-deg per cycle (no restoring force, so every impulse leaves a
+         residue). With x10 the same impulses leave ~1/10 the residue; combined
+         with the guarded pocket place (no more 5 mm press) the per-cycle drift
+         should be sub-mm, replacing the level_base teleport calls. Driving is
+         unaffected: planar_move commands VELOCITY, not force. -->
     <inertial>
-      <mass value="500.0"/>
+      <mass value="5000.0"/>
       <origin xyz="0 0 -0.35" rpy="0 0 0"/>
-      <inertia ixx="2000.0" ixy="0" ixz="0" iyy="2000.0" iyz="0" izz="2000.0"/>
+      <inertia ixx="20000.0" ixy="0" ixz="0" iyy="20000.0" iyz="0" izz="20000.0"/>
     </inertial>
     <!-- Front half (+X): robot mounting area, 0.3705 x 0.509 x 0.66 m
          (grown upward to put base_link 1000 mm above the floor; bottom still
@@ -332,10 +338,13 @@
        plugin and the arm is position-controlled. NOTE (2026-07-12): roll/pitch/z
        still RATCHET from contact impulses regardless of gravity, because
        gazebo_ros_planar_move zeroes angular-x/y and linear-z velocity every tick
-       (no restoring path; gravity-on was tried and changed nothing). The shelf
-       sequence therefore re-LEVELS the base by teleport at each park
-       (shelf_pick_place._level_base), a sim-only workaround; the real AGV's
-       mass/suspension makes this failure class physically impossible. -->
+       (no restoring path; gravity-on was tried and changed nothing). Treatment
+       history: per-cycle level_base teleports (2026-07-15) were RETIRED on
+       2026-07-16 in favour of the x10 ballast bump (cube_link inertial below;
+       mpo_base_link in cr7_mpo700_body.urdf.xacro), which shrinks the
+       per-impulse residue ~x10; node.level_base remains available as a manual
+       repair. The real AGV's mass/suspension makes this failure class
+       physically impossible. -->
   <gazebo reference="mpo_base_link">
     <gravity>false</gravity>
   </gazebo>
@@ -407,7 +416,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="1.5707963 0 1.5707963"/>
       <geometry>
-        <mesh filename="file:///home/user/dobot_ws/src/realsense-ros/realsense2_description/meshes/d405.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="file://$(find cra_description)/meshes/d405.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="d405_alu"><color rgba="0.7 0.72 0.75 1"/></material>
     </visual>
@@ -419,13 +428,25 @@
     <collision>
       <origin xyz="0 0 0" rpy="1.5707963 0 1.5707963"/>
       <geometry>
-        <mesh filename="file:///home/user/dobot_ws/src/realsense-ros/realsense2_description/meshes/d405.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="file://$(find cra_description)/meshes/d405.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
     -->
   </link>
   <joint name="d405_joint" type="fixed">
-    <origin xyz="0.071 0 0.147" rpy="0 0 0"/>
+    <!-- Fixed-jaw bend mount (adopted 2026-07-15): camera back FLUSH on the
+         jaw bend front face, top level with the jaw arm top. NOTE the
+         d405_link origin is the LENS FACE and the body extends 23 mm BEHIND it
+         (measured from d405.stl): origin x = jaw front face (0.2009,
+         jaw_fixed.stl) + 23 mm = 0.2239; origin z = jaw arm top (0.115) -
+         42mm/2 = 0.094. Body spans x[0.2009, 0.2239] z[0.073, 0.115]: flush
+         with the jaw, clear of pads and the carried box (box x <= 0.182).
+         Validated: tag capture 50 px at CAPTURE_A_JOINTS, anchor read within
+         0.5 mm (no OLD_DEVICE_POSE recapture needed in sim), pocket
+         LOOK_JOINTS re-jogged. Old top-plate mount: xyz="0.071 0 0.147".
+         REAL ROBOT: hand-eye cal + OLD_DEVICE_POSE recapture after mounting
+         (docs/real_robot_transition.md). -->
+    <origin xyz="0.2239 0 0.094" rpy="0 0 0"/>
     <parent link="gripper_base_link"/>
     <child link="d405_link"/>
   </joint>

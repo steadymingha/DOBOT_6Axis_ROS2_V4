@@ -12,7 +12,7 @@ wirebonder_pick_place.py once), then:
     source /opt/ros/humble/setup.bash
     source ~/dobot_ws/install/setup.bash
     cd ~/dobot_ws/src/DOBOT_6Axis_ROS2_V4
-    python3 wirebonder_vision_node.py
+    python3 tag_vision_node.py
 
 Camera topics are the realsense2_camera names (/camera/d405/...); the sim gazebo
 plugin publishes the SAME names, so this node runs unchanged in sim and on the
@@ -20,23 +20,24 @@ real robot -- swapping means only starting the real driver instead of Gazebo
 (docs/real_robot_transition.md).
 
 It prints once a second. If vision and ground truth disagree by more than a few
-mm / deg, fix R_TAGCV_TO_MODEL in wirebonder_vision.py and re-run.
+mm / deg, fix R_TAGCV_TO_MODEL in tag_vision.py and re-run.
 """
 
 import math
+import time
 
 import numpy as np
 import rclpy
 from rclpy.node import Node
 from rclpy.duration import Duration
 from rclpy.qos import QoSProfile, ReliabilityPolicy
-from sensor_msgs.msg import Image, CameraInfo
+from sensor_msgs.msg import Image, CameraInfo, JointState
 from geometry_msgs.msg import PoseStamped
-from std_msgs.msg import Int32
+from std_msgs.msg import Int32, Int32MultiArray
 from tf2_ros import Buffer, TransformListener
 
-import wirebonder_vision as wv
-import shelf_vision as sv
+import tag_vision as wv
+import pocket_vision as pk
 
 # Ground-truth device world (odom) poses, mirrored from wirebonder_pick_place.DEVICES.
 DEVICES_GT = {
@@ -55,12 +56,13 @@ def _image_to_bgr(msg):
 
 class Diag(Node):
     def __init__(self):
-        super().__init__('wirebonder_vision_diag')
+        super().__init__('tag_vision_diag')
         self.bgr = None
         self.K = None
         self.dist = None            # distortion coeffs (None until CameraInfo; sim ~ zeros)
         self.depth_msg = None       # latest depth Image (32FC1 sim / 16UC1 real)
         self._det_logged = None     # last logged detect state -> log only on change
+        self._shelf_logged = {}     # per-tier shelf-tag detect state -> log on change
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         # Topic names = the REAL realsense2_camera names (camera_name:=d405). The
@@ -68,6 +70,16 @@ class Diag(Node):
         # there is no sim<->real topic seam at all (docs/real_robot_transition.md).
         self.create_subscription(
             Image, '/camera/d405/color/image_raw', self._img_cb, 10)
+        # SECOND color subscription, BEST_EFFORT (mirror of the dual depth subs
+        # below): a RELIABLE reader on the big color stream can wedge and stop
+        # delivering while the publisher is fine -- measured 2026-07-15: color
+        # froze after ~70 s, detection silently ran on a stale frame for 15 min
+        # ("tag 0 not detected" with the tag provably in view) while depth kept
+        # flowing. A best-effort reader has no retransmit state and cannot
+        # wedge; both feed the same callback (latest frame wins).
+        color_qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT)
+        self.create_subscription(
+            Image, '/camera/d405/color/image_raw', self._img_cb, color_qos)
         self.create_subscription(
             CameraInfo, '/camera/d405/color/camera_info', self._info_cb, 10)
         # Aligned depth (same optical frame + resolution as color, so the color K
@@ -98,6 +110,20 @@ class Diag(Node):
         # tags estimate the SAME frame, so one topic; the sequence medians a
         # burst). Consumed by sequences/shelf_pick_place.py capture_shelf().
         self.shelf_pub = self.create_publisher(PoseStamped, '/vision/shelf_pose', 10)
+        # Base-pocket occupancy (depth-only, no tag): 4 x {-1 unknown, 0 empty,
+        # 1 box} in pocket_vision.POCKET_ORDER_Y order. Meaningful only while
+        # the camera frames the pockets (pocket_vision.check_pockets' look pose);
+        # consumers majority-vote a burst taken there.
+        self.pocket_pub = self.create_publisher(
+            Int32MultiArray, '/vision/pocket_state', 10)
+        self._pocket_logged = None
+        # Arm-stillness gate for the pocket state: a mid-motion frame pairs a
+        # moving image with the LATEST TF, so its projections are smeared --
+        # publish occupancy only while the arm is at REST (same doctrine as the
+        # tag-pose captures). Consumers then only ever see settled readings.
+        self._joint_vel = None
+        self._joint_wall = 0.0
+        self.create_subscription(JointState, '/joint_states', self._js_cb, 10)
         # Two-view (motion-stereo) capture: the FALLBACK path now that depth is
         # primary. The planner drives the arm to two camera positions and pings
         # /vision/capture at each (data=0 resets, data=1 grabs a view). We store
@@ -135,6 +161,7 @@ class Diag(Node):
 
     def _img_cb(self, msg):
         self.bgr = _image_to_bgr(msg)
+        self._bgr_wall = time.time()
 
     def _info_cb(self, msg):
         self.K = np.array(msg.k, dtype=float).reshape(3, 3)
@@ -143,6 +170,19 @@ class Diag(Node):
 
     def _depth_cb(self, msg):
         self.depth_msg = msg
+
+    def _js_cb(self, msg):
+        arm = [abs(v) for n, v in zip(msg.name, msg.velocity)
+               if n.startswith('joint')]
+        if arm:
+            self._joint_vel = max(arm)
+            self._joint_wall = time.time()
+
+    def _arm_still(self, vel_eps=0.02, fresh_s=0.5):
+        """True when the arm joints are (recently reported) at rest."""
+        return (self._joint_vel is not None
+                and self._joint_vel < vel_eps
+                and time.time() - self._joint_wall < fresh_s)
 
     def _depth_m(self):
         """Latest depth as HxW metres (NaN where holed), or None if none yet."""
@@ -172,8 +212,36 @@ class Diag(Node):
     def _tick(self):
         if self.bgr is None or self.K is None:
             return
+        # Staleness watchdog: a frozen color stream means every detection below
+        # runs on an OLD frame -- a silent, hard-to-spot failure ("tag not
+        # detected" with the tag in view). Shout, don't whisper.
+        age = time.time() - getattr(self, '_bgr_wall', 0.0)
+        if age > 2.0:
+            now = time.time()
+            if now - getattr(self, '_stale_logged', 0.0) > 5.0:
+                self.get_logger().error(
+                    f"[camera] color stream STALE for {age:.0f}s -- detection is "
+                    f"running on an old frame (camera driver / stream wedged?)")
+                self._stale_logged = now
 
         depth = self._depth_m()
+
+        # Base-pocket occupancy, every tick depth + base TF are up AND the arm
+        # is at rest (mid-motion projections are smeared; see _arm_still).
+        # Cheap (four small ROI medians); any pocket not framed reads -1.
+        if depth is not None and self._arm_still():
+            T_base_opt = self._lookup_T('base_link', 'd405_optical_frame')
+            if T_base_opt is not None:
+                state = pk.pocket_occupancy(depth, self.K, T_base_opt)
+                msg = Int32MultiArray()
+                msg.data = state
+                self.pocket_pub.publish(msg)
+                if state != self._pocket_logged:
+                    if any(s != pk.UNKNOWN for s in state):
+                        self.get_logger().info(
+                            f"[pockets] {state} (1=box, 0=empty, -1=unknown)")
+                    self._pocket_logged = state
+
         det = wv.detect_tag(self.bgr, self.K, self.dist)
         corners = wv.detect_tag_corners(self.bgr)
         T_odom_opt = self._lookup_T('odom', 'd405_optical_frame')
@@ -187,13 +255,21 @@ class Diag(Node):
             self._publish_pose(live)
 
         # SHELF tags (IDs 2/3, one per tier): each visible tag yields the shelf
-        # model frame on /vision/shelf_pose (same depth-upright pipeline).
+        # model frame on /vision/shelf_pose (same depth-upright pipeline). Log the
+        # per-tier detect state on CHANGE -- the shelf flow's only console feedback
+        # (the "tag 0" line above is the wirebonder tag, unrelated to the shelf).
         if T_odom_opt is not None:
-            for tier in sv.SHELF_TAG_ID:
-                T_shelf = sv.shelf_pose_in_base(T_odom_opt, tier, self.bgr,
+            for tier, tid in wv.SHELF_TAG_ID.items():
+                T_shelf = wv.shelf_pose_in_base(T_odom_opt, tier, self.bgr,
                                                 self.K, depth=depth, dist=self.dist)
-                if T_shelf is not None:
+                seen = T_shelf is not None
+                if seen:
                     self._publish_pose(T_shelf, self.shelf_pub)
+                if self._shelf_logged.get(tier) != seen:
+                    self.get_logger().info(
+                        f"shelf tier {tier} tag (id {tid}) "
+                        f"{'detected' if seen else 'not detected'}")
+                    self._shelf_logged[tier] = seen
 
         # FALLBACK: no live tag this tick -> republish the last two-view solve so the
         # planner's median read still gets a steady stream (e.g. arm back at the hub,

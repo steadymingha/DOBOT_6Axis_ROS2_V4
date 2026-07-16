@@ -104,6 +104,13 @@ depth(16UC1, BEST_EFFORT) 수신 및 검출 루프 동작 확인. sim gazebo 플
 - [ ] **`DEVICES_GT` 검증**: sim은 device의 odom 참값을 알아 vis-vs-gt 프린트가 되지만
       (`wirebonder_vision_node.py`), 실물엔 ground truth가 없음. 그 side-by-side 검증은
       sim 전용 → 실물 검증은 "잡은 pose로 실제 집히나"로 대체.
+- [ ] **`grasp()`의 Gazebo 모델명 해석 게이트** ⭐ (`wirebonder_pick_place.py::grasp`,
+      shelf도 동일): `pockets.model_at`(`/gazebo/model_states` 최근접 모델)은 IFRA
+      ATTACHLINK용 **sim 전용** 심인데, 현재 해석 실패 = 픽 거부로 짜여 있어 실물에선
+      (`model_states` 부재로) **모든 픽이 거부됨**. 실물 전환 시: model_states 부재면
+      해석을 건너뛰고 그리퍼를 닫은 뒤 **그리퍼 피드백(위치/전류)으로 grip 검증**으로
+      대체. 실패 보고는 기존 `ErrorCode.ATTACH_FAILED` 재사용 (프로토콜 추가 불필요).
+      sim에서 겪은 스폰-vs-정착 높이류 실패(2026-07-15 seq2)는 실물엔 없는 부류.
 
 ## 2. 충돌 계층 (collision layer) 전환
 
@@ -171,6 +178,44 @@ depth(16UC1, BEST_EFFORT) 수신 및 검출 루프 동작 확인. sim gazebo 플
   (`/usr/bin/python3`, numpy 1.21)로 돌리면 정상. vision 노드도 system python3 사용.
   (conda 활성 시 PATH에서 벗겨야 함 — `run_mpo700_cr7.sh`가 그 처리를 함.)
 
+- **`ROS_LOCALHOST_ONLY=1` 고정** (2026-07-15): 이 셀은 ROS 그래프 전체가 한 대에서
+  돈다(MCS 통신은 자체 TCP, 실물 팔 브리지도 로봇 컨트롤러와 자체 TCP — 둘 다 DDS
+  아님 → 무관). `=0`이면 DDS discovery가 모든 네트워크 인터페이스로 나가는데, sim
+  재기동 직후 수 분간 신규 노드의 엔드포인트 매칭이 ~1/10로 늘어져 **첫 trajectory
+  goal 전송이 20초 타임아웃**되는 사례를 실측함 (`Trajectory goal send timed out`
+  → `Could not reach the hub`; 몇 분 뒤 자연 회복). `~/.bashrc` +
+  `run_mpo700_cr7.sh`/`run_mpo700_cr10.sh`/`teleop_agv.sh`에 `export
+  ROS_LOCALHOST_ONLY=1` 반영 완료. **모든 터미널이 같은 값이어야 함** (bashrc 반영
+  전에 연 터미널 주의). 다른 PC에서 ros2 토픽을 봐야 할 때만 해제.
+  (goal 전송 타임아웃의 **근본 원인은 아래 UDP 버퍼**였음 — `=1`은 /22 사내망
+  discovery 유입을 끊어 그 부하를 줄이는 보조 조치로 유지.)
+
+- **커널 UDP 버퍼 확대 필수** (2026-07-15, 실물 PC 새로 세팅할 때도 동일): 우분투
+  기본 `net.core.rmem_max`(208 KB)로는 gzserver급 대형 참가자(엔드포인트 수백 개)의
+  DDS discovery 버스트가 커널에서 드롭됨 — `netstat -su`의 "receive buffer errors"
+  94만+ 누적, 신규 클라이언트 서비스 콜 1회당 +4천 드롭 실측. 결과: **새로 시작한
+  노드만** 액션/서비스 매칭이 복불복 → `Trajectory goal send timed out (20s)` 간헐
+  재발 (이미 붙어 있던 노드는 멀쩡 — "shelf는 되는데 새로 띄운 wirebonder만 실패",
+  재부팅 직후엔 그래프가 가벼워 정상 — 그래서 오래 미궁이었음). 해결:
+  `/etc/sysctl.d/60-ros2-dds.conf`에 `net.core.rmem_max=67108864`,
+  `net.core.rmem_default=8388608`, wmem 동일 → `sudo sysctl --system` →
+  **sim 재기동**(기존 소켓은 작은 버퍼를 유지하므로). 검증: 카운터가 더 안 늘고
+  새 프로세스의 첫 goal이 즉시 수락. 진단 트릭: 현재 관절값 그대로의 hold goal을
+  `ros2 action send_goal`로 보내면(무동작) 어느 셸에서든 클라→서버→결과 전 구간을
+  안전하게 테스트할 수 있음.
+
+- **Fast DDS wide-probe 프로파일 필수** (2026-07-15, goal 타임아웃의 3번째 층):
+  `ROS_LOCALHOST_ONLY=1`의 로컬 참가자 탐색은 기본으로 127.0.0.1의 **앞쪽 4개
+  참가자 슬롯만** 두드림(`maxInitialPeersRange=4`). 이 셀은 참가자 9개+라
+  컨트롤러가 뒤쪽 슬롯에 배정된 세션에서는 신규 노드가 액션 서버를 찾는 데
+  8~20초(재기동마다 슬롯 추첨이 달라져 복불복) → 20초 예산과 겹쳐 간헐 타임아웃.
+  해결: `~/dobot_ws/fastdds_localhost.xml`(probe 64 + SHM/UDP 유지)을
+  `FASTRTPS_DEFAULT_PROFILES_FILE`로 로드 — bashrc + run 스크립트들에 반영 완료.
+  A/B 실측: 신규 클라이언트 goal 왕복 8.7~12.3 s(들쭉) → 5.9~6.2 s(일정, 클라이언트만
+  적용 시; 서버까지 재기동하면 더 단축). 이 값도 **모든 터미널 공통**이어야 함.
+
 <!-- 이후: 그리퍼 교체 시 재조정 파라미터 등 이어서 추가 -->
 
 - 로봇팔에 충격이 가해졌을때 물건을 놓거나 집으려 닿은건지 아니면 다른 장애물에 부딫힌건지 단계 설정해야함, 후자일경우 error 처리에 넣을것
+
+- 선반의 상자, wirebonding 장비의 접근 위치 모두 aruco 상대위치값을 로봇 jog로 뽑아낸다음 mcs 서버에 저장하도록할것(명령으로 받아서 수행)
