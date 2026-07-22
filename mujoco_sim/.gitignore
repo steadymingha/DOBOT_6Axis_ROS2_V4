@@ -1,0 +1,6 @@
+scene.xml
+MUJOCO_LOG.TXT
+_build/
+meshes_obj/
+__pycache__/
+.venv/
