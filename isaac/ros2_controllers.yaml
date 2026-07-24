@@ -1,0 +1,49 @@
+# This config file is used by ros2_control
+controller_manager:
+  ros__parameters:
+    update_rate: 100  # Hz
+
+    cr7_group_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    gripper_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+cr7_group_controller:
+  ros__parameters:
+    joints:
+      - joint1
+      - joint2
+      - joint3
+      - joint4
+      - joint5
+      - joint6
+    command_interfaces:
+      - position
+      # velocity feed-forward into the PhysX drive damping term: without it the
+      # 60 Hz stepped position targets make the stiff drives judder mid-motion.
+      - velocity
+    state_interfaces:
+      - position
+      - velocity
+
+gripper_controller:
+  ros__parameters:
+    joints:
+      - gripper_finger_joint
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+    constraints:
+      goal_time: 5.0
+      stopped_velocity_tolerance: 0.05
+      gripper_finger_joint:
+        goal: 0.005
+        trajectory: 0.01
+    # axis -X: positive = open (+0.05 max), negative = close (-0.07 min)

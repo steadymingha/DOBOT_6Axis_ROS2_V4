@@ -25,7 +25,8 @@ source /opt/ros/humble/setup.bash
 source ~/dobot_ws/install/local_setup.bash
 
 echo "=== [1/4] Isaac Sim starting (CR7 on MPO-700) ==="
-~/isaacsim/python.sh ~/dobot_ws/isaac/isaac_sim.py "$@" &
+
+~/isaacsim-venv/bin/python3 ~/dobot_ws/isaac/isaac_sim.py "$@" &
 ISAAC_PID=$!
 echo "Isaac PID: $ISAAC_PID"
 
@@ -48,8 +49,13 @@ CONTROL_PID=$!
     [ "$n" = "3" ] && echo "[controllers] all active" && break
     for c in joint_state_broadcaster cr7_group_controller gripper_controller; do
       ros2 control list_controllers 2>/dev/null | grep "$c" | grep -q active && continue
-      ros2 control set_controller_state "$c" inactive >/dev/null 2>&1
-      ros2 control set_controller_state "$c" active >/dev/null 2>&1
+      if ros2 control list_controllers 2>/dev/null | grep -q "$c"; then
+        ros2 control set_controller_state "$c" inactive >/dev/null 2>&1
+        ros2 control set_controller_state "$c" active >/dev/null 2>&1
+      else
+        # spawner died during a slow bring-up (e.g. first --env asset download)
+        ros2 run controller_manager spawner "$c" >/dev/null 2>&1
+      fi
     done
   done
 ) &

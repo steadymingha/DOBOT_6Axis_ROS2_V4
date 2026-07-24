@@ -6,8 +6,7 @@
 # (dobot_joint.launch.py): the bridge serves the SAME
 # /<type>_group_controller/follow_joint_trajectory action as the sim controller
 # -- if it survives, every client sees TWO action servers and results cross.
-PATTERNS="gzserver gzclient spawn_entity robot_state_publisher move_group ros2_control_node controller_manager rqt_image_view image_view view_d405 action_move_server dobot_moveit/joint_states ros2 launch"
-
+PATTERNS="isaac_sim.py run_mpo700_cr7_isaac gzserver gzclient spawn_entity robot_state_publisher move_group ros2_control_node controller_manager rqt_image_view image_view view_d405 action_move_server dobot_moveit/joint_states ros2 launch"
 # Arm-side nodes: stale duplicates here publish conflicting /vision/device_pose (two
 # vision nodes) or double-consume commands, which silently corrupts a capture. Kill
 # them too. main.py pattern is path-qualified so it can't match unrelated main.py.

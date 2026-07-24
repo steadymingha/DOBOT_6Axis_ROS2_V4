@@ -19,8 +19,9 @@ URDF = os.path.expanduser("~/dobot_ws/isaac/cr7_on_mpo700_isaac.urdf")
 
 def generate_launch_description():
     robot_description = {"robot_description": open(URDF).read()}
-    controllers_yaml = os.path.join(
-        get_package_share_directory("cr7_moveit"), "config", "ros2_controllers.yaml")
+    # Isaac's own copy of cr7_moveit's ros2_controllers.yaml: adds the velocity
+    # command interface (feed-forward) that the Gazebo variant must not have.
+    controllers_yaml = os.path.expanduser("~/dobot_ws/isaac/ros2_controllers.yaml")
     use_sim_time = {"use_sim_time": True}
 
     # Spawners chained sequentially (same pattern as gazebo_mpo700_cr7.launch.py):

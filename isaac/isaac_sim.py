@@ -205,7 +205,9 @@ def compose(model_pose, local_pose):
 
 
 # ---------------------------------------------------------------- world build
-world = World(stage_units_in_meters=1.0, physics_dt=1.0 / 60.0, rendering_dt=1.0 / 60.0)
+# Physics at 240 Hz (4 substeps per rendered frame): 60 Hz physics left the
+# stiff position drives ringing during moves and at stop.
+world = World(stage_units_in_meters=1.0, physics_dt=1.0 / 240.0, rendering_dt=1.0 / 60.0)
 stage = omni.usd.get_context().get_stage()
 
 world.scene.add_default_ground_plane()
@@ -238,6 +240,219 @@ for name, (pose, visual, collisions) in STATIC_MODELS.items():
     make_double_sided(add_reference(stage, root + "/visual", convert_mesh(visual)))
     for i, cm in enumerate(collisions):
         make_collider(stage, root + f"/col_{i}", convert_mesh(cm))
+
+# --- appearance overrides (visual only; physics colliders untouched) --------
+def _solid_mat(name, color, rough=0.5, metallic=0.0):
+    m = UsdShade.Material.Define(stage, "/World/mats/" + name)
+    s = UsdShade.Shader.Define(stage, "/World/mats/" + name + "/shader")
+    s.CreateIdAttr("UsdPreviewSurface")
+    s.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*color))
+    s.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(rough)
+    s.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(metallic)
+    m.CreateSurfaceOutput().ConnectToSource(s.ConnectableAPI(), "surface")
+    return m
+
+
+def _bind_strong(prim, mat):
+    UsdShade.MaterialBindingAPI.Apply(prim).Bind(
+        mat, bindingStrength=UsdShade.Tokens.strongerThanDescendants)
+
+
+# wirebonder: ivory body stays; C / G_L / G_R panels dark grey
+_wb_dark = _solid_mat("wb_dark", (0.28, 0.29, 0.30), 0.45)
+_wb_dark_steel = _solid_mat("wb_dark_steel", (0.28, 0.29, 0.30), 0.40, metallic=0.7)
+_wb_overrides = {"Cube_C": _wb_dark, "Cube_G_L": _wb_dark, "Cube_G_R": _wb_dark,
+                 "Cube_D": _wb_dark_steel}
+_wb_found = []
+for p in Usd.PrimRange(stage.GetPrimAtPath("/World/models/wirebonder/visual")):
+    for _k, _m in _wb_overrides.items():
+        if p.GetName().startswith(_k):
+            _bind_strong(p, _m)
+            _wb_found.append(p.GetName())
+print("[appearance] wirebonder overrides:", _wb_found or "NONE MATCHED")
+
+# shelf boards -> wire-mesh steel. The converted USD has no UVs, so the DAE
+# boards are hidden and rebuilt as UV-mapped boxes using the wire_mesh.png
+# alpha-cutout texture. Replacement boards take the world bbox of each original
+# board (measured BEFORE hiding), so they land exactly where the DAE rendered.
+_board_bounds = []
+_bbc = UsdGeom.BBoxCache(Usd.TimeCode.Default(), ["default", "render"])
+for p in Usd.PrimRange(stage.GetPrimAtPath("/World/models/shelf/visual")):
+    if p.GetName().startswith("board_"):
+        _r = _bbc.ComputeWorldBound(p).ComputeAlignedRange()
+        _lo, _hi = _r.GetMin(), _r.GetMax()
+        _board_bounds.append((tuple((_lo[i] + _hi[i]) / 2 for i in range(3)),
+                              tuple(_hi[i] - _lo[i] for i in range(3))))
+        UsdGeom.Imageable(p).MakeInvisible()
+print("[appearance] shelf boards hidden: %d" % len(_board_bounds))
+
+_wire_mat = UsdShade.Material.Define(stage, "/World/mats/mesh_steel")
+_ws = UsdShade.Shader.Define(stage, "/World/mats/mesh_steel/shader")
+_ws.CreateIdAttr("UsdPreviewSurface")
+_ws.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(0.9)
+_ws.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.30)
+_ws.CreateInput("opacityThreshold", Sdf.ValueTypeNames.Float).Set(0.5)
+_wt = UsdShade.Shader.Define(stage, "/World/mats/mesh_steel/tex")
+_wt.CreateIdAttr("UsdUVTexture")
+_wt.CreateInput("file", Sdf.ValueTypeNames.Asset).Set(f"{HOME}/dobot_ws/isaac/wire_mesh.png")
+_wt.CreateInput("wrapS", Sdf.ValueTypeNames.Token).Set("repeat")
+_wt.CreateInput("wrapT", Sdf.ValueTypeNames.Token).Set("repeat")
+_wr = UsdShade.Shader.Define(stage, "/World/mats/mesh_steel/st")
+_wr.CreateIdAttr("UsdPrimvarReader_float2")
+_wr.CreateInput("varname", Sdf.ValueTypeNames.Token).Set("st")
+_wt.CreateInput("st", Sdf.ValueTypeNames.Float2).ConnectToSource(
+    _wr.ConnectableAPI(), "result")
+_ws.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).ConnectToSource(
+    _wt.ConnectableAPI(), "rgb")
+_ws.CreateInput("opacity", Sdf.ValueTypeNames.Float).ConnectToSource(
+    _wt.ConnectableAPI(), "a")
+_wire_mat.CreateSurfaceOutput().ConnectToSource(_ws.ConnectableAPI(), "surface")
+
+
+def _mesh_board(path, center, size, cell=0.018):
+    """UV-mapped box so the wire-mesh cutout tiles at `cell` metres."""
+    hx, hy, hz = size[0] / 2, size[1] / 2, size[2] / 2
+    m = UsdGeom.Mesh.Define(stage, path)
+    pts = [(-hx, -hy, -hz), (hx, -hy, -hz), (hx, hy, -hz), (-hx, hy, -hz),
+           (-hx, -hy, hz), (hx, -hy, hz), (hx, hy, hz), (-hx, hy, hz)]
+    m.CreatePointsAttr(pts)
+    m.CreateFaceVertexCountsAttr([4] * 6)
+    m.CreateFaceVertexIndicesAttr([0, 3, 2, 1,  4, 5, 6, 7,  0, 1, 5, 4,
+                                   2, 3, 7, 6,  1, 2, 6, 5,  3, 0, 4, 7])
+    m.CreateDoubleSidedAttr(True)
+    nx, ny, nz = size[0] / cell, size[1] / cell, size[2] / cell
+    st = []
+    for a, b in ((nx, ny), (nx, ny), (nx, nz), (nx, nz), (ny, nz), (ny, nz)):
+        st += [(0, 0), (a, 0), (a, b), (0, b)]
+    UsdGeom.PrimvarsAPI(m).CreatePrimvar(
+        "st", Sdf.ValueTypeNames.TexCoord2fArray, UsdGeom.Tokens.faceVarying).Set(st)
+    UsdGeom.Xformable(m).AddTranslateOp().Set(Gf.Vec3d(*center))
+    UsdShade.MaterialBindingAPI.Apply(m.GetPrim()).Bind(_wire_mat)
+
+
+for _bi, (_bc, _bs) in enumerate(_board_bounds):
+    # NOT under /World/models/shelf: that prim carries the shelf transform and
+    # would double-apply it (bbox centers are already world coordinates).
+    _mesh_board("/World/shelf_mesh_boards/board_%d" % _bi, _bc, _bs)
+    print("[appearance] mesh board %d at (%.3f, %.3f, %.3f) size (%.3f, %.3f, %.3f)"
+          % ((_bi,) + _bc + _bs))
+
+# Shelf leg extensions: the post meshes end at model-local z=0 while the model
+# sits at z=0.32, so the shelf floats. Continue the four 3x3 cm posts to the
+# floor (positions from shelf.dae post nodes; shelf yaw is 0).
+_sx, _sy, _sz = STATIC_MODELS["shelf"][0][:3]
+for _i, (_lx, _ly) in enumerate(
+        [(0.985, 0.135), (0.985, -0.135), (-0.985, 0.135), (-0.985, -0.135)]):
+    _leg = UsdGeom.Cube.Define(stage, f"/World/models/shelf_leg_ext_{_i}")
+    _leg.CreateSizeAttr(1.0)
+    _leg.CreateDisplayColorAttr([(0.25, 0.25, 0.27)])
+    _xf = UsdGeom.Xformable(_leg.GetPrim())
+    _xf.AddTranslateOp().Set(Gf.Vec3d(_sx + _lx, _sy + _ly, _sz / 2))
+    _xf.AddScaleOp().Set(Gf.Vec3f(0.03, 0.03, _sz))
+    UsdPhysics.CollisionAPI.Apply(_leg.GetPrim())
+
+# Background environment (VISUAL ONLY -- every collider in it is disabled so
+# it cannot touch mission physics):  --env hospital|warehouse|office|simple_room|grid
+# Needs the NVIDIA asset server; first load downloads the assets.
+_ENVS = {
+    "hospital": "/Isaac/Environments/Hospital/hospital.usd",
+    "warehouse": "/Isaac/Environments/Simple_Warehouse/warehouse.usd",
+    "office": "/Isaac/Environments/Office/office.usd",
+    "simple_room": "/Isaac/Environments/Simple_Room/simple_room.usd",
+    "grid": "/Isaac/Environments/Grid/gridroom_curved.usd",
+}
+def _build_fab_room():
+    """Local fab clean-room look (no asset download), modeled on the real line
+    photo: perforated raised-floor tiles (isaac/floor_tile.png, 0.6 m/tile),
+    yellow aisle lines, white panel walls. Visual only."""
+    # textured floor (room bounds: resize the whole shell here)
+    _fl = UsdGeom.Mesh.Define(stage, "/World/room/floor")
+    _x0, _x1, _y0, _y1 = -6.0, 14.0, -7.0, 7.0
+    _fl.CreatePointsAttr([(_x0, _y0, 0.001), (_x1, _y0, 0.001),
+                          (_x1, _y1, 0.001), (_x0, _y1, 0.001)])
+    _fl.CreateFaceVertexCountsAttr([4])
+    _fl.CreateFaceVertexIndicesAttr([0, 1, 2, 3])
+    _nx, _ny = (_x1 - _x0) / 0.6, (_y1 - _y0) / 0.6  # 0.6 m tile pitch
+    _stv = UsdGeom.PrimvarsAPI(_fl).CreatePrimvar(
+        "st", Sdf.ValueTypeNames.TexCoord2fArray, UsdGeom.Tokens.faceVarying)
+    _stv.Set([(0, 0), (_nx, 0), (_nx, _ny), (0, _ny)])
+    _m = UsdShade.Material.Define(stage, "/World/room/floor_mat")
+    _sh = UsdShade.Shader.Define(stage, "/World/room/floor_mat/shader")
+    _sh.CreateIdAttr("UsdPreviewSurface")
+    _sh.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.55)
+    _tx = UsdShade.Shader.Define(stage, "/World/room/floor_mat/tex")
+    _tx.CreateIdAttr("UsdUVTexture")
+    _tx.CreateInput("file", Sdf.ValueTypeNames.Asset).Set(
+        f"{HOME}/dobot_ws/isaac/floor_tile.png")
+    _tx.CreateInput("wrapS", Sdf.ValueTypeNames.Token).Set("repeat")
+    _tx.CreateInput("wrapT", Sdf.ValueTypeNames.Token).Set("repeat")
+    _rd = UsdShade.Shader.Define(stage, "/World/room/floor_mat/st")
+    _rd.CreateIdAttr("UsdPrimvarReader_float2")
+    _rd.CreateInput("varname", Sdf.ValueTypeNames.Token).Set("st")
+    _tx.CreateInput("st", Sdf.ValueTypeNames.Float2).ConnectToSource(
+        _rd.ConnectableAPI(), "result")
+    _sh.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).ConnectToSource(
+        _tx.ConnectableAPI(), "rgb")
+    _m.CreateSurfaceOutput().ConnectToSource(_sh.ConnectableAPI(), "surface")
+    UsdShade.MaterialBindingAPI.Apply(_fl.GetPrim()).Bind(_m)
+    # yellow aisle lines + white panel walls, derived from the bounds above
+    _cx, _cy = (_x0 + _x1) / 2, (_y0 + _y1) / 2
+    _lx, _ly, _h = _x1 - _x0, _y1 - _y0, 3.0
+    _parts = [
+        ("line_a", (_cx, -1.5, 0.003), (_lx - 0.4, 0.08, 0.002), (0.93, 0.78, 0.05)),
+        # full-length aisle line just in front of the wirebonder face (y=0)
+        ("line_b", (_cx, 0.10, 0.003), (_lx - 0.4, 0.08, 0.002), (0.93, 0.78, 0.05)),
+        ("wall_n", (_cx, _y1, _h / 2), (_lx, 0.05, _h), (0.92, 0.93, 0.95)),
+        ("wall_s", (_cx, _y0, _h / 2), (_lx, 0.05, _h), (0.92, 0.93, 0.95)),
+        ("wall_e", (_x1, _cy, _h / 2), (0.05, _ly, _h), (0.92, 0.93, 0.95)),
+        ("wall_w", (_x0, _cy, _h / 2), (0.05, _ly, _h), (0.92, 0.93, 0.95)),
+    ]
+    for _nm, _c, _s, _col in _parts:
+        _pr = UsdGeom.Cube.Define(stage, "/World/room/" + _nm)
+        _pr.CreateSizeAttr(1.0)
+        _pr.CreateDisplayColorAttr([_col])
+        _xf = UsdGeom.Xformable(_pr.GetPrim())
+        _xf.AddTranslateOp().Set(Gf.Vec3d(*_c))
+        _xf.AddScaleOp().Set(Gf.Vec3f(*_s))
+    _dm = UsdLux.DomeLight.Define(stage, "/World/room/dome")
+    _dm.CreateIntensityAttr(400.0)
+    print("[env] fab room built (tiled floor + aisle lines + walls)")
+
+
+def _load_asset_env(_env_name):
+    try:
+        from isaacsim.storage.native import get_assets_root_path
+        _root = get_assets_root_path()
+        assert _root, "asset root unavailable (no Nucleus/cloud access)"
+        _env_prim = stage.DefinePrim("/World/env", "Xform")
+        _env_prim.GetReferences().AddReference(_root + _ENVS[_env_name])
+        # sink 2 mm so the env floor does not z-fight our ground plane
+        # (reuse the translate op the referenced root may already author)
+        _exf = UsdGeom.Xformable(_env_prim)
+        _tops = [o for o in _exf.GetOrderedXformOps()
+                 if o.GetOpType() == UsdGeom.XformOp.TypeTranslate]
+        _tv = _tops[0].Get() if _tops else None
+        (_tops[0] if _tops else _exf.AddTranslateOp()).Set(
+            Gf.Vec3d(_tv[0], _tv[1], _tv[2] - 0.002) if _tv else Gf.Vec3d(0, 0, -0.002))
+        _n_off = 0
+        for p in Usd.PrimRange(_env_prim, Usd.TraverseInstanceProxies()):
+            try:
+                if p.HasAPI(UsdPhysics.CollisionAPI):
+                    UsdPhysics.CollisionAPI(p).CreateCollisionEnabledAttr(False)
+                    _n_off += 1
+            except Exception:
+                pass  # instance proxies cannot be edited; report the count below
+        print("[env] %s loaded, %d colliders disabled" % (_env_name, _n_off))
+    except Exception as e:
+        print("[env] load failed (%s); continuing without background" % e)
+
+
+if "--env" in sys.argv:
+    _env_name = sys.argv[sys.argv.index("--env") + 1]
+    if _env_name == "fab":
+        _build_fab_room()
+    else:
+        _load_asset_env(_env_name)
 
 # Tag plates
 for i, (model, local, texture) in enumerate(TAGS):
@@ -314,6 +529,64 @@ from pxr import PhysxSchema
 for p in Usd.PrimRange(robot_root):
     if p.HasAPI(UsdPhysics.RigidBodyAPI):
         PhysxSchema.PhysxRigidBodyAPI.Apply(p).CreateDisableGravityAttr(True)
+
+# Gripper collision: replace ALL imported gripper colliders with exact
+# primitive boxes measured from the collision STLs (link-local, meters).
+# The importer convex-hulls each mesh: the L-shaped fixed jaw becomes a brick
+# spanning the whole pad-to-pad gap (x -21..201 mm) so boxes cannot seat, and
+# VHACD decomposition still bulges a few mm into the ~3 mm descend clearance.
+# Primitives are exact and deterministic (jaw_fixed = arm + finger boxes).
+_GRIP_BOXES = {
+    "gripper_base_link": (
+        ("flange",     (0.0,     0, 0.1336), (0.0820, 0.0820, 0.0130)),
+        ("body",       (0.0050,  0, 0.1210), (0.1315, 0.0911, 0.0121)),
+        ("jaw_arm",    (0.0901,  0, 0.1100), (0.2216, 0.0912, 0.0100)),
+        ("jaw_finger", (0.19455, 0, 0.0850), (0.0127, 0.0912, 0.0600)),
+        ("pad_fixed",  (0.1857,  0, 0.0800), (0.0050, 0.0800, 0.0440)),
+    ),
+    "gripper_finger_link": (
+        ("jaw_moving", (0.0862,  0, 0.0811), (0.0220, 0.0700, 0.0500)),
+        ("pad_moving", (0.0997,  0, 0.0810), (0.0050, 0.0600, 0.0380)),
+    ),
+}
+for _link, _boxes in _GRIP_BOXES.items():
+    _lp = find_prim_named(robot_root, _link)
+    if not _lp:
+        print("[gripper-collision] LINK NOT FOUND: %s" % _link)
+        continue
+    _col = _lp.GetChild("collisions")
+    if _col:
+        _col.SetActive(False)
+        print("[gripper-collision] %s/collisions deactivated" % _link)
+    else:
+        # unknown layout: dump children so the log shows what to target, and
+        # try disabling any collider prims found by traversal
+        print("[gripper-collision] %s children: %s" % (
+            _link, [(k.GetName(), str(k.GetTypeName())) for k in _lp.GetChildren()]))
+        for p in Usd.PrimRange(_lp):
+            try:
+                if p.HasAPI(UsdPhysics.CollisionAPI) or p.IsA(UsdGeom.Mesh):
+                    UsdPhysics.CollisionAPI.Apply(p).CreateCollisionEnabledAttr(False)
+            except Exception as _e:
+                print("[gripper-collision] disable failed on %s: %s" % (p.GetPath(), _e))
+    for _nm, _c, _s in _boxes:
+        _cb = UsdGeom.Cube.Define(stage, str(_lp.GetPath()) + "/col_" + _nm)
+        _cb.CreateSizeAttr(1.0)
+        _xf = UsdGeom.Xformable(_cb.GetPrim())
+        _xf.AddTranslateOp().Set(Gf.Vec3d(*_c))
+        _xf.AddScaleOp().Set(Gf.Vec3f(*_s))
+        UsdPhysics.CollisionAPI.Apply(_cb.GetPrim())
+        UsdGeom.Imageable(_cb.GetPrim()).MakeInvisible()
+    print("[gripper-collision] %s: %d exact boxes added" % (_link, len(_boxes)))
+
+# Solver iterations: PhysX default (4) cannot resolve the stiff position drives
+# (1e5) -- symptom was velocity jitter at rest (masked by gravity-off above) and
+# visible shaking during fast moves.
+for p in Usd.PrimRange(robot_root):
+    if p.HasAPI(UsdPhysics.ArticulationRootAPI):
+        art = PhysxSchema.PhysxArticulationAPI.Apply(p)
+        art.CreateSolverPositionIterationCountAttr(64)
+        art.CreateSolverVelocityIterationCountAttr(4)
 
 cam = UsdGeom.Camera.Define(stage, str(d405_prim.GetPath()) + "/d405_cam")
 # optical frame (rpy -90,0,-90 from d405_link) then a local Rx(180): ROS optical
@@ -517,6 +790,13 @@ def refresh_pose_cache():
 # ---------------------------------------------------------------------- run
 world.reset()
 
+# GUI viewpoint (Perspective camera pose framed by hand 2026-07-22:
+# translate -0.63238 -0.7178 1.76842 / rotateXYZ 65.90108 0 -51.04795,
+# converted to eye + look-at target for set_camera_view).
+if not HEADLESS:
+    from isaacsim.core.utils.viewports import set_camera_view
+    set_camera_view(eye=[-0.63238, -0.7178, 1.76842], target=[1.142, 0.717, 0.748])
+
 # Initial joint positions from the URDF ros2_control initial_value params
 # (same values gazebo_ros2_control used).
 initials = {}
@@ -533,6 +813,33 @@ for jname, val in initials.items():
     if idx is not None and idx >= 0:
         positions[idx] = val
 art.set_joint_positions(positions)
+
+# Per-joint drive gains from the mass matrix at the spawn pose. The importer's
+# uniform 1e5 Nm/rad stiffness saturates the 1000 Nm force clamp on ~0.01 rad
+# errors: bang-bang chatter, seen as wrist joints dragged at ~1 rad/s during
+# fast moves and as grasp-seating variance that jams the pocket descend.
+# Target 10 Hz bandwidth, zeta=2 (overdamped; velocity FF supplies the speed).
+# Gains are Nm per RADIAN: a pi/180 "per-degree" conversion tried on 2026-07-22
+# left the arm sagging 0.04-0.09 rad under load (57x too soft). Skip with
+# --no-drive-tune to fall back to the imported uniform gains.
+if "--no-drive-tune" not in sys.argv:
+    try:
+        view = art._articulation_view
+        getM = (getattr(view, "get_mass_matrices", None)
+                or getattr(view, "get_generalized_mass_matrices"))
+        M = np.asarray(getM())[0]
+        omega, zeta = 2 * math.pi * 10.0, 2.0
+        for i_j in range(1, 7):
+            jn = "joint%d" % i_j
+            di = art.get_dof_index(jn)
+            mii = float(M[di, di])
+            drv = UsdPhysics.DriveAPI.Get(find_prim_named(robot_root, jn), "angular")
+            drv.CreateStiffnessAttr(omega ** 2 * mii)
+            drv.CreateDampingAttr(2 * zeta * omega * mii)
+            print("[drive-tune] %s: Mii=%.3f kgm^2 -> k=%.0f Nm/rad c=%.0f Nms/rad"
+                  % (jn, mii, omega ** 2 * mii, 2 * zeta * omega * mii))
+    except Exception as e:  # keep imported gains rather than die at bring-up
+        print("[drive-tune] skipped (%s); imported uniform gains kept" % e)
 
 rclpy.init()
 compat = GazeboCompat()

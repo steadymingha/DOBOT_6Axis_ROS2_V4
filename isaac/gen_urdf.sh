@@ -24,6 +24,17 @@ src = src.replace(
     '        <param name="joint_states_topic">/isaac_joint_states</param>')
 assert "TopicBasedSystem" in src, "hardware plugin swap failed"
 
+# Velocity command interface on the six arm joints: velocity feed-forward into
+# the PhysX drive damping term (without it the 60 Hz stepped position targets
+# judder). Isaac-only -- the Gazebo variant must stay position-only, which is
+# also why isaac/ros2_controllers.yaml is a separate copy.
+old = "</command_interface>\n      <state_interface"
+new = ("</command_interface>\n"
+       '      <command_interface name="velocity"/>\n'
+       "      <state_interface")
+assert src.count(old) == 7, "expected 6 arm joints + gripper, got %d" % src.count(old)
+src = src.replace(old, new, 6)
+
 # Resolve package:// mesh URIs to absolute file:// paths (the Isaac URDF
 # importer names mesh prims after the file; hyphenated names like
 # MPO-700-BODY.dae are invalid USD prim names, so route those through
