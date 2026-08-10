@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+# 작업 중 파일. 이름 붙은 run1/run2/run3_final 만 추적한다
+verify_samples.json
+verify_samples_0*.json
