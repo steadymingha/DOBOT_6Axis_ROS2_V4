@@ -4,7 +4,7 @@ D405 카메라가 본 매거진 위치를 로봇 base 좌표로 옮기는 전체
 옳은지 · 얼마나 정확한지 실측으로 확인한 기록.
 
 - **결론: PASS.** AMR 정차 오차 범위(±2cm / ±3°) 안에서 **vision→base 재현성 p95 1.37 mm**
-- 작성 시점 기준 러너 커밋 `864875f`, 컨테이너 `vision_bridge/` 는 아직 untracked
+- 러너 `~/robot_vision` @ `864875f` · 브리지 `dobot_ws` @ `b8a03b8`
 - 이번 작업 범위에서 **로봇에 명령을 보낸 적이 없다.** 30004 실시간 피드백 읽기 전용
 
 ---
@@ -85,6 +85,22 @@ RealSense D405 는 프로세스 간 공유가 되지 않는다. 카메라를 쓰
 ---
 
 ## 3. 실행 방법
+
+### 어디서 무엇을 돌리나
+
+카메라는 하나뿐이고 러너가 독점한다. **어떤 경우든 러너가 먼저 떠 있어야 한다.**
+
+| 하려는 것 | 호스트 `~/robot_vision` | 컨테이너 `vision_bridge` |
+|---|---|---|
+| **평상시 운용** | `python runner.py` (계속 띄워둠) | FSM 이 `set_mode` + 5초 주기 `ping` + 5555 구독 |
+| **사슬 검증** | `python runner.py` | `python3 -u verify_chain.py` |
+| 화면 보며 조깅 | `python runner.py --preview`<br>`DISPLAY=:0 python tests/preview.py` | `python3 -u verify_chain.py` |
+| 검출만 확인 | `python runner.py`<br>`python tests/cmd_client.py run MAGAZINE 120` | — |
+| ArUco 정확도 측정 | `python tests/standalone_aruco.py` (러너 끄고) | — |
+| 코드 자가시험 (하드웨어 X) | `python tests/test_aruco_equivalence.py` | `python3 transform.py`<br>`python3 gate.py` |
+
+호스트는 `source ~/venv_ammr/bin/activate` 후 `cd ~/robot_vision`,
+컨테이너는 `docker exec -it ros2_dobot bash -lc 'cd /root/dobot_ws/src/DOBOT_6Axis_ROS2_V4/vision_bridge && ...'` 를 앞에 붙인다.
 
 ### 러너 (호스트)
 
@@ -408,7 +424,6 @@ run3 (n=20): valid_pct 81~91%
 | **조명 보강** | 6-4. valid_pct 를 올리면 게이트 여유가 생긴다 |
 | **원거리 검출** | 6-2. 30 cm 너머 confidence 하락. 재학습 또는 작업거리 제약으로 대응 |
 | **대표픽셀 개선** | 미착수. ring 유효픽셀 중심으로 바꾸면 가로 성분(37%)은 줄지만 조명·반사에 따라 기준점이 물리적으로 이동해 **편향**이 생길 수 있다. 깊이 성분(45%)은 그대로다. 1.4 mm 로 충분하지 않을 때만 검토 |
-| **git** | `vision_bridge/`, `handeye_calib/` 가 untracked. `~/dobot_ws` 에 다른 작업이 섞여 있어 커밋하지 않았다 |
 
 ### 표본 파일
 
