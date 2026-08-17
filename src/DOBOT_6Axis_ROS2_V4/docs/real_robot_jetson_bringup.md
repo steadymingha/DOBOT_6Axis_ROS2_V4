@@ -260,6 +260,13 @@ enable/disable/clear error, `q` 종료.
 
 ## 9. 남은 것
 
+> **먼저 읽을 것 — `real_robot_joint_convention.md`**
+> URDF가 J1/J5/J6의 회전축을 컨트롤러와 **반대로** 정의하고 있어, 그대로 두면
+> pinocchio 스택(CBiRRT/IK/충돌검사)이 팔을 거울 반전된 자세로 몬다. 에러 없이
+> 조용히 일어난다. 2026-08-06에 원인 규명 및 수정 완료(`CR7_REAL_ROBOT=1`로
+> 옵트인). 실물에서 `cr7_pnp`를 쓰는 모든 작업은 그 문서를 먼저 볼 것.
+> 조그(`jog_real.py`/`jog_action.py`)는 URDF를 안 거치므로 이 문제와 무관하다.
+
 - 그리퍼: DO 또는 RS485로 컨트롤러 직결 예정 (이 문서 범위 밖)
 - `shelf_pick_place.py` 실물 전환: 그리퍼 제외하면 이동 경로(`execute_path`/
   `linear_servo`)는 서버 수정 없이 그대로 실행 가능 — 남은 건 `real_robot_transition.md`

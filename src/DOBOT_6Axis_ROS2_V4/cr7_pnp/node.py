@@ -35,7 +35,10 @@ from sensor_msgs.msg import JointState
 from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
 from geometry_msgs.msg import PoseStamped
-from linkattacher_msgs.srv import AttachLink, DetachLink
+try:
+    from linkattacher_msgs.srv import AttachLink, DetachLink
+except ImportError:   # gazebo_ros_link_attacher: sim only, absent on the real robot
+    AttachLink = DetachLink = None
 from tf2_ros import Buffer, TransformListener
 import tf2_geometry_msgs  # noqa: F401  (registers PoseStamped with tf2)
 
@@ -48,6 +51,23 @@ from .geometry import (
     BOX_SIZE, BOX_IN_LINK6_XYZ, MAGAZINE_LINK, GRASP_LATERAL_M,
     GRIPPER_OPEN, GRIPPER_CLOSE,
 )
+
+
+# The URDF defines J1, J5 and J6 with the opposite sense to the real controller,
+# and NOTHING between the robot and here converts: dobot_bringup_v4 applies only
+# deg->rad (command.cpp: current_joint_[i] = deg2Rad(q_actual[i])) and
+# dobot_moveit/joint_states.py relays verbatim. Feeding controller angles into
+# the URDF straight therefore mirrors the whole arm -- the model puts the flange
+# on the opposite side of the base from where it really is.
+#
+# Fitted and then CONFIRMED against two measured (GetAngle, GetPose(user=0,
+# tool=0)) pairs on 2026-08-06: with this flip the model's flange lands within
+# 1.5 mm / 0.4 deg of the robot's own report, on a pose held out of the fit.
+# It is the only one of the 64 sign patterns that fits both. Offsets are zero.
+#
+# Gazebo publishes /joint_states from the URDF ITSELF, so sim needs no flip and
+# must not get one: this is opt-in via CR7_REAL_ROBOT=1.
+JOINT_SIGN_REAL = np.array([-1.0, 1.0, 1.0, 1.0, -1.0, -1.0])
 
 
 class RRTNode:
@@ -82,11 +102,13 @@ class CR7Node(Node):
         self.gripper_client = ActionClient(
             self, FollowJointTrajectory, '/gripper_controller/follow_joint_trajectory')
 
-        # Link attacher (grasp fix): attach/detach the box to the gripper
+        # Link attacher (grasp fix): attach/detach the box to the gripper. Sim
+        # only -- on the real robot the package is absent and the grasp is physical,
+        # so the clients stay None and the four attach/detach helpers refuse.
         self.attach_client = self.create_client(
-            AttachLink, '/ATTACHLINK', callback_group=self.cb_group)
+            AttachLink, '/ATTACHLINK', callback_group=self.cb_group) if AttachLink else None
         self.detach_client = self.create_client(
-            DetachLink, '/DETACHLINK', callback_group=self.cb_group)
+            DetachLink, '/DETACHLINK', callback_group=self.cb_group) if DetachLink else None
         # Robot/box names as known to Gazebo
         self.robot_model = 'cr7_on_mpo700'
         self.gripper_link = 'gripper_base_link'
@@ -101,6 +123,15 @@ class CR7Node(Node):
             (math.radians(-120), math.radians(120)), # Joint 5
             (-math.pi, math.pi)                      # Joint 6
         ]
+
+        # Controller <-> URDF joint convention. A pure sign flip, so the same
+        # multiply converts both ways (it is its own inverse).
+        self.real_robot = os.getenv('CR7_REAL_ROBOT') == '1'
+        self.joint_sign = JOINT_SIGN_REAL if self.real_robot else np.ones(6)
+        if self.real_robot:
+            self.get_logger().info(
+                "[joints] real-robot convention: J1/J5/J6 sign-flipped between "
+                "the controller and the URDF")
 
         self.get_logger().info("CR7 RRT Planner Node Initialized. Waiting for joint states...")
 
@@ -127,7 +158,7 @@ class CR7Node(Node):
                 filtered_names.append(name)
                 filtered_positions.append(msg.position[idx])
             self.joint_names = filtered_names
-            self.current_joints = np.array(filtered_positions)
+            self.current_joints = np.array(filtered_positions) * self.joint_sign
 
     def control_gripper(self, positions):
         if not self.gripper_client.wait_for_server(timeout_sec=5.0):
@@ -159,7 +190,7 @@ class CR7Node(Node):
 
     def attach_box(self):
         """Fix the box to the gripper (grasp) via the link attacher service."""
-        if not self.attach_client.wait_for_service(timeout_sec=5.0):
+        if self.attach_client is None or not self.attach_client.wait_for_service(timeout_sec=5.0):
             self.get_logger().error("ATTACHLINK service not available")
             return False
         req = AttachLink.Request()
@@ -175,7 +206,7 @@ class CR7Node(Node):
 
     def detach_box(self):
         """Release the box from the gripper via the link attacher service."""
-        if not self.detach_client.wait_for_service(timeout_sec=5.0):
+        if self.detach_client is None or not self.detach_client.wait_for_service(timeout_sec=5.0):
             self.get_logger().error("DETACHLINK service not available")
             return False
         req = DetachLink.Request()
@@ -317,7 +348,7 @@ class CR7Node(Node):
         time_from_start = 0.0
         for joints in path:
             point = JointTrajectoryPoint()
-            point.positions = joints
+            point.positions = [float(v) for v in np.asarray(joints) * self.joint_sign]
             time_from_start += 0.5  # 0.5 s interval between each waypoint
             point.time_from_start.sec = int(time_from_start)
             point.time_from_start.nanosec = int((time_from_start % 1) * 1e9)
@@ -359,7 +390,13 @@ class CR7Node(Node):
 class CBiRRTPickPlace(CR7Node):
     """CR7 node + helpers to run CBiRRT-planned, orientation-constrained motions."""
 
-    def setup_planner(self):
+    def setup_planner(self, combined_xacro=None):
+        # combined_xacro overrides the whole-robot collision model. The default
+        # (COMBINED_XACRO) pulls the MPO-700 AGV in from neo_simulation2; where
+        # that package is not installed -- e.g. a real-robot workspace carrying
+        # no sim packages -- a caller can pass the arm-only xacro instead and
+        # get self-collision checking only. See the warning logged below.
+        #
         # Attach the box to Link6, not gripper_base_link: gripper_attach_joint is
         # FIXED, so the URDF->SDF conversion lumps gripper_base_link into Link6
         # and the Gazebo model has no link by that name -- ATTACHLINK then fails
@@ -378,14 +415,20 @@ class CBiRRTPickPlace(CR7Node):
         self.cbirrt = ConstrainedPlanner(xacro_path=XACRO_PATH)
         # pinocchio collision model of the WHOLE robot (arm + cube + AGV +
         # gripper). All validity checks below go through this.
+        collision_xacro = combined_xacro or COMBINED_XACRO
         self.collision = ReachabilityModel(
-            xacro_path=COMBINED_XACRO, lock_non_arm=True, arm_pairs_only=True,
+            xacro_path=collision_xacro, lock_non_arm=True, arm_pairs_only=True,
             xacro_mappings={'use_gazebo': 'false'})
         self.collision.set_joint_limits(self.joint_limits)
         n_active = self.collision.pair_stats[2]
         self.get_logger().info(
             f"[collision] pinocchio model ready: {n_active} active pairs "
-            f"(arm+cube+AGV+gripper)")
+            f"from {os.path.basename(collision_xacro)}")
+        if collision_xacro != COMBINED_XACRO:
+            self.get_logger().warn(
+                "[collision] NOT the combined model: the cube platform and the "
+                "AGV body are NOT collision-checked; only self-collision (plus "
+                "whatever this xacro does contain) is enforced.")
 
         # IK model: the SAME base_link-rooted arm model and the SAME
         # inverse_kinematics solver the reachability map uses, so "reachable on
@@ -803,7 +846,7 @@ class CBiRRTPickPlace(CR7Node):
             t += max(dt, 0.05) if i > 0 else 0.0
             prev = cur
             pt = JointTrajectoryPoint()
-            pt.positions = [float(v) for v in joints]
+            pt.positions = [float(v) for v in cur * self.joint_sign]
             pt.time_from_start.sec = int(t)
             pt.time_from_start.nanosec = int((t % 1) * 1e9)
             goal_msg.trajectory.points.append(pt)
@@ -972,8 +1015,8 @@ class HubPickPlace(CBiRRTPickPlace):
     A/B/C/D) instantiates it and composes its primitives. Linear-only sequences
     use linear_servo and skip the CBiRRT spoke helpers."""
 
-    def setup_planner(self):
-        super().setup_planner()
+    def setup_planner(self, combined_xacro=None):
+        super().setup_planner(combined_xacro)
         self.hub_q = None
         self.box_idx = 0            # next object to handle (sequence-managed)
         self._recording = False
@@ -1173,7 +1216,7 @@ class HubPickPlace(CBiRRTPickPlace):
         """Fix the just-placed box (self.object_model/object_link) to the AGV
         magazine link so it rides rigidly with the base when the AGV drives.
         Returns the service success flag."""
-        if not self.attach_client.wait_for_service(timeout_sec=5.0):
+        if self.attach_client is None or not self.attach_client.wait_for_service(timeout_sec=5.0):
             self.get_logger().error("ATTACHLINK service not available")
             return False
         req = AttachLink.Request()
@@ -1191,7 +1234,7 @@ class HubPickPlace(CBiRRTPickPlace):
     def detach_box_from_magazine(self, model, link):
         """Undo attach_box_to_magazine for `model`/`link` so the box can be
         re-picked off the AGV pocket. Returns the service success flag."""
-        if not self.detach_client.wait_for_service(timeout_sec=5.0):
+        if self.detach_client is None or not self.detach_client.wait_for_service(timeout_sec=5.0):
             self.get_logger().error("DETACHLINK service not available")
             return False
         req = DetachLink.Request()

@@ -5,3 +5,4 @@ log/
 **/reachability_out/
 **/log_txt/
 *.mp4
+.venv/

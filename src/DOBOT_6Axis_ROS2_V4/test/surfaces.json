@@ -1,0 +1,68 @@
+{
+  "wall_y": {
+    "axis": "y",
+    "sign": 1,
+    "at": 0.55,
+    "bounds": {},
+    "touched": [
+      "(given, not measured)"
+    ],
+    "taught_at": "2026-08-06 07:01:40"
+  },
+  "wall_x": {
+    "axis": "x",
+    "sign": 1,
+    "at": 0.36,
+    "bounds": {},
+    "touched": [
+      "(given, not measured)"
+    ],
+    "taught_at": "2026-08-06 07:01:54"
+  },
+  "base_support": {
+    "axis": "z",
+    "sign": -1,
+    "at": 0.01318359375,
+    "bounds": {
+      "y": [
+        -0.34,
+        null
+      ]
+    },
+    "measured_at_joints_deg": [
+      -186.051,
+      -34.966,
+      -122.595,
+      67.102,
+      -89.056,
+      -16.996
+    ],
+    "touched": [
+      "gripper_finger_link_0"
+    ],
+    "taught_at": "2026-08-06 07:04:08"
+  },
+  "low_shelf": {
+    "axis": "z",
+    "sign": -1,
+    "at": -0.169921875,
+    "bounds": {
+      "y": [
+        null,
+        -0.34
+      ]
+    },
+    "measured_at_joints_deg": [
+      -270.998,
+      -70.239,
+      -86.017,
+      63.87,
+      -89.059,
+      -16.996
+    ],
+    "touched": [
+      "gripper_finger_link_0"
+    ],
+    "taught_at": "2026-08-06 07:06:05"
+  }
+}

@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1140 930" width="1140" height="930"
+     font-family="system-ui, -apple-system, 'Noto Sans KR', 'Malgun Gothic', sans-serif">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#171C24"/>
+    </marker>
+    <marker id="ah-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0D6E77"/>
+    </marker>
+    <marker id="ah-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6A7686"/>
+    </marker>
+  </defs>
+
+  <rect width="1140" height="930" fill="#FAFBFC"/>
+
+  <text x="40" y="44" font-size="21" font-weight="600" fill="#171C24">비전 → 로봇 base 좌표 변환 구조</text>
+  <text x="40" y="66" font-size="12.5" fill="#6A7686">호스트 프로세스는 vision_runner 하나뿐이다. /ammr 은 단계가 아니라 그 프로세스가 import 하는 라이브러리다.</text>
+
+  <!-- ══ 호스트 패널 ══ -->
+  <rect x="268" y="96" width="424" height="410" rx="4" fill="#F1F4F7" stroke="#D3DBE3"/>
+  <text x="284" y="120" font-size="11.5" font-weight="600" fill="#6A7686" letter-spacing="1.2">호스트 · Ubuntu 20.04 · venv_ammr</text>
+
+  <!-- ══ 컨테이너 패널 ══ -->
+  <rect x="788" y="96" width="320" height="410" rx="4" fill="#F1F4F7" stroke="#D3DBE3"/>
+  <text x="804" y="120" font-size="11.5" font-weight="600" fill="#6A7686" letter-spacing="1.2">컨테이너 ros2_dobot · --network host</text>
+
+  <!-- ── D405 ── -->
+  <rect x="40" y="150" width="188" height="92" rx="4" fill="#FFFFFF" stroke="#3C4654" stroke-width="1.4"/>
+  <text x="56" y="176" font-size="14.5" font-weight="650" fill="#171C24">RealSense D405</text>
+  <text x="56" y="198" font-size="11.5" fill="#3C4654">1280×720 @ 30fps</text>
+  <text x="56" y="216" font-size="11.5" fill="#3C4654">color + depth (align)</text>
+  <text x="56" y="234" font-size="11" fill="#A03B2B">V4L2 배타 — 한 프로세스만</text>
+
+  <!-- D405 → runner -->
+  <line x1="228" y1="196" x2="288" y2="196" stroke="#171C24" stroke-width="1.6" marker-end="url(#ah)"/>
+  <text x="232" y="188" font-size="10.5" fill="#6A7686">USB</text>
+
+  <!-- ── runner ── -->
+  <rect x="288" y="136" width="384" height="212" rx="4" fill="#FFFFFF" stroke="#3C4654" stroke-width="1.6"/>
+  <text x="306" y="164" font-size="15.5" font-weight="650" fill="#171C24">vision_runner</text>
+  <text x="306" y="184" font-size="11.5" fill="#6A7686">~/robot_vision · runner.py</text>
+  <line x1="306" y1="196" x2="654" y2="196" stroke="#E4EAF0"/>
+  <text x="306" y="218" font-size="12" fill="#3C4654">· 카메라 단독 소유 · 단일 스레드</text>
+  <text x="306" y="240" font-size="12" fill="#3C4654">· MAGAZINE: YOLOX → ring depth → 역투영</text>
+  <text x="306" y="262" font-size="12" fill="#3C4654">· ARUCO: PnP + depth 융합</text>
+  <text x="306" y="284" font-size="12" fill="#3C4654">· IDLE: grab 만, TRT 컨텍스트 유지</text>
+  <text x="306" y="312" font-size="12" font-weight="650" fill="#0D6E77">출력 좌표계 = 카메라 광학 프레임</text>
+  <text x="306" y="331" font-size="11" fill="#6A7686">팔 자세(TF)를 모른다 — 모드 명령만 받는다</text>
+
+  <!-- deps → runner (import) -->
+  <line x1="480" y1="392" x2="480" y2="348" stroke="#6A7686" stroke-width="1.4"
+        stroke-dasharray="5 4" marker-end="url(#ah-m)"/>
+  <text x="490" y="374" font-size="10.5" fill="#6A7686">import</text>
+
+  <!-- ── deps ── -->
+  <rect x="288" y="392" width="384" height="98" rx="4" fill="#FFFFFF" stroke="#6A7686"
+        stroke-width="1.2" stroke-dasharray="5 4"/>
+  <text x="306" y="414" font-size="11.5" font-weight="650" fill="#6A7686" letter-spacing="1">라이브러리 · 프로세스 아님</text>
+  <text x="306" y="440" font-size="12" fill="#3C4654">~/ammr/realtime — YOLOX · tracker · depth_calculator</text>
+  <text x="306" y="460" font-size="11" fill="#6A7686">비전담당자 코드 · 수정 금지 · import 만</text>
+  <text x="306" y="480" font-size="12" fill="#3C4654">~/YOLOX/magazine6.trt — TensorRT 엔진</text>
+
+  <!-- ── ZMQ 화살표 3개 ── -->
+  <line x1="672" y1="182" x2="808" y2="182" stroke="#0D6E77" stroke-width="1.8" marker-end="url(#ah-t)"/>
+  <text x="700" y="174" font-size="11" font-weight="650" fill="#0D6E77">5555</text>
+
+  <line x1="808" y1="240" x2="672" y2="240" stroke="#0D6E77" stroke-width="1.8" marker-end="url(#ah-t)"/>
+  <text x="700" y="232" font-size="11" font-weight="650" fill="#0D6E77">5556 상태/모드</text>
+
+  <line x1="672" y1="298" x2="808" y2="298" stroke="#0D6E77" stroke-width="1.4"
+        stroke-dasharray="5 4" marker-end="url(#ah-t)"/>
+  <text x="700" y="290" font-size="11" fill="#0D6E77">5557</text>
+
+  <text x="740" y="330" font-size="10.5" fill="#6A7686" text-anchor="middle">ZMQ</text>
+  <text x="740" y="345" font-size="10.5" fill="#6A7686" text-anchor="middle">msgpack</text>
+  <text x="740" y="360" font-size="10.5" fill="#6A7686" text-anchor="middle">127.0.0.1</text>
+
+  <!-- ── bridge ── -->
+  <rect x="808" y="136" width="282" height="212" rx="4" fill="#FFFFFF" stroke="#3C4654" stroke-width="1.6"/>
+  <text x="826" y="164" font-size="15.5" font-weight="650" fill="#171C24">vision_bridge</text>
+  <text x="826" y="184" font-size="11.5" fill="#6A7686">~/dobot_ws/.../vision_bridge</text>
+  <line x1="826" y1="196" x2="1072" y2="196" stroke="#E4EAF0"/>
+  <text x="826" y="218" font-size="12" fill="#3C4654">· 채택 게이트 (10프레임 평균)</text>
+  <text x="826" y="240" font-size="12" fill="#3C4654">· hand-eye 합성</text>
+  <rect x="822" y="252" width="254" height="46" rx="3" fill="#E2F0F1"/>
+  <text x="834" y="270" font-size="11" font-weight="650" fill="#0D6E77">P_base =</text>
+  <text x="834" y="288" font-size="11" fill="#0D6E77">T_base_flange @ T_flange_cam @ P_cam</text>
+  <text x="826" y="320" font-size="11" font-weight="650" fill="#8A5D0E">MAGAZINE 경로만 구현 — ARUCO 미수신</text>
+  <text x="826" y="337" font-size="11" fill="#6A7686">rclpy 없음 · bringup 불필요</text>
+
+  <!-- 로봇 → bridge -->
+  <line x1="949" y1="600" x2="949" y2="358" stroke="#171C24" stroke-width="1.6" marker-end="url(#ah)"/>
+  <text x="962" y="430" font-size="11.5" font-weight="650" fill="#171C24">30004 RT 피드</text>
+  <text x="962" y="448" font-size="11" fill="#3C4654">tool_vector · q · qd</text>
+  <text x="962" y="466" font-size="11" font-weight="650" fill="#A03B2B">read-only</text>
+  <text x="962" y="484" font-size="10.5" fill="#6A7686">29999(명령) 미접속</text>
+
+  <!-- ── 로봇 ── -->
+  <rect x="808" y="600" width="282" height="76" rx="4" fill="#FFFFFF" stroke="#3C4654" stroke-width="1.4"/>
+  <text x="826" y="628" font-size="14.5" font-weight="650" fill="#171C24">로봇 CR7V</text>
+  <text x="826" y="650" font-size="11.5" fill="#3C4654">192.168.5.1</text>
+  <text x="826" y="668" font-size="11" fill="#6A7686">움직이는 것은 다른 노드(cr7_pnp) 몫 — 범위 밖</text>
+
+  <!-- ══ 인터페이스 표 ══ -->
+  <rect x="40" y="546" width="712" height="340" rx="4" fill="#FFFFFF" stroke="#D3DBE3"/>
+  <text x="60" y="574" font-size="13" font-weight="650" fill="#171C24">ZMQ 인터페이스 — 소켓 3개 모두 러너가 bind, 컨테이너가 connect</text>
+
+  <line x1="60" y1="588" x2="732" y2="588" stroke="#D3DBE3"/>
+
+  <text x="60" y="612" font-size="12" font-weight="650" fill="#0D6E77">5555  PUB</text>
+  <text x="176" y="612" font-size="12" font-weight="650" fill="#171C24">러너 → 컨테이너</text>
+  <text x="60" y="632" font-size="11.5" fill="#3C4654">공통: req_id · mode · seq · mono_stamp · depth_scale · status · git_vision · git_runner</text>
+  <text x="60" y="651" font-size="11.5" fill="#3C4654">MAGAZINE: detections[] = track_id · cls · state · stale_frames · lost_count · score</text>
+  <text x="60" y="669" font-size="11.5" fill="#3C4654">　　　　　　· bbox · avg_dist_cm · <tspan font-weight="650" fill="#0D6E77">xyz_cam</tspan> · valid_pct · sd_cm</text>
+  <text x="60" y="687" font-size="11.5" fill="#3C4654">ARUCO: marker_id · T_cam_marker(4×4) · plane_ok · n_samples · P_cam_target</text>
+  <text x="60" y="705" font-size="11.5" font-weight="650" fill="#8A5D0E">　　　↳ 러너는 발행하지만 브리지가 아직 소비하지 않는다 (미구현)</text>
+  <text x="60" y="723" font-size="11.5" fill="#6A7686">하트비트: 마지막 발행 후 1초 지나면 공통 필드만 (별도 타입 아님)</text>
+
+  <line x1="60" y1="738" x2="732" y2="738" stroke="#E4EAF0"/>
+
+  <text x="60" y="762" font-size="12" font-weight="650" fill="#0D6E77">5556  REP</text>
+  <text x="176" y="762" font-size="12" font-weight="650" fill="#171C24">컨테이너 → 러너</text>
+  <text x="60" y="782" font-size="11.5" fill="#3C4654">set_mode(IDLE|MAGAZINE|ARUCO) — 로봇제어 FSM 이 보내는 상태 · ping · dump</text>
+  <text x="60" y="800" font-size="11.5" fill="#A03B2B">10초간 커맨드 없으면 IDLE 강등 → FSM 이 5초 주기 ping 유지</text>
+
+  <line x1="60" y1="815" x2="732" y2="815" stroke="#E4EAF0"/>
+
+  <text x="60" y="839" font-size="12" font-weight="650" fill="#6A7686">5557  PUB</text>
+  <text x="176" y="839" font-size="12" font-weight="650" fill="#6A7686">러너 → 뷰어 (옵션)</text>
+  <text x="60" y="858" font-size="11.5" fill="#6A7686">640×360 JPEG + bbox, 5Hz. runner.py --preview 일 때만. 결과 스트림에는 영상이 없다</text>
+</svg>

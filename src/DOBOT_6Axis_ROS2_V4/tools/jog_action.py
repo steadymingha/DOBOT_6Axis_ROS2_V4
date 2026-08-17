@@ -58,6 +58,13 @@ KEY_JOINT = {
 PAD_DEADMAN_BUTTON = 4
 PAD_JOINT = {0: (1, -1), 1: (0, -1), 2: (2, -1), 3: (3, 1)}  # axis -> (joint idx, sign)
 PAD_DEADZONE = 0.15
+# How far the commanded target may run ahead of where the arm actually is,
+# in ticks of commanded motion. Without a bound the target integrates forever
+# while the arm is not following -- which is exactly what happens when the
+# controller trips into COLLISION/ERROR and rejects every goal. The gap grows
+# for as long as the stick is held, and the instant the error clears the arm
+# lunges the whole way in one go. Two ticks is enough lead to stay smooth.
+MAX_LEAD_TICKS = 2
 
 
 class ActionJogger(Node):
@@ -77,7 +84,8 @@ class ActionJogger(Node):
         self.cli_error = self.create_client(GetErrorID, NS + 'GetErrorID')
 
         self.lock = threading.Lock()
-        self.target = None
+        self.target = None      # commanded position (integrated)
+        self.actual = None      # where the arm actually is, live
         self.create_subscription(JointState, '/joint_states', self._on_js, 10)
 
         self.speed_deg_s = speed_deg_s
@@ -85,9 +93,12 @@ class ActionJogger(Node):
         self.kb_deadline = 0.0
 
     def _on_js(self, msg):
+        order = [msg.name.index(n) for n in JOINT_NAMES]
+        # Rebind rather than mutate: tick() reads this without the lock, and a
+        # whole-list swap is atomic where an in-place edit would not be.
+        self.actual = [msg.position[i] for i in order]
         if self.target is None:
-            order = [msg.name.index(n) for n in JOINT_NAMES]
-            self.target = [msg.position[i] for i in order]
+            self.target = list(self.actual)
 
     def _call(self, cli, req):
         # a background thread runs rclpy.spin(self) for the whole process lifetime
@@ -124,9 +135,18 @@ class ActionJogger(Node):
                     v = pad.axis(axis, PAD_DEADZONE)
                     if v:
                         delta[idx] += sign * v * self.step_rad()
+            actual = self.actual
             if not any(delta):
+                # Nothing held: start the next push from where the arm really
+                # is, so settling error and any rejected goals do not accumulate.
+                if actual is not None:
+                    self.target = list(actual)
                 return
             self.target = [t + d for t, d in zip(self.target, delta)]
+            if actual is not None:
+                lead = max(math.radians(2.0), MAX_LEAD_TICKS * self.step_rad())
+                self.target = [min(max(t, a - lead), a + lead)
+                               for t, a in zip(self.target, actual)]
             goal = FollowJointTrajectory.Goal()
             goal.trajectory.joint_names = JOINT_NAMES
             point = JointTrajectoryPoint()

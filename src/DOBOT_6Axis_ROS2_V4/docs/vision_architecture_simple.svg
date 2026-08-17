@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1260 540" width="1260" height="540"
+     font-family="system-ui, -apple-system, 'Noto Sans KR', 'Malgun Gothic', sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#171C24"/>
+    </marker>
+    <marker id="at" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0D6E77"/>
+    </marker>
+    <marker id="am" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8593A2"/>
+    </marker>
+  </defs>
+
+  <rect width="1260" height="540" fill="#FAFBFC"/>
+  <text x="40" y="44" font-size="20" font-weight="600" fill="#171C24">비전 → 로봇 base 좌표 변환 · 모듈 구성</text>
+
+  <!-- ── D405 ── -->
+  <rect x="40" y="145" width="165" height="90" rx="4" fill="#FFFFFF" stroke="#3C4654" stroke-width="1.4"/>
+  <text x="58" y="176" font-size="14.5" font-weight="650" fill="#171C24">RealSense D405</text>
+  <text x="58" y="199" font-size="11.5" fill="#6A7686">카메라</text>
+  <text x="58" y="219" font-size="11.5" fill="#3C4654">1280×720 color + depth</text>
+
+  <line x1="205" y1="190" x2="250" y2="190" stroke="#171C24" stroke-width="1.6" marker-end="url(#a)"/>
+  <text x="227" y="176" font-size="10.5" fill="#6A7686" text-anchor="middle">USB</text>
+  <text x="227" y="209" font-size="10" fill="#8593A2" text-anchor="middle">V4L2 배타</text>
+
+  <!-- ── vision_runner ── -->
+  <rect x="255" y="110" width="285" height="190" rx="4" fill="#FFFFFF" stroke="#3C4654" stroke-width="1.7"/>
+  <text x="275" y="142" font-size="16" font-weight="650" fill="#171C24">vision_runner</text>
+  <text x="275" y="162" font-size="11.5" fill="#6A7686">~/robot_vision · 호스트</text>
+  <line x1="275" y1="176" x2="520" y2="176" stroke="#E4EAF0"/>
+  <text x="275" y="200" font-size="12" fill="#3C4654">카메라 단독 소유</text>
+  <text x="275" y="222" font-size="12" fill="#3C4654">매거진 탐지 (YOLOX + depth)</text>
+  <text x="275" y="244" font-size="12" fill="#3C4654">ArUco 자세추정 (PnP + depth)</text>
+  <text x="275" y="274" font-size="11.5" font-weight="650" fill="#0D6E77">출력 = 카메라 광학 프레임</text>
+
+  <!-- ── import ── -->
+  <line x1="397" y1="358" x2="397" y2="302" stroke="#8593A2" stroke-width="1.4"
+        stroke-dasharray="5 4" marker-end="url(#am)"/>
+  <text x="407" y="336" font-size="10.5" fill="#6A7686">import</text>
+
+  <rect x="255" y="358" width="285" height="102" rx="4" fill="#FFFFFF" stroke="#8593A2"
+        stroke-width="1.2" stroke-dasharray="5 4"/>
+  <text x="275" y="384" font-size="13.5" font-weight="650" fill="#3C4654">~/ammr/realtime</text>
+  <text x="275" y="404" font-size="11.5" fill="#6A7686">라이브러리 · 프로세스 아님</text>
+  <text x="275" y="426" font-size="11.5" fill="#3C4654">YOLOX · tracker · depth_calculator</text>
+  <text x="275" y="447" font-size="11.5" fill="#3C4654">~/YOLOX/magazine6.trt</text>
+
+  <!-- ── ZMQ ── -->
+  <line x1="540" y1="180" x2="740" y2="180" stroke="#0D6E77" stroke-width="1.9" marker-end="url(#at)"/>
+  <text x="640" y="168" font-size="11.5" font-weight="650" fill="#0D6E77" text-anchor="middle">ZMQ PUB · 5555</text>
+  <text x="640" y="198" font-size="11" fill="#3C4654" text-anchor="middle">xyz_cam · T_cam_marker</text>
+  <text x="640" y="214" font-size="11" fill="#3C4654" text-anchor="middle">status · seq</text>
+
+  <line x1="740" y1="258" x2="540" y2="258" stroke="#0D6E77" stroke-width="1.9" marker-end="url(#at)"/>
+  <text x="640" y="246" font-size="11.5" font-weight="650" fill="#0D6E77" text-anchor="middle">ZMQ REQ/REP · 5556</text>
+  <text x="640" y="276" font-size="11" fill="#3C4654" text-anchor="middle">set_mode · ping</text>
+
+  <text x="640" y="306" font-size="10" fill="#8593A2" text-anchor="middle">msgpack · 127.0.0.1 (--network host)</text>
+
+  <!-- ── vision_bridge ── -->
+  <rect x="745" y="110" width="285" height="190" rx="4" fill="#FFFFFF" stroke="#3C4654" stroke-width="1.7"/>
+  <text x="765" y="142" font-size="16" font-weight="650" fill="#171C24">vision_bridge</text>
+  <text x="765" y="162" font-size="11.5" fill="#6A7686">~/dobot_ws · 컨테이너</text>
+  <line x1="765" y1="176" x2="1010" y2="176" stroke="#E4EAF0"/>
+  <text x="765" y="200" font-size="12" fill="#3C4654">채택 게이트 (10프레임 평균)</text>
+  <text x="765" y="222" font-size="12" fill="#3C4654">hand-eye 합성</text>
+  <text x="765" y="244" font-size="12" fill="#3C4654">모드 지시 (FSM 대역)</text>
+  <text x="765" y="274" font-size="11.5" font-weight="650" fill="#0D6E77">출력 = 로봇 base 프레임</text>
+
+  <!-- ── 로봇 ── -->
+  <line x1="887" y1="378" x2="887" y2="302" stroke="#171C24" stroke-width="1.6" marker-end="url(#a)"/>
+  <text x="899" y="330" font-size="11" font-weight="650" fill="#171C24">TCP 30004</text>
+  <text x="899" y="347" font-size="10.5" fill="#3C4654">tool_vector · q · qd</text>
+  <text x="899" y="364" font-size="10.5" font-weight="650" fill="#A03B2B">read-only</text>
+
+  <rect x="745" y="378" width="285" height="82" rx="4" fill="#FFFFFF" stroke="#3C4654" stroke-width="1.4"/>
+  <text x="765" y="406" font-size="14.5" font-weight="650" fill="#171C24">로봇 CR7V</text>
+  <text x="765" y="428" font-size="11.5" fill="#6A7686">팔 자세 제공</text>
+  <text x="765" y="448" font-size="11.5" fill="#3C4654">192.168.5.1</text>
+
+  <!-- ── 다음 단계 ── -->
+  <line x1="1030" y1="190" x2="1080" y2="190" stroke="#8593A2" stroke-width="1.4"
+        stroke-dasharray="5 4" marker-end="url(#am)"/>
+  <text x="1055" y="176" font-size="10.5" font-weight="650" fill="#0D6E77" text-anchor="middle">P_base</text>
+
+  <rect x="1085" y="145" width="155" height="90" rx="4" fill="#FFFFFF" stroke="#8593A2"
+        stroke-width="1.2" stroke-dasharray="5 4"/>
+  <text x="1103" y="176" font-size="14" font-weight="650" fill="#3C4654">FSM · 모션</text>
+  <text x="1103" y="199" font-size="11.5" fill="#6A7686">pick &amp; place</text>
+  <text x="1103" y="219" font-size="11.5" fill="#8593A2">이번 범위 밖</text>
+</svg>
