@@ -60,13 +60,26 @@ from cr7_pnp import (  # noqa: E402
     shelf_tag_world, quat_to_R,
 )
 from vision import pocket_vision as pockets  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'comms'))
+import mcs_protocol as proto  # noqa: E402
+
+
+def fail(node, code, detail):
+    """Record a failure for the MCS report AND log it (same contract as
+    wirebonder_pick_place.fail): code -> node.last_error (rides in the
+    /mcs/feedback ErrorCode field), detail -> node.last_error_detail.
+    Returns False so callers can `return fail(...)`."""
+    node.last_error = code
+    node.last_error_detail = detail
+    node.get_logger().error(detail)
+    return False
 
 # Tool-down HUB waypoint (carried-object TCP, tool pointing DOWN). Solving IK
 # toward the pocket branch keeps the hub in the SAME elbow/wrist family as both
 # spokes, so hub<->shelf and hub<->pocket stay short and never flip the elbow.
-# TUNE IN SIM: raise z (or pull x toward the pocket ~0.37) if the hub IK fails or
-# the carried box collides at the hub.
-HUB_TCP = (0.33, 0.0, 0.32)
+# TUNE: raise z (or pull x toward the pocket ~0.37) if the hub IK fails or the
+# carried box collides at the hub. Value in cr7_pnp/env/<DOBOT_ENV>.json.
+from cr7_pnp import HUB_TCP  # noqa: E402
 # Hub joints (J1..J6 rad): -0.45320, 0.34299, -1.88375, 0.0, -1.52609, -0.43032 (deg: -26, +20, -108, 0, -87, -25),
 
 # Pocket centres in base_link y, in the order boxes are placed (-y to +y).
@@ -93,7 +106,12 @@ def shelf_pose_of(node):
 
 def shelf_box(node, idx):
     """(world_xyz, Gazebo model name) for shelf box `idx`, composed with the live
-    shelf pose. Replaces the old static SHELF_BOXES table."""
+    shelf pose. Replaces the old static SHELF_BOXES table.
+    Real robot (node.use_vision_box): the AI magazine detector's box centre
+    (node.vision_box, set by main.locate_box) is the target; the layout stays
+    the neighbours' phantoms and the jog-and-edit fallback (env/real.json)."""
+    if getattr(node, 'use_vision_box', False) and getattr(node, 'vision_box', None) is not None:
+        return (tuple(float(v) for v in node.vision_box), shelf_box_model(TIER, idx))
     return (shelf_box_center(TIER, idx, shelf_pose_of(node)),
             shelf_box_model(TIER, idx))
 
@@ -143,10 +161,11 @@ def place_quat():
     return quat_mul(quat_about_z(PLACE_YAW), DOWN)
 
 
-def _abort_to_hub(node, done, reason):
+def _abort_to_hub(node, done, reason, code=proto.ErrorCode.EXEC_FAILED):
     """Forward-side failure (before the box is grasped): retrace the executed
-    segments in reverse so the arm ends back at the hub instead of stranded."""
-    node.get_logger().error(f"[cycle] {reason}; retracing to hub")
+    segments in reverse so the arm ends back at the hub instead of stranded.
+    `code` lands in node.last_error for the MCS report."""
+    fail(node, code, f"[cycle] {reason}; retracing to hub")
     path = node.join([node.rev(seg) for seg in reversed(done)])
     if path:
         node.execute_path(path, speed=0.6)
@@ -176,11 +195,16 @@ def shelf_pick_to_hub(node, box_world, box_model, stock_key, place_ref):
     meet the box: per-candidate for the descend pre-flight, then for the return
     sweep + execution once a branch is locked in."""
     box_ps = node.transform_world_pose(*box_world, DOWN)
-    insert_dir = node.transform_world_vector([0.0, 1.0, 0.0])   # world +y = into shelf
-    row_dir = node.transform_world_vector([1.0, 0.0, 0.0])      # world +x = magazine row
+    # Shelf-model axes in world: +y = into the shelf, +x = the magazine row,
+    # rotated by the shelf yaw (SHELF_WORLD_POSE / env json / ArUco). Sim yaw is
+    # 0 so this is the old fixed world +y/+x there; the real shelf may sit on
+    # the robot's -y side (yaw = pi).
+    _c, _s = math.cos(shelf_pose_of(node)[2]), math.sin(shelf_pose_of(node)[2])
+    insert_dir = node.transform_world_vector([-_s, _c, 0.0])    # shelf +y = into shelf
+    row_dir = node.transform_world_vector([_c, _s, 0.0])        # shelf +x = magazine row
     if box_ps is None or insert_dir is None or row_dir is None:
-        node.get_logger().error("[pick] TF unavailable; reposition and retry")
-        return False
+        return fail(node, proto.ErrorCode.TF_UNAVAILABLE,
+                    "[pick] TF unavailable; reposition and retry")
     insert_dir = insert_dir / (np.linalg.norm(insert_dir) or 1.0)
     box = np.array([box_ps.pose.position.x, box_ps.pose.position.y,
                     box_ps.pose.position.z])
@@ -194,14 +218,14 @@ def shelf_pick_to_hub(node, box_world, box_model, stock_key, place_ref):
     # ---- PRE-FLIGHT (no motion) ----
     q0 = node.ik_nearest(pose_at(pregrasp0_xyz, grasp_quat), place_ref)
     if q0 is None:
-        node.get_logger().error("[pre-flight] centred pre-grasp IK failed")
-        return False
+        return fail(node, proto.ErrorCode.UNREACHABLE,
+                    "[pre-flight] centred pre-grasp IK failed")
     q0_tw = list(q0)
     q0_tw[5] += GRIPPER_YAW_TWIST
     jaw_x = node.gripper_x_in_base_fk(q0_tw)
     if jaw_x is None:
-        node.get_logger().error("[pre-flight] gripper FK unavailable for jaw offset")
-        return False
+        return fail(node, proto.ErrorCode.UNREACHABLE,
+                    "[pre-flight] gripper FK unavailable for jaw offset")
     pregrasp_xyz = pregrasp0_xyz - GRASP_LATERAL_M * jaw_x
     pregrasp_pose = pose_at(pregrasp_xyz, grasp_quat)
 
@@ -215,8 +239,7 @@ def shelf_pick_to_hub(node, box_world, box_model, stock_key, place_ref):
     cands = node.compute_ik_ordered(pose_at(pregrasp_xyz, grasp_quat),
                                     return_all=True)
     if not cands:
-        node.get_logger().error("[pre-flight] pre-grasp IK failed")
-        return False
+        return fail(node, proto.ErrorCode.UNREACHABLE, "[pre-flight] pre-grasp IK failed")
     ref = np.array(place_ref)
     cands.sort(key=lambda q: np.linalg.norm(np.array(q) - ref))
     q_goal = None
@@ -242,22 +265,20 @@ def shelf_pick_to_hub(node, box_world, box_model, stock_key, place_ref):
                                    f"the grasp servos (0..{k - 1} rejected)")
         break
     if q_goal is None:
-        node.get_logger().error("[pre-flight] no IK branch passes insert+descend; "
-                                "abort (no motion)")
-        return False
+        return fail(node, proto.ErrorCode.UNREACHABLE,
+                    "[pre-flight] no IK branch passes insert+descend; abort (no motion)")
 
     node.attach_box_collision()
     if not node.is_state_valid(node.hub_q):
         node.detach_box_collision()
-        node.get_logger().error("[pre-flight] hub collides with the carried box; "
-                                "raise HUB_TCP")
-        return False
+        return fail(node, proto.ErrorCode.COLLISION,
+                    "[pre-flight] hub collides with the carried box; raise HUB_TCP")
     P1 = node.plan_spoke(node.hub_q, pregrasp_pose, place_ref, goal_q=q_goal,
                          label="P1 hub->pregrasp")
     node.detach_box_collision()
     if P1 is None:
-        node.get_logger().error("[pre-flight] approach spoke infeasible; abort (no motion)")
-        return False
+        return fail(node, proto.ErrorCode.PLAN_FAILED,
+                    "[pre-flight] approach spoke infeasible; abort (no motion)")
     # Park the target's phantom for the rest of the cycle: the return sweep
     # models the box IN the gripper, and the executed descend wraps the jaws
     # around the box. On failure the caller restores it (box still on shelf).
@@ -286,9 +307,8 @@ def shelf_pick_to_hub(node, box_world, box_model, stock_key, place_ref):
     node.set_box_stock_collision(False)
     node.detach_box_collision()
     if not spoke_back:
-        node.get_logger().error("[pre-flight] twisted hub return infeasible; "
-                                "abort (no motion)")
-        return False
+        return fail(node, proto.ErrorCode.PLAN_FAILED,
+                    "[pre-flight] twisted hub return infeasible; abort (no motion)")
 
     # ---- EXECUTE shelf side (each forward segment captured for the return) ----
     done = []
@@ -315,11 +335,25 @@ def shelf_pick_to_hub(node, box_world, box_model, stock_key, place_ref):
     twist_delta = q_tw[5] - q_ins[5]
     done.append([q_ins, q_tw])
 
-    ok, descend_path = node.capture(
-        lambda: node.linear_servo([0.0, 0.0, -descend_dist + 0.007], label="descend"))
-    if not ok:
-        return _abort_to_hub(node, done, "descend failed")
-    done.append(descend_path)
+    if node.real_descend_active:
+        # REAL: contact-stop descend (the --vision --run verified chain). No
+        # contact is EXPECTED here -- the jaws wrap the box, so full travel is
+        # the normal outcome (same geometry the sim linear servo executes); a
+        # torque step means the height is wrong and the arm stops instead of
+        # pressing the box. On None the arm is left in place: lift vertically
+        # (test/run.sh --descend -50) before commanding anything else.
+        descend_path = None
+        drop_pick = node.contact_descend(descend_dist - 0.007, label="pick descend")
+        if drop_pick is None:
+            return fail(node, proto.ErrorCode.EXEC_FAILED,
+                        "[pick] contact descend failed; arm LEFT IN PLACE over the box "
+                        "-- lift vertically before any other command")
+    else:
+        ok, descend_path = node.capture(
+            lambda: node.linear_servo([0.0, 0.0, -descend_dist + 0.007], label="descend"))
+        if not ok:
+            return _abort_to_hub(node, done, "descend failed")
+        done.append(descend_path)
 
     node.control_gripper(GRIPPER_CLOSE)
     # Resolve the actual Gazebo model at the box position (no hardcoded names);
@@ -340,32 +374,40 @@ def shelf_pick_to_hub(node, box_world, box_model, stock_key, place_ref):
             f"({d[0]*1000:+.0f}, {d[1]*1000:+.0f}, {d[2]*1000:+.0f}) mm (world)")
     if not node.attach_box():
         node.control_gripper(GRIPPER_OPEN)
-        return _abort_to_hub(node, done, "ATTACHLINK failed")
+        return _abort_to_hub(node, done, "ATTACHLINK failed", proto.ErrorCode.ATTACH_FAILED)
     node.attach_box_collision()
     time.sleep(0.5)
 
     # Return holding the twist (the un-twist waits for the hub, where there is
     # open space). Ascend + retreat are straight, box-safe moves: the box slides
     # back out exactly the way it came in.
-    out_path = node.join([
-        node.rev(descend_path),                              # ascend (lift box)
-        node.offset_j6(node.rev(insert_path), twist_delta),  # retreat, twist held
-    ])
+    if node.real_descend_active:
+        # Undo EXACTLY the measured drop (the verified pattern: anything else
+        # makes the retreat replay start from a gap -- 2026-08-11 trip), then
+        # retreat along the recorded insert, twist held.
+        if drop_pick > 1e-3 and not node.linear_servo(
+                [0.0, 0.0, drop_pick], label="ascend (lift box)"):
+            return fail(node, proto.ErrorCode.EXEC_FAILED,
+                        "[pick] ascend failed; arm LEFT DOWN -- lift "
+                        "vertically before any other command")
+        out_path = node.offset_j6(node.rev(insert_path), twist_delta)
+    else:
+        out_path = node.join([
+            node.rev(descend_path),                              # ascend (lift box)
+            node.offset_j6(node.rev(insert_path), twist_delta),  # retreat, twist held
+        ])
     if not node.execute_path(out_path, speed=0.6):
-        node.get_logger().error("[pick] shelf pull-out failed")
-        return False
+        return fail(node, proto.ErrorCode.EXEC_FAILED, "[pick] shelf pull-out failed")
 
     # Spoke back to the hub: pre-validated (or pre-planned) in the pre-flight
     # under the twisted, box-attached, box-vs-stock model, so no runtime
     # re-planning is ever needed here.
     if not node.execute_path(spoke_back, speed=0.6):
-        node.get_logger().error("[pick] shelf return failed")
-        return False
+        return fail(node, proto.ErrorCode.EXEC_FAILED, "[pick] shelf return failed")
     # At the hub now (J6 still twisted). Un-twist here, in the open, to drop the
     # picked azimuth and land exactly on hub_q for the pocket spoke.
     if not node.move_single_joint(5, node.hub_q[5], label="untwist-at-hub"):
-        node.get_logger().error("[pick] hub un-twist failed")
-        return False
+        return fail(node, proto.ErrorCode.EXEC_FAILED, "[pick] hub un-twist failed")
     return True
 
 
@@ -385,13 +427,11 @@ def pocket_place_from_hub(node, pocket_y, place_ref, place_jaw_x, label):
     hover_pose = pose_at(pocket_hover_xyz(pocket_y, place_jaw_x), place_quat())
     P2 = node.plan_spoke(node.hub_q, hover_pose, place_ref, label=label)
     if P2 is None:
-        node.get_logger().error(f"[{label}] carry spoke infeasible")
-        return False
+        return fail(node, proto.ErrorCode.PLAN_FAILED, f"[{label}] carry spoke infeasible")
 
     node._start_recording()
     if not node.execute_path(P2, speed=0.6):
-        node.get_logger().error(f"[{label}] carry spoke exec failed")
-        return False
+        return fail(node, proto.ErrorCode.EXEC_FAILED, f"[{label}] carry spoke exec failed")
     forward = node._stop_recording()
 
     # Guarded descend: phantom stays ON (it IS the sensor). Nominal gap from
@@ -399,6 +439,17 @@ def pocket_place_from_hub(node, pocket_y, place_ref, place_jaw_x, label):
     # BOX_H/2 (~95 mm); the generous max is safe because it always stops AT
     # contact (same reasoning as wirebonder BASE_PLACE_OVERTRAVEL).
     drop = node.guarded_descend(POCKET_HOVER, label=f"{label} place-descend")
+    if node.real_descend_active and drop < 0.02:
+        # Contact within the blanking window / could not start: the box is still
+        # in the air -- releasing would DROP it. Carry it back instead.
+        fail(node, proto.ErrorCode.EXEC_FAILED,
+             f"[{label}] place descend stopped after {drop * 1000:.0f} mm "
+             f"(no believable contact) -- NOT releasing; carrying the box back")
+        if drop > 1e-3:
+            node.linear_servo([0.0, 0.0, drop], label=f"{label} re-ascend")
+        node.replay_reverse(forward)
+        node.go_to_hub()
+        return False
     node.detach_box_collision()
 
     # Detach from the gripper; optionally fix the box to the AGV so it rides
@@ -412,11 +463,9 @@ def pocket_place_from_hub(node, pocket_y, place_ref, place_jaw_x, label):
     # Back out: undo the measured drop, then retrace the recorded carry spoke.
     if drop > 1e-3 and not node.linear_servo([0.0, 0.0, drop],
                                              label=f"{label} place-ascend"):
-        node.get_logger().error(f"[{label}] place-ascend failed")
-        return False
+        return fail(node, proto.ErrorCode.EXEC_FAILED, f"[{label}] place-ascend failed")
     if not node.replay_reverse(forward):
-        node.get_logger().error(f"[{label}] return to hub failed")
-        return False
+        return fail(node, proto.ErrorCode.EXEC_FAILED, f"[{label}] return to hub failed")
     return True
 
 
@@ -439,10 +488,9 @@ def pick_place_one_box(node, idx):
     else:
         pocket = pockets.next_free(occ, start=prefer, step=-1)
         if pocket is None:
-            node.get_logger().error(
-                f"[cycle] no usable pocket (occupancy {occ}; all -1 = the "
-                f"look/read failed, see [pockets] errors above)")
-            return False
+            return fail(node, proto.ErrorCode.NO_POCKET,
+                        f"[cycle] no usable pocket (occupancy {occ}; all -1 = the "
+                        f"look/read failed, see [pockets] errors above)")
         if pocket != prefer:
             node.get_logger().info(
                 f"[cycle] pocket {prefer} occupied; placing into pocket {pocket}")
@@ -450,12 +498,11 @@ def pick_place_one_box(node, idx):
 
     place_ref = compute_place_ref(node, pocket_y)
     if place_ref is None:
-        node.get_logger().error("[cycle] pocket family seed IK failed")
-        return False
+        return fail(node, proto.ErrorCode.UNREACHABLE, "[cycle] pocket family seed IK failed")
     place_jaw_x = node.gripper_x_in_base_fk(place_ref)
     if place_jaw_x is None:
-        node.get_logger().error("[cycle] gripper FK unavailable for place offset")
-        return False
+        return fail(node, proto.ErrorCode.UNREACHABLE,
+                    "[cycle] gripper FK unavailable for place offset")
 
     # Pre-flight the pocket carry spoke (box phantom on, no motion).
     node.attach_box_collision()
@@ -464,8 +511,8 @@ def pick_place_one_box(node, idx):
         place_ref, label=f"pre pocket(y={pocket_y:+.3f})") is not None
     node.detach_box_collision()
     if not feasible:
-        node.get_logger().error("[cycle] pocket unreachable; abort (no motion)")
-        return False
+        return fail(node, proto.ErrorCode.PLAN_FAILED,
+                    "[cycle] pocket unreachable; abort (no motion)")
 
     # The target's own stock phantom is parked INSIDE shelf_pick_to_hub, right
     # before the descend pre-flight (approach + insert are validated against it).
@@ -531,19 +578,17 @@ def refresh_shelf_pose(node, n=15, timeout=6.0):
                 samples.append((p.x, p.y, quat_yaw(o)))
         time.sleep(0.02)
     if not samples:
-        node.get_logger().error(
-            f"[vision] no /vision/shelf_pose in {timeout}s -- is the vision node "
-            f"running and the tier-{TIER} tag (id {2 + TIER - 1}) in FOV?")
-        return False
+        return fail(node, proto.ErrorCode.TAG_NOT_DETECTED,
+                    f"[vision] no /vision/shelf_pose in {timeout}s -- is the vision node "
+                    f"running and the tier-{TIER} tag (id {2 + TIER - 1}) in FOV?")
     arr = np.array(samples)
     med = np.median(arr, axis=0)            # ponytail: yaw ~0 here, no wrap handling
     spread = arr[:, :2].std(axis=0) * 1000.0
     if spread.max() > CAPTURE_SPREAD_MAX_MM:
-        node.get_logger().error(
-            f"[vision] shelf REJECTED: spread {spread[0]:.0f}/{spread[1]:.0f} mm > "
-            f"{CAPTURE_SPREAD_MAX_MM:.0f} -- stale 2nd vision node? "
-            f"(ros2 topic info /vision/shelf_pose: Publisher count should be 1)")
-        return False
+        return fail(node, proto.ErrorCode.CAPTURE_SPREAD_HIGH,
+                    f"[vision] shelf REJECTED: spread {spread[0]:.0f}/{spread[1]:.0f} mm > "
+                    f"{CAPTURE_SPREAD_MAX_MM:.0f} -- stale 2nd vision node? "
+                    f"(ros2 topic info /vision/shelf_pose: Publisher count should be 1)")
     off = np.abs(med[:2] - np.array(SHELF_WORLD_POSE[:2])) * 1000.0
     dyaw = math.degrees(abs(med[2] - SHELF_WORLD_POSE[2]))
     if off.max() > CAPTURE_POS_TOL_MM or dyaw > CAPTURE_YAW_TOL_DEG:
@@ -551,6 +596,8 @@ def refresh_shelf_pose(node, n=15, timeout=6.0):
             f"[vision] shelf REJECTED: pose {off[0]:.0f}/{off[1]:.0f} mm "
             f"dyaw={dyaw:.0f} deg off anchor (tol {CAPTURE_POS_TOL_MM:.0f} mm/"
             f"{CAPTURE_YAW_TOL_DEG:.0f} deg) -- bad read")
+        node.last_error = proto.ErrorCode.CAPTURE_IMPLAUSIBLE
+        node.last_error_detail = "[vision] shelf pose off anchor"
         return False
     node.shelf_pose = tuple(med)
     node.get_logger().info(
@@ -681,6 +728,8 @@ def capture_shelf(node):
             node.get_logger().error(
                 "[vision] auto-aim pose unavailable (TF/extrinsic missing); jog a "
                 "viewpoint and set SHELF_CAPTURE_JOINTS")
+            node.last_error = proto.ErrorCode.TF_UNAVAILABLE
+            node.last_error_detail = "[vision] auto-aim pose unavailable"
             return False
         p = aim.pose.position
         node.get_logger().info(
@@ -699,9 +748,9 @@ def capture_shelf(node):
 
     ok_fwd, fwd = node.capture(forward)
     if not ok_fwd:
-        node.get_logger().error(
-            "[vision] capture viewpoint unreachable/blocked; jog one and set "
-            "SHELF_CAPTURE_JOINTS")
+        fail(node, proto.ErrorCode.PLAN_FAILED,
+             "[vision] capture viewpoint unreachable/blocked; jog one and set "
+             "SHELF_CAPTURE_JOINTS")
         node.go_to_hub()
         return False
     ok = refresh_shelf_pose(node)
@@ -726,15 +775,15 @@ def bringup(node):
         node.get_logger().info("Waiting for /joint_states...")
         time.sleep(0.5)
     if not node.update_shelf_collision():
-        node.get_logger().error("[bringup] shelf TF unavailable; is the sim up?")
-        return False
+        return fail(node, proto.ErrorCode.TF_UNAVAILABLE,
+                    "[bringup] shelf TF unavailable; is the sim up?")
     if not node.init_hub(pose_at(pocket_ref_xyz(PLACE_ORDER_Y[0]), place_quat()),
                          HUB_TCP, GRASP_LATERAL_M):
-        node.get_logger().error("Hub bring-up failed; adjust HUB_TCP and retry")
-        return False
+        return fail(node, proto.ErrorCode.INIT_FAILED,
+                    "Hub bring-up failed; adjust HUB_TCP and retry")
     if not node.go_to_hub():
-        node.get_logger().error("Could not reach the hub from the spawn pose")
-        return False
+        return fail(node, proto.ErrorCode.INIT_FAILED,
+                    "Could not reach the hub from the spawn pose")
     return True
 
 

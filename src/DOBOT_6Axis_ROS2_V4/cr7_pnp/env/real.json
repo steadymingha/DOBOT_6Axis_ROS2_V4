@@ -1,0 +1,80 @@
+{
+  "_comment": "REAL robot constants. Selected by DOBOT_ENV=real. ## User input 키가 붙은 항목은 사람이 실측해 직접 입력할 것. 전부 채우면 measured 를 true 로 -- false 인 동안 main.py --profile real 은 기동 거부 (--preflight 만 허용).",
+  "measured": false,
+  "shelf": {
+    "pose_in_base": [
+      -0.1226,
+      -0.5594,
+      3.10115
+    ],
+    "board_tops": [
+      0.0639,
+      0.5189
+    ],
+    "footprint": [
+      0.612,
+      0.335
+    ],
+    "board_thick": 0.021,
+    "tier_tops": {
+      "2": 0.0639
+    },
+    "box_xs": [
+      -0.0905,
+      0.0905,
+      -0.2715,
+      0.2715
+    ],
+    "box_y": 0.0,
+    "tag_xy": [
+      -0.45,
+      -0.1505
+    ],
+    "_pose_in_base": "base_link 기준 (x, y, yaw). 실물은 odom≡base_link 정적 TF 라 이 값이 그대로 팔 좌표. 선반 모델 원점 = 판 중심 (board_tops 는 base_link z).",
+    "_taught": {
+      "left": [
+        0.19,
+        -0.4044,
+        0.3823
+      ],
+      "right": [
+        -0.4216,
+        -0.3796,
+        0.3804
+      ],
+      "board_top_measured": [
+        0.0639,
+        0.0639
+      ],
+      "board_ends": true,
+      "taught_at": "2026-08-18 02:52:09"
+    },
+    "_box_xs  ## User input": "각 박스 중심의 열 방향 오프셋 (원점=판 중심, 선반 x축, 집는 순서, m). 줄자로 측정. 매거진 1개를 판 중앙에 두면 [0.0]. 현재 값은 시뮬 사본 -- 실제 배치로 교체할 것",
+    "_box_y  ## User input": "박스 중심의 깊이 오프셋 (0 = 판 깊이 중앙, 앞 모서리에 붙이면 음수, m). 줄자로 측정. 현재 값은 시뮬 사본"
+  },
+  "pocket": {
+    "x": 0.3705,
+    "y": [
+      0.177,
+      0.059,
+      -0.059,
+      -0.177
+    ],
+    "surface_z": -0.05,
+    "hover": 0.38,
+    "_ ## User input": "베이스 포켓(박스 내려놓을 자리) -- 현재 값 전부 시뮬 사본, 실측으로 교체할 것. 측정: 툴 끝을 자리 바닥에 수직으로 대고 tools/run.sh check_real_robot.py -> tcp pose(mm). x = x_mm/1000, y = y_mm/1000 (자리 4개면 y 4개, 1점만 재면 0.118 간격으로 벌림), surface_z = z_mm/1000 - 0.318 (툴 길이; --teach-shelf 출력의 tool length 값). hover 는 정책값 -- 그대로 둠. 조건: x < 0.36 (wall_x 앞)"
+  },
+  "box_size": [
+    0.081,
+    0.236,
+    0.14
+  ],
+  "hub_tcp": [
+    0.33,
+    0.0,
+    0.32
+  ],
+  "_frame": "ALL lengths in metres, base_link of the arm (sim: odom == world, which the TF maps to base_link). pocket.* are base_link by definition; shelf.pose_in_base is the shelf model origin.",
+  "_box_size_note": "magazine spec 23.6 x 14 x 8.1 cm -> [short 0.081, long 0.236, height 0.14]",
+  "_measured  ## User input": "위 User input 항목을 전부 실측으로 채운 뒤 measured 를 true 로 변경"
+}

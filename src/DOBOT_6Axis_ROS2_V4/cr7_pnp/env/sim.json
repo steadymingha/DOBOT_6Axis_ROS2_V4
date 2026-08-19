@@ -1,0 +1,59 @@
+{
+  "_comment": "Simulation (Gazebo cr.world) collision/workspace constants. Values copied verbatim from cr7_pnp/geometry.py + gripper_params.py + sequences HUB_TCP (2026-08-17). Units: metres, radians. Selected by DOBOT_ENV=sim (default).",
+  "shelf": {
+    "pose_in_base": [
+      0.8,
+      0.5,
+      0.0
+    ],
+    "board_tops": [
+      0.72,
+      1.22,
+      1.72,
+      2.27
+    ],
+    "footprint": [
+      2.0,
+      0.3
+    ],
+    "board_thick": 0.018,
+    "tier_tops": {
+      "1": 1.22,
+      "2": 1.72
+    },
+    "box_xs": [
+      -0.0905,
+      0.0905,
+      -0.2715,
+      0.2715
+    ],
+    "box_y": 0.0,
+    "tag_xy": [
+      -0.45,
+      -0.1505
+    ],
+    "_pose_in_base": "Gazebo cr.world 스폰값. odom(=world) 기준 (x, y, yaw); sim 은 odom→base_link TF 를 Gazebo 가 발행."
+  },
+  "pocket": {
+    "x": 0.3705,
+    "y": [
+      0.177,
+      0.059,
+      -0.059,
+      -0.177
+    ],
+    "surface_z": -0.05,
+    "hover": 0.38
+  },
+  "box_size": [
+    0.081,
+    0.236,
+    0.14
+  ],
+  "hub_tcp": [
+    0.33,
+    0.0,
+    0.32
+  ],
+  "_frame": "ALL lengths in metres, base_link of the arm (sim: odom == world, which the TF maps to base_link). pocket.* are base_link by definition; shelf.pose_in_base is the shelf model origin."
+}

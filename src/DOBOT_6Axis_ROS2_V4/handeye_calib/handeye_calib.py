@@ -57,10 +57,7 @@ import argparse
 import json
 import math
 import os
-import socket
-import struct
 import sys
-import threading
 import time
 
 import cv2
@@ -70,16 +67,6 @@ import numpy as np
 # robot real-time feedback (read-only, stdlib only -- no ROS needed for this)
 # ---------------------------------------------------------------------------
 ROBOT_IP = '192.168.5.1'
-RT_PORT = 30004
-RT_LEN = 1440
-
-# Offsets into RealTimeData_t (dobot_bringup_v4/include/dobot_bringup/command.h)
-OFF_LEN = 0
-OFF_ROBOT_MODE = 24
-OFF_Q_ACTUAL = 432          # double[6], degrees, CONTROLLER sign convention
-OFF_QD_ACTUAL = 480         # double[6], deg/s
-OFF_TOOL_VECTOR = 624       # double[6], x/y/z mm + rx/ry/rz deg
-
 STILL_DPS = 0.5             # max joint speed that still counts as "stopped"
 
 # Camera topics: the realsense2_camera names (camera_name:=d405), which the sim
@@ -91,76 +78,11 @@ SAMPLES_FILE = 'handeye_samples.json'
 RESULT_FILE = 'handeye_result.json'
 
 
-class RobotFeed(threading.Thread):
-    """Keeps only the LATEST real-time frame.
-
-    A daemon thread rather than an inline read per GUI iteration: the feed runs
-    far faster than the display loop, so an inline reader falls further and
-    further behind and ends up pairing images with poses from seconds ago --
-    silently, since the numbers still look plausible.
-    """
-
-    def __init__(self, ip=ROBOT_IP):
-        super().__init__(daemon=True)
-        self.ip = ip
-        self._lock = threading.Lock()
-        self._frame = None
-        self._err = None
-        self._running = True
-
-    def run(self):
-        try:
-            sock = socket.create_connection((self.ip, RT_PORT), timeout=3.0)
-            sock.settimeout(3.0)
-        except OSError as e:
-            self._err = f'connect failed: {e}'
-            return
-        buf = b''
-        while self._running:
-            try:
-                chunk = sock.recv(RT_LEN - len(buf))
-            except socket.timeout:
-                self._err = 'feed timed out'
-                continue
-            except OSError as e:
-                self._err = f'recv failed: {e}'
-                return
-            if not chunk:
-                self._err = 'feed closed'
-                return
-            buf += chunk
-            if len(buf) < RT_LEN:
-                continue
-            packet, buf = buf[:RT_LEN], b''
-            (length,) = struct.unpack_from('<H', packet, OFF_LEN)
-            if length != RT_LEN:
-                continue                     # out of sync; next read realigns
-            frame = dict(
-                mode=struct.unpack_from('<Q', packet, OFF_ROBOT_MODE)[0],
-                q=np.array(struct.unpack_from('<6d', packet, OFF_Q_ACTUAL)),
-                qd=np.array(struct.unpack_from('<6d', packet, OFF_QD_ACTUAL)),
-                tool=np.array(struct.unpack_from('<6d', packet, OFF_TOOL_VECTOR)),
-                wall=time.time(),
-            )
-            with self._lock:
-                self._frame = frame
-                self._err = None
-
-    def latest(self, max_age_s=0.5):
-        """Freshest frame, or None if stale/absent. Stale is treated as absent:
-        a frozen feed must not be mistaken for a stationary arm."""
-        with self._lock:
-            f = self._frame
-        if f is None or time.time() - f['wall'] > max_age_s:
-            return None
-        return f
-
-    @property
-    def error(self):
-        return self._err
-
-    def stop(self):
-        self._running = False
+# The 30004 parser lives in cr7_pnp/robot_feed.py (shared with the test runner and
+# vision_bridge). Imported by path: cr7_pnp/__init__ would pull in rclpy, and this
+# file must stay importable without ROS.
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'cr7_pnp'))
+from robot_feed import RobotFeed, RT_PORT, RT_LEN  # noqa: E402,F401
 
 
 # ---------------------------------------------------------------------------

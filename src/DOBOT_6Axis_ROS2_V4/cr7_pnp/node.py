@@ -85,9 +85,33 @@ class CR7Node(Node):
         super().__init__('cr7_rrt_planner')
         self.cb_group = ReentrantCallbackGroup()
 
+        # Profile switches (main.py --profile). Plain booleans, one implementation
+        # each: no gripper server -> control_gripper waits instead; no link
+        # attacher (real robot: the grasp is physical) -> attach/detach are no-ops;
+        # preflight -> motions are planned/validated but never sent, and the
+        # "current" joints follow the virtual arm so the whole sequence chains.
+        self.use_gripper = True
+        self.use_attach = True
+        # Real robot: the shelf target box comes from the AI magazine detector
+        # (main.locate_box -> vision_box); sim keeps the layout (box_xs).
+        self.use_vision_box = False
+        self.vision_box = None
+        # Real contact-stop descend (plan stage 4): main.py --profile real fills
+        # contact_kit = (Dashboard, ContactDetector, RobotFeed) and flips the
+        # switch; guarded_descend then delegates to the --vision --run verified
+        # ServoJ path (cr7_pnp/contact.py) instead of the sim phantom sensor.
+        self.use_real_descend = False
+        self.contact_kit = None
+        self.preflight = False
+        self._virtual_q = None
+
         # State monitoring (Subscriber)
         self.current_joints = None
         self.joint_names = []
+        # Names of world-fixed collision sets whose last TF placement FAILED.
+        # Non-empty == some phantom is parked far == the model is lying; both
+        # motion senders below refuse to move until the next successful update.
+        self._unenforced = set()
         self.sub_joint_states = self.create_subscription(
             JointState, '/joint_states', self.joint_state_callback, 10,
             callback_group=self.cb_group)
@@ -135,6 +159,16 @@ class CR7Node(Node):
 
         self.get_logger().info("CR7 RRT Planner Node Initialized. Waiting for joint states...")
 
+    @property
+    def current_joints(self):
+        if self.preflight and self._virtual_q is not None:
+            return self._virtual_q
+        return self._cj
+
+    @current_joints.setter
+    def current_joints(self, v):
+        self._cj = v
+
     def _wait_future(self, future, timeout, label):
         """Bounded wait on an rclpy future: a DDS hiccup can leave a service /
         action future pending FOREVER (measured mid-place); a timeout turns
@@ -161,6 +195,12 @@ class CR7Node(Node):
             self.current_joints = np.array(filtered_positions) * self.joint_sign
 
     def control_gripper(self, positions):
+        if not self.use_gripper or self.preflight:
+            self.get_logger().info(f"[gripper] no gripper -> {positions} skipped"
+                                   + ("" if self.preflight else ", waiting 3 s"))
+            if not self.preflight:
+                time.sleep(3.0)
+            return True
         if not self.gripper_client.wait_for_server(timeout_sec=5.0):
             self.get_logger().error("Gripper action server not available")
             return False
@@ -190,6 +230,8 @@ class CR7Node(Node):
 
     def attach_box(self):
         """Fix the box to the gripper (grasp) via the link attacher service."""
+        if not self.use_attach or self.preflight:
+            return True                      # physical grasp / dry run
         if self.attach_client is None or not self.attach_client.wait_for_service(timeout_sec=5.0):
             self.get_logger().error("ATTACHLINK service not available")
             return False
@@ -206,6 +248,8 @@ class CR7Node(Node):
 
     def detach_box(self):
         """Release the box from the gripper via the link attacher service."""
+        if not self.use_attach or self.preflight:
+            return True
         if self.detach_client is None or not self.detach_client.wait_for_service(timeout_sec=5.0):
             self.get_logger().error("DETACHLINK service not available")
             return False
@@ -329,8 +373,27 @@ class CR7Node(Node):
             f"(max err {err:.3f} rad); continuing")
         return False
 
+    def _motion_gate(self, label, path=None):
+        """True = send it. False (+ error) = a world-fixed collision set is not
+        enforced. 'virtual' = preflight: the motion is swallowed here, the virtual
+        arm jumps to the path end and the caller reports success unsent."""
+        if self._unenforced:
+            self.get_logger().error(
+                f"[{label}] REFUSED: collision model not enforced for "
+                f"{sorted(self._unenforced)} (TF failed); fix TF and re-run the update")
+            return False
+        if self.preflight and path is not None and len(path):
+            self._virtual_q = np.array(path[-1], dtype=float)
+            self.get_logger().info(f"[preflight] {label}: {len(path)} waypoints NOT sent "
+                                   f"(virtual arm now at path end)")
+            return 'virtual'
+        return True
+
     def execute_trajectory(self, path):
         """Send the planned path to the action server and wait until execution completes."""
+        gate = self._motion_gate('execute_trajectory', path)
+        if gate is not True:
+            return gate == 'virtual'
         # Record joint waypoints while capturing so a forward motion (incl. RRT /
         # go_to_config moves, which route here rather than execute_path) can be
         # replayed in REVERSE -- retracing the proven path instead of re-planning a
@@ -429,6 +492,12 @@ class CBiRRTPickPlace(CR7Node):
                 "[collision] NOT the combined model: the cube platform and the "
                 "AGV body are NOT collision-checked; only self-collision (plus "
                 "whatever this xacro does contain) is enforced.")
+        # TF frame of the collision model's ROOT: the world-fixed phantoms
+        # (shelf, wirebonder) are placed root<-world. Combined model: the AGV
+        # link. Arm-only (real Jetson: neo_simulation2 absent): base_link itself.
+        self.root_frame = ('mpo_base_link' if self.collision.model.existFrame('mpo_base_link')
+                           else 'base_link')
+        self.get_logger().info(f"[collision] model root frame: {self.root_frame}")
 
         # IK model: the SAME base_link-rooted arm model and the SAME
         # inverse_kinematics solver the reachability map uses, so "reachable on
@@ -586,11 +655,16 @@ class CBiRRTPickPlace(CR7Node):
         False if the TF is unavailable."""
         try:
             tf = self.tf_buffer.lookup_transform(
-                'mpo_base_link', self.world_frame, rclpy.time.Time(),
+                self.root_frame, self.world_frame, rclpy.time.Time(),
                 timeout=Duration(seconds=3.0))
         except Exception as e:
-            self.get_logger().warn(f"[shelf] TF unavailable, not enforced: {e}")
+            # fail-closed: the phantoms stay parked at z=-100, so until this
+            # succeeds again every motion is refused (see _motion_gate).
+            self._unenforced.add('shelf')
+            self.get_logger().error(f"[shelf] TF unavailable -> collision model NOT "
+                                    f"enforced, motion locked: {e}")
             return False
+        self._unenforced.discard('shelf')
         t, r = tf.transform.translation, tf.transform.rotation
         T_root_world = pin.SE3(quat_to_R(r.x, r.y, r.z, r.w),
                                np.array([t.x, t.y, t.z]))
@@ -663,11 +737,14 @@ class CBiRRTPickPlace(CR7Node):
         vision capture / before a transfer). Returns False if the TF is unavailable."""
         try:
             tf = self.tf_buffer.lookup_transform(
-                'mpo_base_link', self.world_frame, rclpy.time.Time(),
+                self.root_frame, self.world_frame, rclpy.time.Time(),
                 timeout=Duration(seconds=3.0))
         except Exception as e:
-            self.get_logger().warn(f"[wirebonder] TF unavailable, not enforced: {e}")
+            self._unenforced.add('wirebonder')
+            self.get_logger().error(f"[wirebonder] TF unavailable -> collision model "
+                                    f"NOT enforced, motion locked: {e}")
             return False
+        self._unenforced.discard('wirebonder')
         t, r = tf.transform.translation, tf.transform.rotation
         T_root_world = pin.SE3(quat_to_R(r.x, r.y, r.z, r.w),
                                np.array([t.x, t.y, t.z]))
@@ -836,6 +913,9 @@ class CBiRRTPickPlace(CR7Node):
     def execute_path(self, path, speed=0.6):
         """Send joint waypoints (joint1..joint6) as one trajectory. Time between
         waypoints is proportional to joint-space distance (speed in rad/s)."""
+        gate = self._motion_gate('execute_path', path)
+        if gate is not True:
+            return gate == 'virtual'
         goal_msg = FollowJointTrajectory.Goal()
         goal_msg.trajectory.joint_names = self.joint_names
         t = 0.0
@@ -915,9 +995,39 @@ class CBiRRTPickPlace(CR7Node):
         p = pose.pose.position
         return self.linear_servo(np.array([p.x, p.y, p.z]) - self.tcp_xyz(), label=label)
 
+    @property
+    def real_descend_active(self):
+        """True when descends must use the real contact-stop path: real profile,
+        kit wired, and NOT preflight (preflight validates via the sim body, which
+        plans with linear_path and lets the virtual executor swallow it)."""
+        return (self.use_real_descend and self.contact_kit is not None
+                and not self.preflight)
+
+    def contact_descend(self, max_drop, label="descend", speed=0.005):
+        """REAL contact-stop descend, verbatim the --vision --run verified chain:
+        contact.guarded_descend (ServoJ stream, hard+soft channels, joint-gap
+        guard) then recover_after_contact (clears a controller trip; no-op when
+        clean). Returns metres actually descended, or None -- on None the arm is
+        LEFT WHERE IT STOPPED and the caller must not command lateral motion."""
+        from .contact import (guarded_descend as _real_gd, recover_after_contact,
+                              warn_descend_speed)
+        dash, det, mon = self.contact_kit
+        warn_descend_speed(speed)
+        dropped = _real_gd(self, dash, det, max_drop, speed, label)
+        if dropped is None:
+            return None
+        if not recover_after_contact(self, dash, mon):
+            return None
+        return dropped
+
     def guarded_descend(self, max_drop, label="descend", speed=0.1):
-        """Descend straight down until the carried-box collision model meets a
-        surface -- the SIM analog of the real robot's joint-torque touch-off (see
+        """Descend straight down until contact. REAL profile: delegates to
+        contact_descend (joint-torque touch-off, the verified real chain);
+        returns 0.0 when that could not run -- callers that must not release
+        check real_descend_active + a minimum drop. SIM (and preflight): the
+        phantom-sensor analog below.
+
+        Sim body: the SIM analog of the real robot's joint-torque touch-off (see
         place_command_guide.md). Commands an over-travel drop (max_drop m, tool-
         down) with the box phantom ON and, UNLIKE linear_servo, executes the
         linear_path only UP TO where it reports the collision -- so the box seats
@@ -925,6 +1035,9 @@ class CBiRRTPickPlace(CR7Node):
         offset variance that a single fixed drop can't. The box-vs-surface pair is
         the same one that used to false-reject place IK; here it is the sensor.
         Requires the phantom attached. Returns the metres actually descended."""
+        if self.real_descend_active:
+            dropped = self.contact_descend(max_drop, label=label)
+            return 0.0 if dropped is None else dropped
         while self.current_joints is None:
             self.get_logger().info("Waiting for /joint_states...")
             time.sleep(0.5)
@@ -1216,6 +1329,8 @@ class HubPickPlace(CBiRRTPickPlace):
         """Fix the just-placed box (self.object_model/object_link) to the AGV
         magazine link so it rides rigidly with the base when the AGV drives.
         Returns the service success flag."""
+        if not self.use_attach or self.preflight:
+            return True
         if self.attach_client is None or not self.attach_client.wait_for_service(timeout_sec=5.0):
             self.get_logger().error("ATTACHLINK service not available")
             return False
@@ -1234,6 +1349,8 @@ class HubPickPlace(CBiRRTPickPlace):
     def detach_box_from_magazine(self, model, link):
         """Undo attach_box_to_magazine for `model`/`link` so the box can be
         re-picked off the AGV pocket. Returns the service success flag."""
+        if not self.use_attach or self.preflight:
+            return True
         if self.detach_client is None or not self.detach_client.wait_for_service(timeout_sec=5.0):
             self.get_logger().error("DETACHLINK service not available")
             return False

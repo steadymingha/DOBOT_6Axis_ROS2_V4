@@ -18,35 +18,17 @@ RequestControl() is the only command here that changes robot state, and only
 takes effect while the robot is disabled (rejected while running/dragging/
 paused -- it can't hijack a running program, it just fails).
 """
-import json
 import os
 import socket
-import struct
 import sys
 
 DASH_PORT = 29999
-RT_PORT = 30004
-RT_LEN = 1440
 TIMEOUT_S = 3.0
 
-# offsets into the 1440-byte real-time struct we actually care about
-# (full layout: dobot_bringup_v4/include/dobot_bringup/command.h RealTimeData_t)
-OFF_LEN = 0
-OFF_ROBOT_MODE = 24
-OFF_Q_ACTUAL = 432       # double[6], degrees
-OFF_TOOL_VECTOR = 624    # double[6], x,y,z,rx,ry,rz
-OFF_ENABLE_STATUS = 1026
-OFF_RUNNING_STATUS = 1028
-OFF_ERROR_STATUS = 1029
-
-
-def default_ip():
-    cfg = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                        'dobot_bringup_v4', 'config', 'param.json')
-    with open(cfg) as f:
-        data = json.load(f)
-    node = data['node_info'][data['current_robot'] - 1]
-    return node['ip_address']
+# 30004 parsing lives in cr7_pnp/robot_feed.py; imported by path so this stays
+# runnable without ROS (cr7_pnp/__init__ pulls in rclpy).
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'cr7_pnp'))
+from robot_feed import read_one, default_robot_ip as default_ip  # noqa: E402
 
 
 def dash_query(sock, cmd):
@@ -71,28 +53,6 @@ def dash_query(sock, cmd):
     return err_id, payload, text.strip()
 
 
-def read_realtime(ip):
-    with socket.create_connection((ip, RT_PORT), timeout=TIMEOUT_S) as s:
-        s.settimeout(TIMEOUT_S)
-        buf = b''
-        while len(buf) < RT_LEN:
-            chunk = s.recv(RT_LEN - len(buf))
-            if not chunk:
-                raise ConnectionError('real-time feed closed before 1440 bytes')
-            buf += chunk
-    (length,) = struct.unpack_from('<H', buf, OFF_LEN)
-    if length != RT_LEN:
-        print(f'[warn] real-time packet len={length}, expected {RT_LEN} (out of sync?)')
-    robot_mode, = struct.unpack_from('<Q', buf, OFF_ROBOT_MODE)
-    q_actual = struct.unpack_from('<6d', buf, OFF_Q_ACTUAL)
-    tool_vector = struct.unpack_from('<6d', buf, OFF_TOOL_VECTOR)
-    enable, = struct.unpack_from('<b', buf, OFF_ENABLE_STATUS)
-    running, = struct.unpack_from('<b', buf, OFF_RUNNING_STATUS)
-    error, = struct.unpack_from('<b', buf, OFF_ERROR_STATUS)
-    return dict(robot_mode=robot_mode, q_actual=q_actual, tool_vector=tool_vector,
-                enable=enable, running=running, error=error)
-
-
 def main():
     args = sys.argv[1:]
     request_control = '--request-control' in args
@@ -115,9 +75,12 @@ def main():
         return
 
     try:
-        rt = read_realtime(ip)
+        rt = read_one(ip, timeout=TIMEOUT_S)
     except OSError as e:
         print(f'[real-time 30004] connect/recv failed: {e}')
+        return
+    if rt is None:
+        print('[real-time 30004] packet length mismatch (out of sync?)')
         return
 
     print(f"robot_mode={rt['robot_mode']}  enable={rt['enable']}  "

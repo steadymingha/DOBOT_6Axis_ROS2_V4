@@ -109,8 +109,6 @@ sys.path.insert(0, _PKG_ROOT)
 # opposite to the URDF's (see JOINT_SIGN_REAL in cr7_pnp/node.py). Set before
 # the node is constructed, since that is where node.py reads it.
 os.environ.setdefault('CR7_REAL_ROBOT', '1')
-# Real-robot constants + surfaces file (cr7_pnp/env/real*.json) unless told otherwise.
-os.environ.setdefault('DOBOT_ENV', 'real')
 
 from cr7_pnp.node import HubPickPlace                          # noqa: E402
 from cr7_pnp.geometry import XACRO_PATH, COMBINED_XACRO        # noqa: E402

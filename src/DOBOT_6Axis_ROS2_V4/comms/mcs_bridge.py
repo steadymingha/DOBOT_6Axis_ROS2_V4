@@ -5,6 +5,9 @@ up. Connects to the control (MCS) server, reads fixed-size binary command frames
 (see mcs_protocol), and routes each to one of two channels main.py subscribes to:
   * START  -> /mcs/command  (one atomic JSON message: the spec fields verbatim)
   * STOP / PAUSE / RESUME -> /mcs/stop  (param-free, acts immediately)
+Return path: subscribes /mcs/feedback (UInt8MultiArray, one 240-byte frame per
+message, layout = mcs_protocol.FEEDBACK_FMT) and sends the bytes VERBATIM to the
+MCS socket -- the bridge never parses or repacks the feedback.
 
     python3 comms/mcs_bridge.py --host 127.0.0.1 --port 9100
     python3 comms/mcs_bridge.py --selftest        # route check, no ROS/socket
@@ -49,22 +52,41 @@ def main():
         print("selftest OK")
         return
 
+    import threading
+
     import rclpy
     from rclpy.node import Node
-    from std_msgs.msg import String
+    from std_msgs.msg import String, UInt8MultiArray
 
     rclpy.init()
     node = Node('mcs_bridge')
     cmd_pub = node.create_publisher(String, '/mcs/command', 10)
     stop_pub = node.create_publisher(String, '/mcs/stop', 10)
 
+    # Feedback passthrough: latest frame bytes, sent from the socket loop below.
+    # Sent as-is; if the MCS link is down the frames are simply dropped (the
+    # stream is periodic state, not queued events -- missionSeq survives in the
+    # next frame, so nothing is lost that MCS cannot recover on reconnect).
+    fb_lock = threading.Lock()
+    fb_frame = [None]
+
+    def on_feedback(msg):
+        with fb_lock:
+            fb_frame[0] = bytes(msg.data)
+    node.create_subscription(UInt8MultiArray, '/mcs/feedback', on_feedback, 10)
+    threading.Thread(target=rclpy.spin, args=(node,), daemon=True).start()
+
     while rclpy.ok():
         try:
             with socket.create_connection((args.host, args.port), timeout=5) as sock:
                 node.get_logger().info(f"connected to MCS {args.host}:{args.port}")
-                sock.settimeout(1.0)
+                sock.settimeout(0.1)   # also paces the feedback flush below
                 buf = b''
                 while rclpy.ok():
+                    with fb_lock:
+                        out, fb_frame[0] = fb_frame[0], None
+                    if out is not None:
+                        sock.sendall(out)
                     try:
                         chunk = sock.recv(1024)
                     except TimeoutError:

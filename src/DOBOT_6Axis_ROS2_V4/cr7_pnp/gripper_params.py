@@ -14,6 +14,19 @@ here. The reachability map already reads that base offset from the same xacro
 (--combined), so it follows automatically.
 """
 
+import json as _json
+import os as _os
+
+_ENV_NAME = _os.getenv('DOBOT_ENV', 'sim')
+
+
+def load_env(name=None):
+    """cr7_pnp/env/<name>.json (default DOBOT_ENV, default 'sim') as a dict."""
+    with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'env',
+                            (name or _ENV_NAME) + '.json')) as f:
+        return _json.load(f)
+
+
 # --- arm / gripper joints and the end-effector (flange) frame -----------------
 ARM_JOINTS = ('joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6')
 # Movable joints of the Blender fixed-jaw gripper on Link6. gripper_attach_joint
@@ -37,7 +50,9 @@ BOX_SHORT = 0.081            # box graspable width (short side)
 FIXED_PAD_CLEARANCE = 0.003  # fixed pad <-> box gap on descend; TUNE IN SIM
 
 # --- magazine box -------------------------------------------------------------
-BOX_SIZE = (0.081, 0.236, 0.14)          # (short, long, height) metres
+# (short, long, height) metres -- from cr7_pnp/env/<DOBOT_ENV>.json (sim default),
+# same file geometry.py reads for the shelf/pocket constants.
+BOX_SIZE = tuple(load_env()['box_size'])
 
 # --- TCP / grasp offsets along the tool z-axis (from the Link6 flange) ---------
 # IK-target TCP: abstract point (legacy OnRobot 2FG7) the planner's IK drives. It

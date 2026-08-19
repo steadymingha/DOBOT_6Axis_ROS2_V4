@@ -153,7 +153,8 @@ BASE_PLACE_OVERTRAVEL = 0.04
 # Hub = standby / transfer OBJECT hover. PROVEN transfer-safe: the slot approach
 # servos run straight from here without collision (base->slotA completes under
 # --no-vision). DECOUPLED from the capture pose so it never moves for the camera.
-HUB_TCP = (0.33, 0.0, 0.32)
+# Value in cr7_pnp/env/<DOBOT_ENV>.json (shared with the shelf sequence).
+from cr7_pnp import HUB_TCP  # noqa: E402
 
 # View A = the ORIGINAL capture pose (TCP position in base_link; the pose pipeline
 # drives the TCP, so this is what tools/jog_tcp.py prints as "TCP base_link"). Known

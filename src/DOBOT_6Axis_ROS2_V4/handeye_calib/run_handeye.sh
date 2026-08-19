@@ -54,6 +54,10 @@ docker cp "$HERE/$SCRIPT" "$CTR:$WORK/$SCRIPT"
 # edit to it is invisible and the container silently runs the previous copy.
 [ "$SCRIPT" = handeye_calib.py ] || \
     docker cp "$HERE/handeye_calib.py" "$CTR:$WORK/handeye_calib.py"
+# handeye_calib.py now imports the shared 30004 parser from cr7_pnp/robot_feed.py
+# (one parser for the whole repo, 2026-08-17); copy it next to the script so the
+# plain-path import resolves inside $WORK.
+docker cp "$HERE/../cr7_pnp/robot_feed.py" "$CTR:$WORK/robot_feed.py"
 for f in $STATE; do
     [ -f "$HERE/$f" ] && docker cp "$HERE/$f" "$CTR:$WORK/$f"
 done

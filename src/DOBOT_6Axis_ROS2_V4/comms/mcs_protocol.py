@@ -67,6 +67,56 @@ class ErrorCode(IntEnum):
     # split finer only if MCS needs to act differently on a sub-case
 
 
+# --- Arm -> MCS feedback frame (docs: ros2api_v2.xlsx "피드백 프레임") -----------
+# ONE topic (/mcs/feedback, std_msgs/UInt8MultiArray), one fixed 240-byte frame.
+# The bridge forwards the bytes VERBATIM; MCS parses by this layout. Resync rule
+# for a byte stream: match SOF+VERSION+length (A5 01 F0 00) together, not SOF alone.
+SOF = 0xA5
+FEEDBACK_VERSION = 1
+FEEDBACK_FMT = '<BBHQQQIBBBBBBBBB7x6d6d6d6d'
+FEEDBACK_SIZE = struct.calcsize(FEEDBACK_FMT)          # 240
+FEEDBACK_FIELDS = (
+    'SOF', 'version', 'length', 'robotTimeStamp', 'runTime', 'jetsonTs',
+    'missionSeq', 'lastTargetID', 'Result', 'ErrorCode', 'RobotState',
+    'robotMode', 'enable', 'error', 'collision', 'safety')   # then 4x double[6]
+
+
+class Result(IntEnum):
+    DONE = 0
+    FAILED = 1
+    ABORTED = 2                # stopped by /mcs/stop at a checkpoint
+    NONE = 255                 # no mission finished yet
+
+
+class RobotState(IntEnum):
+    IDLE = 0
+    LOCATE = 1                 # vision capture move / detection in progress
+    PICKPLACE = 2              # transfer executing
+    ERROR_HOLD = 3             # motion locked (collision model unenforced) -- manual fix
+
+
+def pack_feedback(robot_ts, run_time, jetson_ts, mission_seq, last_target,
+                  result, error_code, robot_state, robot_mode, enable, error,
+                  collision, safety, q_actual, qd_actual, tool_vector, m_actual) -> bytes:
+    """Field order = the spec sheet. The four 6-vectors are any iterables of 6."""
+    return struct.pack(FEEDBACK_FMT, SOF, FEEDBACK_VERSION, FEEDBACK_SIZE,
+                       int(robot_ts), int(run_time), int(jetson_ts),
+                       int(mission_seq) & 0xFFFFFFFF, int(last_target),
+                       int(result), int(error_code), int(robot_state),
+                       int(robot_mode) & 0xFF, int(enable) & 1, int(error) & 1,
+                       int(collision) & 1, int(safety) & 0xFF,
+                       *q_actual, *qd_actual, *tool_vector, *m_actual)
+
+
+def unpack_feedback(frame: bytes) -> dict:
+    """240-byte frame -> dict (scalars by name + the four 6-vectors)."""
+    v = struct.unpack(FEEDBACK_FMT, frame)
+    d = dict(zip(FEEDBACK_FIELDS, v[:16]))
+    d['q_actual'], d['qd_actual'] = v[16:22], v[22:28]
+    d['tool_vector'], d['m_actual'] = v[28:34], v[34:40]
+    return d
+
+
 def pack(target, x, y, z, command, gripper) -> bytes:
     return struct.pack(FRAME, target, x, y, z, command, gripper)
 
@@ -99,4 +149,13 @@ if __name__ == '__main__':
     frames, rest = take_frames(f + f[:5])
     assert len(frames) == 1 and len(rest) == 5, (len(frames), len(rest))
     assert Command['START'] == 0 and TargetID['A'].name == 'A'  # name<->value both ways
+    assert FEEDBACK_SIZE == 240, FEEDBACK_SIZE
+    fb = pack_feedback(111, 222, 333, 7, TargetID.IN, Result.FAILED,
+                       ErrorCode.TAG_NOT_DETECTED, RobotState.IDLE, 5, 1, 0, 0, 127,
+                       range(6), range(6), range(10, 16), range(6))
+    assert len(fb) == 240 and fb[0] == SOF and fb[1] == FEEDBACK_VERSION
+    u = unpack_feedback(fb)
+    assert u['missionSeq'] == 7 and u['Result'] == Result.FAILED
+    assert u['tool_vector'] == tuple(float(i) for i in range(10, 16))
+    assert u['length'] == 240 and u['robotMode'] == 5
     print("mcs_protocol selftest OK")

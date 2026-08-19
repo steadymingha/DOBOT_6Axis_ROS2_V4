@@ -553,6 +553,20 @@ def camera_pose_in_base(node, q, tf=None):
     return p_f + R_f @ np.asarray(tf.X[:3, 3]), R_f @ np.asarray(tf.X[:3, 2])
 
 
+def hover_from_snapshot(snap, tool, tf=None):
+    """게이트 통과 스냅샷 + 그때의 tool_vector -> (P_base, hover, inward, jaw), base_link.
+
+    acquire_hover_q 와 vision/vision_hover_node.py 가 같은 식을 쓴다 (재구현 금지).
+    """
+    tf = tf or Transform()
+    P_base = np.asarray(tf.to_base(snap['xyz_cam'], tool), dtype=float)
+    inward = _inward_vector()
+    jaw = _jaw_vector()
+    hover = (P_base + inward + jaw
+             + np.array([0.0, 0.0, MAGAZINE_HEIGHT_M / 2.0 + HOVER_CLEARANCE_M]))
+    return P_base, hover, inward, jaw
+
+
 def acquire_hover_q(node, mon, timeout_s=SNAPSHOT_TIMEOUT_S, host=None):
     """비전 -> hover -> q. (q_urdf, info) 를 돌려주거나 VisionTargetError.
 
@@ -606,11 +620,7 @@ def acquire_hover_q(node, mon, timeout_s=SNAPSHOT_TIMEOUT_S, host=None):
             "docs/real_robot_joint_convention.md 11절" % (d_mm, FK_CHECK_TOL_M * 1000),
             info)
 
-    P_base = tf.to_base(snap['xyz_cam'], tool)
-    inward = _inward_vector()
-    jaw = _jaw_vector()
-    hover = (np.asarray(P_base, dtype=float) + inward + jaw
-             + np.array([0.0, 0.0, MAGAZINE_HEIGHT_M / 2.0 + HOVER_CLEARANCE_M]))
+    P_base, hover, inward, jaw = hover_from_snapshot(snap, tool, tf)
     info['xyz_cam'] = list(snap['xyz_cam'])
     info['P_base'] = [float(v) for v in P_base]
     info['inward'] = [float(v) for v in inward]

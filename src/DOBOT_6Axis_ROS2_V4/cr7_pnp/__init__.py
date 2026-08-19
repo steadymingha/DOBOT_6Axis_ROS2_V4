@@ -21,6 +21,7 @@ from .geometry import (  # noqa: F401  (re-exported for sequence scripts)
     DOWN, GRASP_YAW_OFFSET, PLACE_YAW, GRIPPER_YAW_TWIST,
     GRASP_TCP_ABOVE, INSERT_TCP_ABOVE, PREGRASP_BACK, POCKET_HOVER, PLACE_TCP_ABOVE,
     STANDBY_POSE_DEG, BOX_SIZE, BOX_IN_LINK6_XYZ, GRASP_LATERAL_M, MAGAZINE_LINK,
+    HUB_TCP, ENV_NAME,
 )
 
 __all__ = ['HubPickPlace', 'CBiRRTPickPlace', 'CR7Node', 'RRTNode']

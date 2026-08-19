@@ -38,6 +38,21 @@ else:
         '~/dobot_ws/src/DOBOT_6Axis_ROS2_V4/cra_description/urdf/arm_on_mpo700.urdf.xacro')
 
 
+# --- measured environment (sim.json / real.json) ------------------------------
+
+# Everything the collision model and the sequences take from the PHYSICAL
+# workspace -- shelf boards, box layout, pockets, hub -- lives in
+# cr7_pnp/env/<DOBOT_ENV>.json (sim default). The module constants below keep
+# their names, so `from .geometry import SHELF_BOARD_TOPS` is unchanged; only
+# the values' source moved. Selection is by ENV VAR (not argv): this module is
+# imported before any argparse runs, and main.py --profile cross-checks it.
+from .gripper_params import load_env, _ENV_NAME as ENV_NAME  # noqa: E402
+_ENV = load_env()
+
+# Tool-down HUB waypoint (carried-object TCP). Shared by the shelf and
+# wirebonder sequences (was duplicated in both).
+HUB_TCP = tuple(_ENV['hub_tcp'])
+
 # --- shelf collision model ----------------------------------------------------
 
 # The Gazebo 'shelf' world model is not part of the robot URDF, so its horizontal
@@ -49,26 +64,19 @@ else:
 # plausibility anchor for the ArUco read. At runtime the LIVE shelf pose comes
 # from /vision/shelf_pose (per-tier AprilTags baked into shelf/model.sdf) and
 # everything below composes with it, so "shelf moved" is no longer a code edit.
-SHELF_WORLD_POSE = (0.8, 0.5, 0.0)      # shelf model origin in world (x, y, yaw)
-# Board tops (world z). Shelf raised +0.32 in cr.world (pose z=0.32) so tier-1
-# top is 0.90->1.22 (= robot base 1.0 m + 0.22, the June pick-proven relative
-# height -- +0.28 left box d marginal: all-branch singular ~20 mm short once
-# the base ratcheted a few mm) and tier-2 1.40->1.72; the mesh
-# still bakes 0.40/0.90/1.40/1.95, so the pose offset is what lifts it. Keep
-# these in sync with the cr.world shelf pose. (June note: base heights 0.90/1.40
-# were pick-proven; 0.685 jammed the upper arm on the next board, measured.)
-SHELF_BOARD_TOPS = (0.72, 1.22, 1.72, 2.27)   # board top heights (world z), 4-tier
-SHELF_FOOTPRINT = (2.0, 0.30)           # board size (x, y) in metres
-SHELF_BOARD_THICK = 0.018               # board thickness (z), real shelf board
+SHELF_WORLD_POSE = tuple(_ENV['shelf']['pose_in_base'])  # shelf origin (x, y, yaw); 'world' == odom == base_link on the real robot
+SHELF_BOARD_TOPS = tuple(_ENV['shelf']['board_tops'])   # board top heights (world z), 4-tier
+SHELF_FOOTPRINT = tuple(_ENV['shelf']['footprint'])     # board size (x, y) in metres
+SHELF_BOARD_THICK = _ENV['shelf']['board_thick']        # board thickness (z), real shelf board
 
 # Pickable tiers: tier number -> board top height (subset of SHELF_BOARD_TOPS).
-SHELF_TIER_TOPS = {1: 1.22, 2: 1.72}
+SHELF_TIER_TOPS = {int(k): v for k, v in _ENV['shelf']['tier_tops'].items()}
 
 # Box centres in the SHELF MODEL frame: x offsets in PICK ORDER (a,b = inner
 # pair, c,d = outer flank, one box-pitch 0.181 out), y centred on the board.
 # Mirrors the box_t<tier><a-d> spawns in cr.world -- keep both in sync.
-SHELF_BOX_XS = (-0.0905, +0.0905, -0.2715, +0.2715)
-SHELF_BOX_Y = 0.0
+SHELF_BOX_XS = tuple(_ENV['shelf']['box_xs'])
+SHELF_BOX_Y = _ENV['shelf']['box_y']
 # Per-box GRASP x nudge (shelf MODEL frame, PICK order), applied to the pick
 # target only (NOT the stock phantoms -- those model where the box rests).
 # TUNE: box c (idx 2, outer-left) tends to be gripped at its edge and tips;
@@ -82,7 +90,7 @@ SHELF_BOX_X_NUDGE = (0.0, 0.0, 0.0, 0.0)
 # MIRRORS shelf/model.sdf (aruco_tier1/2) and vision/tag_vision.py -- keep the
 # three in sync. The sequence uses this only to AIM the capture pose; the pose
 # solve itself lives in the vision node.
-SHELF_TAG_XY = (-0.45, -0.1505)
+SHELF_TAG_XY = tuple(_ENV['shelf']['tag_xy'])
 SHELF_TAG_RISE = 0.0375 / 2.0
 
 
@@ -215,9 +223,9 @@ def shelf_box_model(tier, i):
 
 # Base magazine pockets: CONSTANT in base_link (rigid to the arm base), so no TF
 # needed. 0.236 m along base_link x, 0.081 m along y, 11.8 cm y-pitch.
-POCKET_X = 0.3705
-POCKET_Y = [0.177, 0.059, -0.059, -0.177]
-POCKET_SURFACE_Z = -0.05                # rear-half top surface height in base_link
+POCKET_X = _ENV['pocket']['x']
+POCKET_Y = list(_ENV['pocket']['y'])
+POCKET_SURFACE_Z = _ENV['pocket']['surface_z']               # rear-half top surface height in base_link
 
 # Orientation. DOWN = gripper straight down (known-good). The grasp yaw is built
 # at runtime from the shelf row direction (world x) so the jaw aligns with the
@@ -239,7 +247,7 @@ PREGRASP_BACK = 0.25       # start this far in front of the shelf (along -insert
 # pocket 0 passes over occupied pocket 1) knocked the placed boxes off. At
 # 0.38 the traverse rides at hub height with the carried-box bottom ~85 mm
 # above box tops; the guarded place descend absorbs the longer vertical drop.
-POCKET_HOVER = 0.38        # tip height above the pocket surface to hover before placing
+POCKET_HOVER = _ENV['pocket']['hover']       # tip height above the pocket surface to hover before placing
 PLACE_TCP_ABOVE = 0.08     # TCP above the pocket surface at release
 # Folded standby pose: arm stays tucked low until a trigger moves it out.
 STANDBY_POSE_DEG = [-8, -39, -105, 0, 0, 0]
