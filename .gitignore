@@ -5,3 +5,11 @@ log/
 **/reachability_out/
 **/log_txt/
 *.mp4
+
+# diffusionpolicy: code+docs only — data/ckpts/logs live on Drive
+diffusionpolicy/data/
+diffusionpolicy/server_run_wandb/
+diffusionpolicy/*.log
+diffusionpolicy/lowboard_test/
+diffusionpolicy/*.png
+diffusionpolicy/*.pid

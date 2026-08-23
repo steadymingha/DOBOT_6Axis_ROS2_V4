@@ -1,0 +1,18 @@
+episodes: 332
+T: min=470 max=1595 mean=701
+resolution 240x320: 331 eps (ep 1..331)
+resolution 84x84: 1 eps (ep 0..0)
+meta keys present: 264 eps (from ep 68)
+quat norm err eef: max=0.0000 p99=0.0000 median=0.0000
+quat norm err object: max=0.0000 p99=0.0000 median=0.0000
+action-vs-eef[t+1] pos err max (m): max=0.0000 p99=0.0000 median=0.0000
+action-vs-eef[t+1] ang err max (rad): max=0.0012 p99=0.0010 median=0.0010
+eef per-tick step max (m): max=0.1933 p99=0.1155 median=0.0257
+object travel (m): max=1.0880 p99=1.0648 median=0.7367
+gripper range: [0.002, 0.015], changes/ep median=2
+
+PROBLEMS (2):
+  ep 0074: eef jump 0.193 m in one tick
+  ep 0192: eef jump 0.177 m in one tick
+
+worst action-alignment episodes: ep0=0.000m, ep1=0.000m, ep2=0.000m, ep3=0.000m, ep4=0.000m
