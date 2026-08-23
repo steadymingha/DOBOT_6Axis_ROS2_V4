@@ -160,11 +160,14 @@ def compute_place_ref(node, pocket_y):
     return node.compute_ik_ordered(pose_at(pocket_ref_xyz(pocket_y), place_quat()))
 
 
-def shelf_pick_to_hub(node, box_world, box_model, stock_key, place_ref):
+def shelf_pick_to_hub(node, box_world, box_model, stock_key, place_ref,
+                      preflight_only=False):
     """Pick the shelf box and return to the hub holding it (box-attached model ON
     at exit). Pre-flight validates the approach spoke + grasp servos AND the
     twisted hub return (box + box-vs-stock model) with NO motion; a forward-side
     failure retraces to the hub. Returns True on success.
+    preflight_only=True returns after the (no-motion) pre-flight passes, without
+    executing -- used by the park-calibration sweep to test reach feasibility.
     The fixed-jaw lateral offset is baked into the approach, so the grasp is just
     approach -> J6 twist -> descend (no separate jaw-align).
 
@@ -289,6 +292,12 @@ def shelf_pick_to_hub(node, box_world, box_model, stock_key, place_ref):
         node.get_logger().error("[pre-flight] twisted hub return infeasible; "
                                 "abort (no motion)")
         return False
+
+    if preflight_only:
+        # Restore the target phantom (line ~264 parked it for the pick that is
+        # not going to happen) so a sweep's next box sees the shelf intact.
+        node.set_shelf_stock_absent(*stock_key, absent=False)
+        return True
 
     # ---- EXECUTE shelf side (each forward segment captured for the return) ----
     done = []

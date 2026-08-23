@@ -9,9 +9,12 @@ main.py / MoveIt / tag_vision_node.py run unchanged:
   /isaac_joint_states, /isaac_joint_commands  (topic_based_ros2_control)
   /clock
   /camera/d405/color/image_raw + camera_info, aligned_depth_to_color/image_raw
+  /camera/canonical/image_raw                 (fixed agent-view cam, dataset)
   /gazebo/model_states                        (pocket occupancy + model_at)
   /ATTACHLINK, /DETACHLINK                    (grasp fixed-joint attach)
-Not provided: /gazebo/get|set_entity_state (node.level_base is a Gazebo-drift
+  /gazebo/set_entity_state                    (teleport: AGV re-park + box reset;
+                                               robot teleports carry pocket boxes)
+Not provided: /gazebo/get_entity_state (node.level_base is a Gazebo-drift
 repair; the base is fixed here so the failure class does not exist).
 """
 
@@ -20,6 +23,7 @@ import os
 import queue
 import sys
 import threading
+import time
 import xml.etree.ElementTree as ET
 
 from isaacsim import SimulationApp
@@ -37,7 +41,7 @@ import omni.usd
 from isaacsim.core.api import World
 from isaacsim.core.prims import SingleArticulation
 from isaacsim.core.utils.extensions import enable_extension
-from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux, UsdPhysics, UsdShade
+from pxr import Gf, PhysxSchema, Sdf, Usd, UsdGeom, UsdLux, UsdPhysics, UsdShade
 
 enable_extension("isaacsim.ros2.bridge")
 enable_extension("isaacsim.asset.importer.urdf")
@@ -55,18 +59,22 @@ ROBOT_NAME = "cr7_on_mpo700"
 ROBOT_XY = (0.683, 0.008)
 
 # World layout mirrors dobot_gazebo/worlds/cr.world (poses x y z r p y).
+# Shelf boxes are generated from the SAME model-frame x offsets as
+# cr7_pnp/geometry.py SHELF_BOX_XS (letters = pick order) -- keep in sync.
+# 10 per tier (extended 2026-07-24 for diffusion-policy dataset collection).
+SHELF_BOX_XS = (-0.0905, +0.0905, -0.2715, +0.2715, -0.4525, +0.4525,
+                -0.6335, +0.6335, -0.8145, +0.8145)
+SHELF_XY = (0.8, 0.5)                     # shelf model origin (world)
+SHELF_TIER_BOX_Z = {1: 1.29, 2: 1.79}     # tier top + box_h/2
 BOX_POSES = {
-    "box_t1a": (0.7095, 0.5, 1.29, 0, 0, 1.5708),
-    "box_t1b": (0.8905, 0.5, 1.29, 0, 0, 1.5708),
-    "box_t1c": (0.5285, 0.5, 1.29, 0, 0, 1.5708),
-    "box_t1d": (1.0715, 0.5, 1.29, 0, 0, 1.5708),
-    "box_t2a": (0.7095, 0.5, 1.79, 0, 0, 1.5708),
-    "box_t2b": (0.8905, 0.5, 1.79, 0, 0, 1.5708),
-    "box_t2c": (0.5285, 0.5, 1.79, 0, 0, 1.5708),
-    "box_t2d": (1.0715, 0.5, 1.79, 0, 0, 1.5708),
+    f"box_t{tier}{'abcdefghij'[i]}":
+        (SHELF_XY[0] + bx, SHELF_XY[1], z, 0, 0, 1.5708)
+    for tier, z in SHELF_TIER_BOX_Z.items() for i, bx in enumerate(SHELF_BOX_XS)
+}
+BOX_POSES.update({
     "box_l2a": (2.002, 0.441, 1.355, 0, 0, 0),
     "box_l2b": (2.698, 0.441, 0.896, 0, 0, 0),
-}
+})
 STATIC_MODELS = {
     # name: (pose, visual dae, [collision meshes])
     "shelf": ((0.8, 0.5, 0.32, 0, 0, 0), f"{BLENDER}/shelf/meshes/shelf.dae",
@@ -78,6 +86,20 @@ STATIC_MODELS = {
                 [f"{BLENDER}/post_wb/collision/{n}" for n in sorted(
                     os.listdir(f"{BLENDER}/post_wb/collision")) if n.endswith(".stl")]),
 }
+# --beacon: photo/preview layout. Swaps the wirebonder for the signal-tower version and
+# lays out a two-row "fab line" for screenshots (extra clones added after the model loop).
+# Guarded so dataset runs (no flag) are unchanged. Same wirebonder name/pose keeps the
+# AprilTag quads and appearance overrides working; the extra Beacon_* nodes keep dae colors.
+BEACON = "--beacon" in sys.argv
+if BEACON:
+    _wbb = f"{BLENDER}/wirebonder_beacon"
+    STATIC_MODELS["wirebonder"] = (STATIC_MODELS["wirebonder"][0],
+                                   f"{_wbb}/meshes/wirebonder.dae",
+                                   [f"{_wbb}/collision/{n}" for n in sorted(
+                                       os.listdir(f"{_wbb}/collision")) if n.endswith(".stl")])
+    del STATIC_MODELS["post_wb"]                 # post_wb dropped from the photo scene
+    # robot parked between the shelf (x=0.8) and the first equipment (x=2.35), in the aisle
+    ROBOT_XY = (1.5, -0.45)
 # AprilTag plates: (model, local pose, texture). 0.0375 m square quads, model.sdf poses.
 TAGS = [
     ("shelf", (-0.45, -0.1505, 0.91875, 1.5708, 0, 0),
@@ -205,9 +227,13 @@ def compose(model_pose, local_pose):
 
 
 # ---------------------------------------------------------------- world build
-# Physics at 240 Hz (4 substeps per rendered frame): 60 Hz physics left the
-# stiff position drives ringing during moves and at stop.
-world = World(stage_units_in_meters=1.0, physics_dt=1.0 / 240.0, rendering_dt=1.0 / 60.0)
+# Physics at 240 Hz: 60 Hz physics left the stiff position drives ringing
+# during moves and at stop. Rendering at 30 Hz (was 60): the offscreen RTX
+# renders for the two dataset cameras dominate wall-clock cost even headless,
+# and the collector samples at 10 Hz -- halving the render rate speeds up
+# collection without touching the recorded data (matches the real D405's
+# 30 fps, too).
+world = World(stage_units_in_meters=1.0, physics_dt=1.0 / 240.0, rendering_dt=1.0 / 30.0)
 stage = omni.usd.get_context().get_stage()
 
 world.scene.add_default_ground_plane()
@@ -240,6 +266,35 @@ for name, (pose, visual, collisions) in STATIC_MODELS.items():
     make_double_sided(add_reference(stage, root + "/visual", convert_mesh(visual)))
     for i, cm in enumerate(collisions):
         make_collider(stage, root + f"/col_{i}", convert_mesh(cm))
+
+# --beacon photo layout: two facing rows of wirebonders across the aisle. Visual-only
+# clones (no colliders) -- this is a screenshot scene, not a mission, so 20 extra bodies
+# stay cheap. Row A faces -y toward the aisle; row B is rotated 180 to face it back.
+if BEACON:
+    _wb_usd = convert_mesh(f"{BLENDER}/wirebonder_beacon/meshes/wirebonder.dae")
+    _PITCH = 1.08                              # body is 0.95 m wide -> ~0.13 m gap
+    _X0 = STATIC_MODELS["wirebonder"][0][0]    # original wirebonder x (2.35)
+    _ROWS = [(0.5, 0.0), (-1.40, math.pi)]     # (y, yaw): row A / facing row B (aisle 1.38 m)
+
+    def _clone(nm, usd, pose, scale=None):
+        croot = f"/World/models/{nm}"
+        stage.DefinePrim(croot, "Xform")
+        prim = stage.GetPrimAtPath(croot)
+        set_pose(prim, pose)
+        if scale is not None:                   # appended after T,O -> squashes local geometry
+            UsdGeom.Xformable(prim).AddScaleOp().Set(Gf.Vec3f(*scale))
+        make_double_sided(add_reference(stage, croot + "/visual", usd))
+
+    for _k in range(1, 11):                     # 10 beside the original in each row
+        _cx = _X0 + _k * _PITCH
+        _clone(f"wirebonder_a{_k}", _wb_usd, (_cx, _ROWS[0][0], 0, 0, 0, _ROWS[0][1]))
+        _clone(f"wirebonder_b{_k}", _wb_usd, (_cx, _ROWS[1][0], 0, 0, 0, _ROWS[1][1]))
+    # one extra shelf at the east end of the shelf line (y=0.5), squashed a bit shorter.
+    # Uses the raw shelf mesh (no wire-mesh board swap / leg extensions -- background prop).
+    _sh_usd = convert_mesh(STATIC_MODELS["shelf"][1])
+    _sh_pose = STATIC_MODELS["shelf"][0]
+    _clone("shelf_end", _sh_usd, (14.9, _sh_pose[1], _sh_pose[2], 0, 0, 0), scale=(1, 1, 0.75))
+    print("[beacon] photo layout: original + 2x10 wirebonder clones, end shelf, robot mid-aisle")
 
 # --- appearance overrides (visual only; physics colliders untouched) --------
 def _solid_mat(name, color, rough=0.5, metallic=0.0):
@@ -367,7 +422,9 @@ def _build_fab_room():
     yellow aisle lines, white panel walls. Visual only."""
     # textured floor (room bounds: resize the whole shell here)
     _fl = UsdGeom.Mesh.Define(stage, "/World/room/floor")
-    _x0, _x1, _y0, _y1 = -6.0, 14.0, -7.0, 7.0
+    # --beacon extends the east wall past the equipment lines (end shelf) and pulls the north
+    # wall in right behind the shelf-side row (Row A back is at y=1.28).
+    _x0, _x1, _y0, _y1 = -6.0, (16.5 if BEACON else 14.0), -7.0, (1.6 if BEACON else 7.0)
     _fl.CreatePointsAttr([(_x0, _y0, 0.001), (_x1, _y0, 0.001),
                           (_x1, _y1, 0.001), (_x0, _y1, 0.001)])
     _fl.CreateFaceVertexCountsAttr([4])
@@ -383,7 +440,8 @@ def _build_fab_room():
     _tx = UsdShade.Shader.Define(stage, "/World/room/floor_mat/tex")
     _tx.CreateIdAttr("UsdUVTexture")
     _tx.CreateInput("file", Sdf.ValueTypeNames.Asset).Set(
-        f"{HOME}/dobot_ws/isaac/floor_tile.png")
+        f"{HOME}/dobot_ws/isaac/floor_tile_dark.png" if BEACON
+        else f"{HOME}/dobot_ws/isaac/floor_tile.png")
     _tx.CreateInput("wrapS", Sdf.ValueTypeNames.Token).Set("repeat")
     _tx.CreateInput("wrapT", Sdf.ValueTypeNames.Token).Set("repeat")
     _rd = UsdShade.Shader.Define(stage, "/World/room/floor_mat/st")
@@ -399,7 +457,7 @@ def _build_fab_room():
     _cx, _cy = (_x0 + _x1) / 2, (_y0 + _y1) / 2
     _lx, _ly, _h = _x1 - _x0, _y1 - _y0, 3.0
     _parts = [
-        ("line_a", (_cx, -1.5, 0.003), (_lx - 0.4, 0.08, 0.002), (0.93, 0.78, 0.05)),
+        ("line_a", (_cx, -1.04 if BEACON else -1.5, 0.003), (_lx - 0.4, 0.08, 0.002), (0.93, 0.78, 0.05)),
         # full-length aisle line just in front of the wirebonder face (y=0)
         ("line_b", (_cx, 0.10, 0.003), (_lx - 0.4, 0.08, 0.002), (0.93, 0.78, 0.05)),
         ("wall_n", (_cx, _y1, _h / 2), (_lx, 0.05, _h), (0.92, 0.93, 0.95)),
@@ -466,6 +524,10 @@ for name, pose in BOX_POSES.items():
     prim = stage.DefinePrim(root, "Xform")
     set_pose(prim, pose)
     UsdPhysics.RigidBodyAPI.Apply(prim)
+    # Never sleep: a welded box below the sleep threshold during the slow guarded
+    # place-descend froze mid-air (pose stuck until the detach resync woke it),
+    # and a sleeping box also freezes its /gazebo/model_states pose.
+    PhysxSchema.PhysxRigidBodyAPI.Apply(prim).CreateSleepThresholdAttr(0.0)
     mass = UsdPhysics.MassAPI.Apply(prim)
     mass.CreateMassAttr(0.3)
     make_double_sided(add_reference(stage, root + "/visual", box_usd))
@@ -492,6 +554,128 @@ if not robot_root or not robot_root.IsValid():
             break
 d405_prim = find_prim_named(robot_root, "d405_link")
 assert d405_prim, "d405_link not found under robot"
+
+# Live robot pose source: the BASE LINK prim. Physics writes link transforms
+# back to USD every frame; the root Xform only holds the spawn pose we authored
+# and never updates, so reading it froze /gazebo/model_states after a teleport.
+base_link_prim = find_prim_named(robot_root, "mpo_base_link")
+assert base_link_prim, "mpo_base_link not found under robot"
+
+# World-anchor root joint (fix_base=True import): the fixed joint whose body0
+# side is NOT a rigid link (empty = world, or a plain Xform). Teleporting a
+# fixed-base articulation = shifting THIS joint's anchor (localPose0); PhysX
+# projects the whole articulation to the new anchor. (art.set_world_pose is
+# silently ignored for fixed-base -- measured: model_states never moved.)
+ROOT_JOINT = None
+for _p in Usd.PrimRange(robot_root):
+    if _p.IsA(UsdPhysics.FixedJoint):
+        _tg = UsdPhysics.Joint(_p).GetBody0Rel().GetTargets()
+        _pr = stage.GetPrimAtPath(_tg[0]) if _tg else None
+        if _pr is None or not _pr.HasAPI(UsdPhysics.RigidBodyAPI):
+            ROOT_JOINT = UsdPhysics.Joint(_p)
+            break
+print("[teleport] world-anchor root joint:",
+      ROOT_JOINT.GetPrim().GetPath() if ROOT_JOINT else "NOT FOUND (AGV teleport disabled)")
+
+# --beacon appearance: match the real-line photo (visual only; guarded so dataset runs
+# keep their look).
+if BEACON:
+    _arm_mat = _solid_mat("arm_dark", (0.16, 0.16, 0.17), 0.5)
+    _base_mat = _solid_mat("robot_cream", (0.90, 0.86, 0.74), 1.0)  # matte
+    _agv_mat = _solid_mat("agv_orange", (0.92, 0.45, 0.06), 0.5)
+
+    # slotted silver magazine material (box.dae has UVs)
+    def _tex_mat(name, png, rough=0.4, metallic=0.7):
+        m = UsdShade.Material.Define(stage, "/World/mats/" + name)
+        s = UsdShade.Shader.Define(stage, "/World/mats/" + name + "/shader")
+        s.CreateIdAttr("UsdPreviewSurface")
+        s.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(rough)
+        s.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(metallic)
+        t = UsdShade.Shader.Define(stage, "/World/mats/" + name + "/tex")
+        t.CreateIdAttr("UsdUVTexture")
+        t.CreateInput("file", Sdf.ValueTypeNames.Asset).Set(png)
+        t.CreateInput("wrapS", Sdf.ValueTypeNames.Token).Set("repeat")
+        t.CreateInput("wrapT", Sdf.ValueTypeNames.Token).Set("repeat")
+        r = UsdShade.Shader.Define(stage, "/World/mats/" + name + "/st")
+        r.CreateIdAttr("UsdPrimvarReader_float2")
+        r.CreateInput("varname", Sdf.ValueTypeNames.Token).Set("st")
+        t.CreateInput("st", Sdf.ValueTypeNames.Float2).ConnectToSource(r.ConnectableAPI(), "result")
+        s.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).ConnectToSource(
+            t.ConnectableAPI(), "rgb")
+        m.CreateSurfaceOutput().ConnectToSource(s.ConnectableAPI(), "surface")
+        return m
+    _mag_mat = _tex_mat("magazine", f"{HOME}/dobot_ws/isaac/magazine_slots.png")
+
+    # robot: Isaac's URDF importer puts visual meshes under a separate `visuals` scope, NOT
+    # under the physics link prims -- binding the link Xform did nothing. De-instance the
+    # whole robot, then bind every mesh whose prim path contains the link name (the link is
+    # a path ancestor in the visuals scope). Leading slash keeps base_link != mpo_base_link.
+    for _ in range(5):
+        _inst = [p for p in Usd.PrimRange(robot_root) if p.IsInstanceable()]
+        for p in _inst:
+            p.SetInstanceable(False)
+        if not _inst:
+            break
+    _robot_meshes = [p for p in Usd.PrimRange(robot_root) if p.IsA(UsdGeom.Mesh)]
+
+    def _paint_link(link_name, mat):
+        n = 0
+        for p in _robot_meshes:
+            if f"/{link_name}" in str(p.GetPath()):
+                _bind_strong(p, mat); n += 1
+        print(f"[beacon] {link_name}: painted {n} meshes")
+
+    _paint_link("mpo_base_link", _agv_mat)                       # AGV -> orange
+    for _ln in ("base_link", "cube_link"):                       # arm base / pedestal -> cream (matte)
+        _paint_link(_ln, _base_mat)
+    for _ln in ("Link1", "Link2", "Link3", "Link4", "Link5", "Link6"):
+        _paint_link(_ln, _arm_mat)                               # arm links -> very dark grey
+
+    # magazine per-face: big faces (perp to shortest box axis) = slotted grille; the two
+    # end faces (perp to longest axis) = open board slots; top/bottom (middle axis) = solid.
+    # Grouping by extent rank is axis-permutation safe (converter up-axis may differ).
+    _sil_mat = _solid_mat("mag_solid", (0.72, 0.73, 0.75), 0.35, metallic=0.8)
+    _open_mat = _solid_mat("mag_open", (0.07, 0.07, 0.08), 0.6)
+
+    def _face_groups(mesh):
+        pts = mesh.GetPointsAttr().Get()
+        counts = mesh.GetFaceVertexCountsAttr().Get()
+        idx = mesh.GetFaceVertexIndicesAttr().Get()
+        ext = [max(p[i] for p in pts) - min(p[i] for p in pts) for i in range(3)]
+        order = sorted(range(3), key=lambda i: ext[i])       # smallest .. largest axis
+        axis_group = {order[0]: "grille", order[1]: "solid", order[2]: "open"}
+        g = {"solid": [], "grille": [], "open": []}
+        o = 0
+        for fi, c in enumerate(counts):
+            f = [idx[o + k] for k in range(c)]; o += c
+            n = ((Gf.Vec3f(pts[f[1]]) - Gf.Vec3f(pts[f[0]]))
+                 ^ (Gf.Vec3f(pts[f[2]]) - Gf.Vec3f(pts[f[0]])))
+            ax = max(range(3), key=lambda i: abs(n[i]))
+            g[axis_group[ax]].append(fi)
+        return g
+
+    def _magazine(box_name):
+        vis = stage.GetPrimAtPath(f"/World/models/{box_name}/visual")
+        mesh = next((UsdGeom.Mesh(p) for p in Usd.PrimRange(vis) if p.IsA(UsdGeom.Mesh)), None)
+        if not mesh:
+            return
+        g = _face_groups(mesh)
+        for gname, mat in (("solid", _sil_mat), ("grille", _mag_mat), ("open", _open_mat)):
+            if not g[gname]:
+                continue
+            sub = UsdGeom.Subset.Define(stage, mesh.GetPath().AppendChild("mb_" + gname))
+            sub.CreateElementTypeAttr(UsdGeom.Tokens.face)
+            sub.CreateFamilyNameAttr("materialBind")
+            sub.CreateIndicesAttr(g[gname])
+            UsdShade.MaterialBindingAPI.Apply(sub.GetPrim()).Bind(mat)
+
+    for _bn in BOX_POSES:
+        if _bn in ("box_l2a", "box_l2b"):
+            continue
+        _magazine(_bn)
+    for _bn in ("box_l2a", "box_l2b"):   # buried machine boxes hidden for the photo
+        UsdGeom.Imageable(stage.GetPrimAtPath(f"/World/models/{_bn}")).MakeInvisible()
+    print("[beacon] appearance applied")
 
 if PHYS_GRASP:
     # Gazebo's grip contact params: mu 1.2 on the gripper pads, high-mu box.
@@ -524,8 +708,6 @@ if PHYS_GRASP:
 # tags: the arm is position-controlled and static load against the drives left a
 # ~0.2 rad/s velocity jitter at rest, which broke the vision node's arm-still
 # gate (needs < 0.02).
-from pxr import PhysxSchema
-
 for p in Usd.PrimRange(robot_root):
     if p.HasAPI(UsdPhysics.RigidBodyAPI):
         PhysxSchema.PhysxRigidBodyAPI.Apply(p).CreateDisableGravityAttr(True)
@@ -605,6 +787,41 @@ cam.CreateClippingRangeAttr(Gf.Vec2f(0.07, 5.0))
 import omni.replicator.core as rep
 render_product = rep.create.render_product(str(cam.GetPath()), (848, 480))
 
+# Canonical (agent-view) camera for the diffusion-policy dataset: mounted on
+# the AGV BASE (rigid to mpo_base_link, like the d405 on the wrist), framing
+# the arm + base pockets + the in-reach shelf section CLOSE UP. Robot-relative
+# (not world-fixed) keeps the robot at the same place in frame at every park --
+# consistent with the BASE-frame obs/actions -- and the shelf shifting in frame
+# IS the park-variation signal. Poses below are in the mpo_base_link frame.
+# USD cameras look down -Z with +Y up; orientation built from eye -> target.
+CANON_EYE, CANON_TARGET = (-1.15, -1.25, 1.85), (0.30, 0.45, 1.15)
+
+
+def look_at_quat(eye, target):
+    f = Gf.Vec3d(*target) - Gf.Vec3d(*eye)
+    f = f.GetNormalized()
+    x = Gf.Cross(f, Gf.Vec3d(0, 0, 1)).GetNormalized()   # camera right
+    z = -f                                               # camera backward
+    y = Gf.Cross(z, x)                                   # camera up
+    return Gf.Matrix3d(x[0], x[1], x[2], y[0], y[1], y[2],
+                       z[0], z[1], z[2]).ExtractRotation().GetQuat()
+
+
+canon_cam = UsdGeom.Camera.Define(
+    stage, str(base_link_prim.GetPath()) + "/canonical_cam")
+canon_cam.CreateFocalLengthAttr(18.0)
+canon_cam.CreateHorizontalApertureAttr(20.955)   # ~60 deg horizontal FOV
+canon_cam.CreateVerticalApertureAttr(20.955 * 3.0 / 4.0)
+canon_cam.CreateClippingRangeAttr(Gf.Vec2f(0.1, 20.0))
+_cxf = UsdGeom.Xformable(canon_cam)
+_cxf.AddTranslateOp().Set(Gf.Vec3d(*CANON_EYE))
+_cxf.AddOrientOp(UsdGeom.XformOp.PrecisionDouble).Set(
+    look_at_quat(CANON_EYE, CANON_TARGET))
+canon_product = rep.create.render_product(str(canon_cam.GetPath()), (640, 480))
+# (Decision 2026-07-24: base-mounted close-up chosen over the world-fixed "GUI
+# view" candidate -- side-by-side samples showed the GUI framing leaves boxes
+# ~15 px and the pockets occluded. The comparison gui_view camera was removed.)
+
 # ------------------------------------------------------------- ROS 2 graphs
 og.Controller.edit(
     {"graph_path": "/World/ros_graph", "evaluator_name": "execution"},
@@ -620,6 +837,7 @@ og.Controller.edit(
             ("cam_rgb", "isaacsim.ros2.bridge.ROS2CameraHelper"),
             ("cam_info", "isaacsim.ros2.bridge.ROS2CameraInfoHelper"),
             ("cam_depth", "isaacsim.ros2.bridge.ROS2CameraHelper"),
+            ("cam_canon", "isaacsim.ros2.bridge.ROS2CameraHelper"),
         ],
         og.Controller.Keys.SET_VALUES: [
             ("clock.inputs:topicName", "/clock"),
@@ -639,6 +857,10 @@ og.Controller.edit(
              "/camera/d405/aligned_depth_to_color/image_raw"),
             ("cam_depth.inputs:frameId", "d405_optical_frame"),
             ("cam_depth.inputs:renderProductPath", render_product.path),
+            ("cam_canon.inputs:type", "rgb"),
+            ("cam_canon.inputs:topicName", "/camera/canonical/image_raw"),
+            ("cam_canon.inputs:frameId", "canonical_cam"),
+            ("cam_canon.inputs:renderProductPath", canon_product.path),
         ],
         og.Controller.Keys.CONNECT: [
             ("tick.outputs:tick", "clock.inputs:execIn"),
@@ -649,6 +871,7 @@ og.Controller.edit(
             ("tick.outputs:tick", "cam_rgb.inputs:execIn"),
             ("tick.outputs:tick", "cam_info.inputs:execIn"),
             ("tick.outputs:tick", "cam_depth.inputs:execIn"),
+            ("tick.outputs:tick", "cam_canon.inputs:execIn"),
             ("ctx.outputs:context", "clock.inputs:context"),
             ("ctx.outputs:context", "pub_js.inputs:context"),
             ("ctx.outputs:context", "sub_jc.inputs:context"),
@@ -664,6 +887,7 @@ og.Controller.edit(
 # ------------------------------------------- Gazebo-compat bridge (rclpy)
 import rclpy
 from gazebo_msgs.msg import ModelStates
+from gazebo_msgs.srv import SetEntityState
 from geometry_msgs.msg import Pose, TransformStamped
 from linkattacher_msgs.srv import AttachLink, DetachLink
 from rclpy.node import Node as RosNode
@@ -674,6 +898,9 @@ _pose_cache = {}          # name -> (pos, quat) refreshed on the main loop
 _sim_time = 0.0            # world time, refreshed on the main loop (stamps TF)
 _attach_q = queue.Queue()  # (kind, request, done_event, result_holder)
 _attached = {}             # box model name -> joint path
+_teleport_checks = []      # [frames_left, target_x, target_y] robot teleports
+_sim_paused = False        # /sim_pause gate: freezes world.step (and thus /clock,
+                           # controllers, cameras) for stepped policy evaluation
 
 
 class GazeboCompat(RosNode):
@@ -683,11 +910,25 @@ class GazeboCompat(RosNode):
         self.create_timer(0.5, self.publish_states)  # 2 Hz, like gazebo_ros_state
         self.create_service(AttachLink, "/ATTACHLINK", self.on_attach)
         self.create_service(DetachLink, "/DETACHLINK", self.on_detach)
+        self.create_service(SetEntityState, "/gazebo/set_entity_state",
+                            self.on_set_state)
+        # Stepped-eval support: pausing stops world.step in the main loop, which
+        # freezes sim time coherently (JTC, TF stamps, cameras). robomimic-style
+        # semantics: the world does not advance while the policy thinks.
+        from std_srvs.srv import SetBool
+        self.create_service(SetBool, "/sim_pause", self.on_sim_pause)
         # odom -> mpo_base_link TF: gazebo_ros_planar_move published this in the
         # Gazebo sim; the flows treat odom == world. Stamped with sim time to
         # match the /clock the consumers run on.
         self.tf = TransformBroadcaster(self)
         self.create_timer(0.05, self.publish_odom_tf)
+
+    def on_sim_pause(self, req, res):
+        global _sim_paused
+        _sim_paused = bool(req.data)
+        res.success = True
+        res.message = "paused" if _sim_paused else "running"
+        return res
 
     def publish_odom_tf(self):
         entry = _pose_cache.get(ROBOT_NAME)
@@ -734,11 +975,82 @@ class GazeboCompat(RosNode):
         res.success, res.message = ok, msg
         return res
 
+    def on_set_state(self, req, res):
+        ok, msg = self._run_on_main("set_state", req)
+        res.success = ok
+        if not ok:
+            self.get_logger().error(f"[set_entity_state] {msg}")
+        return res
+
+
+def _teleport_prim(prim, pos, quat=None):
+    """Move a spawned rigid body: reuse the translate/orient ops set_pose authored
+    (physics writes back through the same ops) and zero its velocities."""
+    for op in UsdGeom.Xformable(prim).GetOrderedXformOps():
+        if op.GetOpType() == UsdGeom.XformOp.TypeTranslate:
+            op.Set(Gf.Vec3d(*pos))
+        elif quat is not None and op.GetOpType() == UsdGeom.XformOp.TypeOrient:
+            op.Set(quat)
+    rb = UsdPhysics.RigidBodyAPI(prim)
+    rb.CreateVelocityAttr().Set(Gf.Vec3f(0, 0, 0))
+    rb.CreateAngularVelocityAttr().Set(Gf.Vec3f(0, 0, 0))
+
+
+def _do_set_state(req, holder):
+    st = req.state
+    p, o = st.pose.position, st.pose.orientation
+    if st.name == ROBOT_NAME:
+        # AGV re-park: keep z and yaw (planar park, yaw always 0 in the
+        # missions). Implemented by shifting the world-anchor root joint by the
+        # x/y delta from the LIVE base-link pose -- works for the fixed-base
+        # articulation where set_world_pose does not. Boxes riding the magazine
+        # pockets (loose, below tier-1 and near the base) are carried along,
+        # or a teleport strands them mid-air.
+        cur = omni.usd.get_world_transform_matrix(base_link_prim).ExtractTranslation()
+        dx, dy = p.x - cur[0], p.y - cur[1]
+        if ROOT_JOINT is not None:
+            lp0 = ROOT_JOINT.GetLocalPos0Attr().Get() or Gf.Vec3f(0.0)
+            ROOT_JOINT.GetLocalPos0Attr().Set(
+                Gf.Vec3f(lp0[0] + dx, lp0[1] + dy, lp0[2]))
+        # Belt and braces: ALSO set the articulation root through the tensor API.
+        # Which of the two paths PhysX honours depends on the build; both express
+        # the SAME absolute target, so applying both stays consistent. The result
+        # is measured a few frames later and printed as OK/FAILED (main loop).
+        try:
+            art.set_world_pose(position=np.array([p.x, p.y, cur[2]]))
+        except Exception as e:
+            print(f"[set_entity_state] set_world_pose raised: {e}")
+        _teleport_checks.append([10, p.x, p.y])
+        carried = []
+        for bname in BOX_POSES:
+            bprim = stage.GetPrimAtPath(f"/World/models/{bname}")
+            t = omni.usd.get_world_transform_matrix(bprim).ExtractTranslation()
+            if (bname not in _attached and abs(t[0] - cur[0]) < 0.55
+                    and abs(t[1] - cur[1]) < 0.45 and 0.80 < t[2] < 1.15):
+                _teleport_prim(bprim, (t[0] + dx, t[1] + dy, t[2]))
+                carried.append(bname)
+        holder["ok"] = True
+        holder["msg"] = f"robot -> ({p.x:.3f}, {p.y:.3f}), carried {carried}"
+    else:
+        prim = stage.GetPrimAtPath(f"/World/models/{st.name}")
+        if not prim.IsValid():
+            raise ValueError(f"unknown model {st.name}")
+        jp = _attached.pop(st.name, None)   # teleport implies force-detach
+        if jp:
+            stage.RemovePrim(jp)
+        _teleport_prim(prim, (p.x, p.y, p.z), Gf.Quatd(o.w, Gf.Vec3d(o.x, o.y, o.z)))
+        holder["ok"], holder["msg"] = True, f"{st.name} teleported"
+    print(f"[set_entity_state] {holder['msg']}")
+
 
 def process_attach_queue():
     while not _attach_q.empty():
         kind, req, done, holder = _attach_q.get()
         try:
+            if kind == "set_state":
+                _do_set_state(req, holder)
+                done.set()
+                continue
             box = req.model2_name
             box_path = f"/World/models/{box}"
             if kind == "attach":
@@ -773,10 +1085,10 @@ def process_attach_queue():
 
 def refresh_pose_cache():
     for name in MODEL_NAMES:
-        path = f"/{ROBOT_NAME}" if name == ROBOT_NAME else f"/World/models/{name}"
-        prim = stage.GetPrimAtPath(path)
-        if not prim.IsValid():
-            prim = robot_root if name == ROBOT_NAME else prim
+        if name == ROBOT_NAME:
+            prim = base_link_prim   # live (physics-written); root Xform is stale
+        else:
+            prim = stage.GetPrimAtPath(f"/World/models/{name}")
         if not prim or not prim.IsValid():
             continue
         m = omni.usd.get_world_transform_matrix(prim)
@@ -790,12 +1102,12 @@ def refresh_pose_cache():
 # ---------------------------------------------------------------------- run
 world.reset()
 
-# GUI viewpoint (Perspective camera pose framed by hand 2026-07-22:
-# translate -0.63238 -0.7178 1.76842 / rotateXYZ 65.90108 0 -51.04795,
-# converted to eye + look-at target for set_camera_view).
+# GUI viewpoint: same viewing direction as the hand-framed 2026-07-22 pose, but
+# pulled back and recentred so the FULL 2 m shelf row + the AGV station band
+# (x ~ -0.1..1.5) stay in frame while the base teleports between stations.
 if not HEADLESS:
     from isaacsim.core.utils.viewports import set_camera_view
-    set_camera_view(eye=[-0.63238, -0.7178, 1.76842], target=[1.142, 0.717, 0.748])
+    set_camera_view(eye=[-2.75, -2.35, 2.85], target=[0.8, 0.5, 0.8])
 
 # Initial joint positions from the URDF ros2_control initial_value params
 # (same values gazebo_ros2_control used).
@@ -851,10 +1163,21 @@ print("[isaac_sim] world up:", MODEL_NAMES)
 frame = 0
 while app.is_running():
     process_attach_queue()
+    if _sim_paused:
+        time.sleep(0.005)   # world frozen: no physics step, no clock advance
+        continue
     _sim_time = world.current_time
-    if frame % 30 == 0:  # 2 Hz pose refresh feeds /gazebo/model_states + odom TF
+    if frame % 15 == 0:  # 2 Hz pose refresh (30 fps loop) feeds model_states + odom TF
         refresh_pose_cache()
     world.step(render=True)
+    for c in list(_teleport_checks):   # verify robot teleports a few frames on
+        c[0] -= 1
+        if c[0] <= 0:
+            t = omni.usd.get_world_transform_matrix(base_link_prim).ExtractTranslation()
+            ok = abs(t[0] - c[1]) < 0.02 and abs(t[1] - c[2]) < 0.02
+            print(f"[teleport] base at ({t[0]:.3f}, {t[1]:.3f}), target "
+                  f"({c[1]:.3f}, {c[2]:.3f}) -> {'OK' if ok else 'FAILED'}")
+            _teleport_checks.remove(c)
     frame += 1
 
 rclpy.shutdown()

@@ -1,0 +1,72 @@
+<?xml version='1.0'?>
+<sdf version='1.7'>
+  <!-- Static wire-bonder mock-up. Overall extent: 0.952 (X) x 1.04 (Y) x 2.025 (Z) m.
+       Origin at floor level, base cube centred in X, front face at -Y=0.26, back face at +Y=0.78.
+       Mesh is in world coords baked at export, so link pose is identity. -->
+  <model name='wirebonder'>
+    <static>true</static>
+    <pose>0 0 0 0 0 0</pose>
+    <link name='wirebonder_link'>
+      <pose>0 0 0 0 0 0</pose>
+      <visual name='wirebonder_visual'>
+        <geometry>
+          <mesh>
+            <uri>model://wirebonder/meshes/wirebonder.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <!-- per-part collision: one STL per box so the stepped recesses stay open -->
+      <collision name='Beacon_Green'>
+        <geometry><mesh><uri>model://wirebonder/collision/Beacon_Green.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Beacon_Red'>
+        <geometry><mesh><uri>model://wirebonder/collision/Beacon_Red.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Beacon_Yellow'>
+        <geometry><mesh><uri>model://wirebonder/collision/Beacon_Yellow.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Beacon_pole'>
+        <geometry><mesh><uri>model://wirebonder/collision/Beacon_pole.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_A'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_A.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_A_back'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_A_back.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_B'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_B.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_B_back'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_B_back.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_C'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_C.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_D'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_D.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_E'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_E.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_F'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_F.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_G_L'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_G_L.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_G_R'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_G_R.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_H_L'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_H_L.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_H_R'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_H_R.stl</uri></mesh></geometry>
+      </collision>
+      <collision name='Cube_I'>
+        <geometry><mesh><uri>model://wirebonder/collision/Cube_I.stl</uri></mesh></geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>

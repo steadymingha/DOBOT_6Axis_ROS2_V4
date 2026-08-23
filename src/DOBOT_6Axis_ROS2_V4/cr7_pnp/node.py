@@ -61,6 +61,11 @@ class CR7Node(Node):
     joint-space RRT. IK and collision are provided by the subclass (pinocchio),
     so the MoveIt /compute_ik and /check_state_validity clients are not created."""
 
+    # Global motion speed multiplier: every motion funnels through execute_path /
+    # execute_trajectory, so this one knob scales the whole mission
+    # (raised from 1.0, 2026-07-24).
+    SPEED_SCALE = 1.25
+
     def __init__(self):
         super().__init__('cr7_rrt_planner')
         self.cb_group = ReentrantCallbackGroup()
@@ -318,7 +323,7 @@ class CR7Node(Node):
         for joints in path:
             point = JointTrajectoryPoint()
             point.positions = joints
-            time_from_start += 0.5  # 0.5 s interval between each waypoint
+            time_from_start += 0.5 / self.SPEED_SCALE  # waypoint interval, same global knob
             point.time_from_start.sec = int(time_from_start)
             point.time_from_start.nanosec = int((time_from_start % 1) * 1e9)
             goal_msg.trajectory.points.append(point)
@@ -792,14 +797,15 @@ class CBiRRTPickPlace(CR7Node):
 
     def execute_path(self, path, speed=0.6):
         """Send joint waypoints (joint1..joint6) as one trajectory. Time between
-        waypoints is proportional to joint-space distance (speed in rad/s)."""
+        waypoints is proportional to joint-space distance (speed in rad/s,
+        scaled by SPEED_SCALE)."""
         goal_msg = FollowJointTrajectory.Goal()
         goal_msg.trajectory.joint_names = self.joint_names
         t = 0.0
         prev = np.array(path[0], dtype=float)
         for i, joints in enumerate(path):
             cur = np.array(joints, dtype=float)
-            dt = np.linalg.norm(cur - prev) / speed
+            dt = np.linalg.norm(cur - prev) / (speed * self.SPEED_SCALE)
             t += max(dt, 0.05) if i > 0 else 0.0
             prev = cur
             pt = JointTrajectoryPoint()
@@ -872,7 +878,7 @@ class CBiRRTPickPlace(CR7Node):
         p = pose.pose.position
         return self.linear_servo(np.array([p.x, p.y, p.z]) - self.tcp_xyz(), label=label)
 
-    def guarded_descend(self, max_drop, label="descend", speed=0.1):
+    def guarded_descend(self, max_drop, label="descend", speed=0.2):
         """Descend straight down until the carried-box collision model meets a
         surface -- the SIM analog of the real robot's joint-torque touch-off (see
         place_command_guide.md). Commands an over-travel drop (max_drop m, tool-

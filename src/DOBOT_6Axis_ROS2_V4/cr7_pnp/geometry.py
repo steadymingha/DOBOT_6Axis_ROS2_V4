@@ -65,16 +65,23 @@ SHELF_BOARD_THICK = 0.018               # board thickness (z), real shelf board
 SHELF_TIER_TOPS = {1: 1.22, 2: 1.72}
 
 # Box centres in the SHELF MODEL frame: x offsets in PICK ORDER (a,b = inner
-# pair, c,d = outer flank, one box-pitch 0.181 out), y centred on the board.
-# Mirrors the box_t<tier><a-d> spawns in cr.world -- keep both in sync.
-SHELF_BOX_XS = (-0.0905, +0.0905, -0.2715, +0.2715)
+# pair, then flanking pairs outward, one box-pitch 0.181 out each step -- the
+# pitch is the proven grasp clearance: the OPEN moving jaw intrudes ~52 mm past
+# the box face, so do not pack tighter). Extended 4 -> 10 per tier (2026-07-24,
+# diffusion-policy dataset): the row now spans the full 2 m board; outer boxes
+# need the AGV re-parked to reach (isaac_collect.py does that automatically).
+# Mirrors the box_t<tier><a-j> spawns in isaac/isaac_sim.py BOX_POSES -- keep
+# both in sync. (Gazebo cr.world still spawns only a-d; the extra phantoms
+# over-constrain empty slots there, which is safe.)
+SHELF_BOX_XS = (-0.0905, +0.0905, -0.2715, +0.2715, -0.4525, +0.4525,
+                -0.6335, +0.6335, -0.8145, +0.8145)
 SHELF_BOX_Y = 0.0
 # Per-box GRASP x nudge (shelf MODEL frame, PICK order), applied to the pick
 # target only (NOT the stock phantoms -- those model where the box rests).
 # TUNE: box c (idx 2, outer-left) tends to be gripped at its edge and tips;
 # set from the "[grasp-offset]" log printed at each attach (the measured
 # box-centre minus target vector), don't guess. Default 0.
-SHELF_BOX_X_NUDGE = (0.0, 0.0, 0.0, 0.0)
+SHELF_BOX_X_NUDGE = (0.0,) * len(SHELF_BOX_XS)
 
 
 # Per-tier ArUco placard placement in the SHELF MODEL frame (x, y at the board
@@ -204,14 +211,14 @@ GRIPPER_OPEN = [FINGER_OPEN_M]  # gap 111 mm; after jaw-align the moving pad sti
 CLOSE_SQUEEZE = -0.002
 GRIPPER_CLOSE = [BOX_SHORT - JAW_GAP_AT_ZERO - CLOSE_SQUEEZE]   # gap = box + 2 mm (clearance)
 
-# Shelf box Gazebo naming: model 'box_t<tier><a-d>' (a-d in PICK ORDER, matching
+# Shelf box Gazebo naming: model 'box_t<tier><a-j>' (a-j in PICK ORDER, matching
 # SHELF_BOX_XS), link 'box_link'. Used by the link attacher.
 SHELF_BOX_LINK = 'box_link'
 
 
 def shelf_box_model(tier, i):
     """Gazebo model name of shelf box `i` (pick order) on `tier`."""
-    return f"box_t{tier}{'abcd'[i]}"
+    return f"box_t{tier}{'abcdefghij'[i]}"
 
 # Base magazine pockets: CONSTANT in base_link (rigid to the arm base), so no TF
 # needed. 0.236 m along base_link x, 0.081 m along y, 11.8 cm y-pitch.
