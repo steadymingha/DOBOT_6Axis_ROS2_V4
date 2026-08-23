@@ -68,6 +68,16 @@ echo "=== [4/4] D405 eye-in-hand camera view ==="
 sleep 8
 python3 ~/dobot_ws/src/DOBOT_6Axis_ROS2_V4/debug/view_d405.py /camera/d405/color/image_raw &
 VIEW_PID=$!
+## headless mode is not supported in Isaac Sim, so we don't skip the D405 viewer. The following code is commented out for reference.
+# if [[ " $* " == *" --headless "* ]]; then
+#     echo "=== [4/4] D405 viewer skipped (--headless) ==="
+#     VIEW_PID=
+# else
+#     echo "=== [4/4] D405 eye-in-hand camera view ==="
+#     sleep 8
+#     python3 ~/dobot_ws/src/DOBOT_6Axis_ROS2_V4/debug/view_d405.py /camera/d405/color/image_raw &
+#     VIEW_PID=$!
+# fi
 
 echo "All started. Press Ctrl+C to exit"
 trap "kill $ISAAC_PID $CONTROL_PID $MOVEIT_PID $VIEW_PID 2>/dev/null" EXIT
