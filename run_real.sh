@@ -16,6 +16,9 @@ TTY_FLAGS=""
 [ -t 0 ] && TTY_FLAGS="-it"
 exec docker exec $TTY_FLAGS ros2_dobot bash -lc '
 source /opt/ros/humble/setup.bash
+# keep ~/.ros/log from growing without bound: one launch = one folder (2 GB by
+# 2026-08). 7 days is plenty for post-mortems; delete older ones at every start.
+find /root/.ros/log -maxdepth 1 -mindepth 1 -mtime +7 -exec rm -rf {} + 2>/dev/null
 source /root/dobot_ws/install/setup.bash
 export DOBOT_TYPE=cr7
 PKG=/root/dobot_ws/src/DOBOT_6Axis_ROS2_V4
